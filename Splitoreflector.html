@@ -1,0 +1,535 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Splito-Reflector</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JSZip for ZIP folder facility -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Leaflet Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --primary-bg: radial-gradient(circle at top left, #f0f9ff 0%, #e0f2fe 100%);
+            --accent-color: #0ea5e9;
+            --accent-hover: #0284c7;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Themes */
+        body.theme-ocean {
+            --primary-bg: radial-gradient(circle at top left, #f0f9ff 0%, #e0f2fe 100%);
+            --accent-color: #0ea5e9;
+            --accent-hover: #0284c7;
+        }
+        body.theme-emerald {
+            --primary-bg: radial-gradient(circle at top left, #f0fdf4 0%, #dcfce7 100%);
+            --accent-color: #10b981;
+            --accent-hover: #059669;
+        }
+        body.theme-midnight {
+            --primary-bg: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+            --glass-bg: rgba(30, 41, 59, 0.8);
+            color: #f1f5f9;
+        }
+        body.theme-midnight .glass { background: var(--glass-bg); border-color: rgba(255,255,255,0.1); }
+        body.theme-midnight .text-slate-800, body.theme-midnight .text-slate-700 { color: #f1f5f9; }
+        body.theme-midnight .text-slate-500 { color: #94a3b8; }
+        body.theme-midnight #previewTable thead { background: #1e293b; }
+
+        body { font-family: 'Inter', sans-serif; background: var(--primary-bg); min-height: 100vh; transition: all 0.4s ease; }
+        .glass { background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .tab-active { border-bottom: 2px solid var(--accent-color); color: var(--accent-color); }
+        .modal-overlay { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); }
+        #map { height: 600px; width: 100%; border-radius: 1.5rem; z-index: 10; }
+        .bg-accent { background-color: var(--accent-color); }
+        .text-accent { color: var(--accent-color); }
+        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { opacity: 1; }
+    </style>
+</head>
+<body class="p-4 md:p-8 theme-ocean">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="droplets" class="text-accent"></i>
+                    Splito-Reflector
+                </h1>
+                <div class="flex items-center gap-2 mt-1">
+                    <p class="text-slate-500 text-sm"></p>
+                    <span class="text-slate-300">|</span>
+                    <p class="text-slate-500 text-sm font-medium italic">Jitendra Kumar </p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="flex bg-white/50 p-1 rounded-xl border border-white/20 shadow-sm">
+                    <button onclick="setTheme('ocean')" class="w-8 h-8 rounded-lg bg-sky-400 border-2 border-white shadow-sm" title="Ocean Breeze"></button>
+                    <button onclick="setTheme('emerald')" class="w-8 h-8 rounded-lg bg-emerald-400 border-2 border-white shadow-sm mx-1" title="Emerald Green"></button>
+                    <button onclick="setTheme('midnight')" class="w-8 h-8 rounded-lg bg-slate-800 border-2 border-white shadow-sm" title="Midnight Slate"></button>
+                </div>
+
+                <label class="cursor-pointer bg-accent hover:opacity-90 text-white px-6 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2">
+                    <i data-lucide="upload-cloud"></i>
+                    Import Data
+                    <input type="file" id="fileInput" class="hidden" accept=".csv, .xlsx, .xls">
+                </label>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <aside class="lg:col-span-3 space-y-6">
+                <div class="glass rounded-3xl p-6 shadow-sm">
+                    <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="filter" class="w-5 h-5"></i>
+                        Filters
+                    </h2>
+                    <div id="filterContainer" class="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar text-sm">
+                        <div class="text-center py-10 text-slate-400 italic">Import a file...</div>
+                    </div>
+                    <button id="resetFilters" onclick="resetAllFilters()" class="w-full mt-6 text-xs text-slate-500 hover:text-accent hidden">Reset Filters</button>
+                </div>
+
+                <div class="glass rounded-3xl p-6 shadow-sm">
+                    <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="settings" class="w-5 h-5"></i>
+                        Tools
+                    </h2>
+                    <div class="space-y-3">
+                        <button onclick="runUnion()" class="w-full bg-white/50 border border-slate-200 text-slate-700 p-3 rounded-xl hover:bg-white transition-all flex items-center justify-between group text-sm">
+                            <span>Union Export</span>
+                            <i data-lucide="combine" class="w-4 h-4 text-slate-400"></i>
+                        </button>
+                        <button onclick="openSplitModal()" class="w-full bg-white/50 border border-slate-200 text-slate-700 p-3 rounded-xl hover:bg-white transition-all flex items-center justify-between group text-sm">
+                            <span>Split to ZIP Folder</span>
+                            <i data-lucide="folder-archive" class="w-4 h-4 text-slate-400"></i>
+                        </button>
+                        <button onclick="runAnalysis()" class="w-full bg-accent text-white p-3 rounded-xl hover:opacity-90 transition-all font-semibold flex items-center justify-between text-sm">
+                            <span>BIS Excel Report</span>
+                            <i data-lucide="file-bar-chart" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="lg:col-span-9 space-y-4">
+                <div class="flex gap-8 border-b border-slate-200 mb-2">
+                    <button id="tabData" onclick="switchTab('data')" class="pb-2 font-medium tab-active">Table Preview</button>
+                    <button id="tabMap" onclick="switchTab('map')" class="pb-2 font-medium text-slate-500 hover:text-accent">Spatial Map</button>
+                    <button id="tabAI" onclick="switchTab('ai')" class="pb-2 font-medium text-slate-500 
+hover:text-accent">Reserved</button>
+                </div>
+
+                <div id="dataContent" class="glass rounded-3xl p-6 shadow-sm min-h-[600px] flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-slate-700">Dataset Overview</h3>
+                        <span id="rowCount" class="text-xs bg-sky-100 px-3 py-1 rounded-full text-accent font-bold">0 Rows</span>
+                    </div>
+                    <div class="flex-1 overflow-auto custom-scrollbar border border-slate-100 rounded-xl">
+                        <table class="w-full text-xs text-left text-slate-600" id="previewTable">
+                            <thead class="bg-slate-50 sticky top-0">
+                                <tr id="tableHeader"></tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="mapContent" class="hidden space-y-4">
+                    <div class="glass rounded-3xl p-6 shadow-sm">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Parameter</label>
+                                <select id="mapParamSelect" onchange="handleParamChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"></select>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acceptable Limit</label>
+                                <div class="relative">
+                                    <input type="number" id="limitB1" onchange="updateCustomLimit('b1', this.value)" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm">
+                                    <span id="unitB1" class="absolute right-3 top-2 text-[10px] text-slate-400 pointer-events-none"></span>
+                                </div>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Permissible Limit</label>
+                                <div class="relative">
+                                    <input type="number" id="limitB2" onchange="updateCustomLimit('b2', this.value)" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm">
+                                    <span id="unitB2" class="absolute right-3 top-2 text-[10px] text-slate-400 pointer-events-none"></span>
+                                </div>
+                            </div>
+                            <div class="flex gap-4 justify-between pb-2">
+                                <span class="flex items-center gap-1 text-[10px] font-bold text-emerald-600"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Within Acceptable Limit</span>
+                                <span class="flex items-center gap-1 text-[10px] font-bold text-orange-600"><span class="w-2 h-2 rounded-full bg-orange-500"></span> MARGINAL</span>
+                                <span class="flex items-center gap-1 text-[10px] font-bold text-red-600"><span class="w-2 h-2 rounded-full bg-red-600"></span> Above Permissible Limit</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="map" class="shadow-xl border-4 border-white"></div>
+                </div>
+
+                <div id="aiContent" class="hidden glass rounded-3xl p-6 shadow-sm min-h-[600px] flex flex-col">
+                    <div id="aiChat" class="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 custom-scrollbar text-sm"></div>
+                    <div class="flex gap-2 relative">
+                        <input type="text" id="aiInput" placeholder="Ask about compliance trends..." class="w-full bg-white border border-slate-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent">
+                        <button id="sendAiBtn" class="absolute right-2 top-2 bottom-2 bg-accent text-white px-4 rounded-xl">Send</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="splitModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+            <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <i data-lucide="folder-archive" class="text-accent"></i> Split into ZIP Folder
+            </h3>
+            <p class="text-slate-500 text-sm mb-6">Create a ZIP folder containing individual Excel files for each unique value in the column.</p>
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Select Column to Split By</label>
+                <select id="splitColSelect" class="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:outline-none"></select>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeSplitModal()" class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-all">Cancel</button>
+                <button onclick="confirmSplitToZip()" class="flex-1 px-4 py-3 rounded-xl bg-accent text-white font-medium hover:opacity-90 transition-all shadow-lg">Generate ZIP</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-8 right-8 bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl translate-y-20 transition-all duration-300 z-50">
+        <span id="toastMsg">Done!</span>
+    </div>
+
+    <script>
+        let rawData = [];
+        let filteredData = [];
+        let filters = {};
+        let map;
+        let markersGroup;
+
+        const LIMITS = {
+            'EC': { b1: 750, b2: 3000, unit: 'µS/cm', name: 'Electrical Conductivity' },
+            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate' },
+            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride' },
+            'TH': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Hardness' },
+            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride' },
+            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium' },
+            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium' },
+            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate' },
+            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron' },
+            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese' },
+            'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic' },
+            'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium' },
+            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc' },
+            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper' },
+            'Pb': { b1: 10, b2: 10, unit: 'ppb', name: 'Lead' },
+            'Cd': { b1: 3, b2: 3, unit: 'ppb', name: 'Cadmium' },
+            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium' },
+            'Hg': { b1: 1, b2: 1, unit: 'ppb', name: 'Mercury' },
+            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel' },
+            'Se': { b1: 10, b2: 10, unit: 'ppb', name: 'Selenium' },
+            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH Level' }
+        };
+
+        window.onload = () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            initMap();
+            populateMapSelect();
+            handleParamChange();
+        };
+
+        function setTheme(theme) { document.body.className = `p-4 md:p-8 theme-${theme}`; }
+
+        function populateMapSelect() {
+            const select = document.getElementById('mapParamSelect');
+            select.innerHTML = Object.entries(LIMITS).map(([key, obj]) => 
+                `<option value="${key}">${obj.name} (${key})</option>`
+            ).join('');
+        }
+
+        function handleParamChange() {
+            const param = document.getElementById('mapParamSelect').value;
+            const lim = LIMITS[param];
+            document.getElementById('limitB1').value = lim.b1;
+            document.getElementById('limitB2').value = lim.b2;
+            document.getElementById('unitB1').innerText = lim.unit;
+            document.getElementById('unitB2').innerText = lim.unit;
+            renderMapMarkers();
+        }
+
+        function updateCustomLimit(type, value) {
+            const param = document.getElementById('mapParamSelect').value;
+            LIMITS[param][type] = parseFloat(value);
+            renderMapMarkers();
+        }
+
+        function initMap() {
+            map = L.map('map').setView([20.5937, 78.9629], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+            markersGroup = L.layerGroup().addTo(map);
+        }
+
+        function switchTab(tab) {
+            document.getElementById('dataContent').classList.toggle('hidden', tab !== 'data');
+            document.getElementById('mapContent').classList.toggle('hidden', tab !== 'map');
+            document.getElementById('aiContent').classList.toggle('hidden', tab !== 'ai');
+            document.getElementById('tabData').className = `pb-2 font-medium transition-all ${tab === 'data' ? 'tab-active' : 'text-slate-500'}`;
+            document.getElementById('tabMap').className = `pb-2 font-medium transition-all ${tab === 'map' ? 'tab-active' : 'text-slate-500'}`;
+            document.getElementById('tabAI').className = `pb-2 font-medium transition-all ${tab === 'ai' ? 'tab-active' : 'text-slate-500'}`;
+            if (tab === 'map') setTimeout(() => { map.invalidateSize(); renderMapMarkers(); }, 200);
+        }
+
+        function renderMapMarkers() {
+            markersGroup.clearLayers();
+            if (!filteredData.length) return;
+            const param = document.getElementById('mapParamSelect').value;
+            const lim = LIMITS[param];
+            const bounds = [];
+            filteredData.forEach(r => {
+                const lat = parseFloat(r.Latitude || r.Lat);
+                const lng = parseFloat(r.Longitude || r.Long || r.Lng);
+                const val = parseFloat(r[param]);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    let color = (val <= lim.b1) ? "#10b981" : (val <= lim.b2) ? "#f97316" : "#ef4444";
+                    const marker = L.circleMarker([lat, lng], { radius: 6, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8 });
+                    marker.bindPopup(`<div class="text-xs"><b>${r.Source || 'Point'}</b><br>${param}: ${val || 'N/A'} ${lim.unit}</div>`);
+                    markersGroup.addLayer(marker);
+                    bounds.push([lat, lng]);
+                }
+            });
+            if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+        }
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" })
+                    .map(row => {
+                        const r = {};
+                        Object.keys(row).forEach(k => r[k.trim()] = String(row[k]).trim());
+                        return r;
+                    });
+                filteredData = [...rawData];
+                setupFilters();
+                updatePreview();
+                showToast("File Imported Successfully");
+            };
+            reader.readAsBinaryString(file);
+        });
+
+        function setupFilters() {
+            const cols = ["District", "Block", "Season", "Source"];
+            const container = document.getElementById('filterContainer');
+            container.innerHTML = '';
+            cols.forEach(col => {
+                const vals = [...new Set(rawData.map(r => r[col]))].filter(v => v && v !== "undefined").sort();
+                if (!vals.length) return;
+                const div = document.createElement('div');
+                div.innerHTML = `<label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">${col}</label>
+                    <div class="grid grid-cols-1 gap-1 max-h-24 overflow-y-auto custom-scrollbar p-1">
+                        ${vals.map(v => `<label class="flex items-center gap-2 p-1 rounded hover:bg-white cursor-pointer"><input type="checkbox" onchange="updateFilters('${col}', '${v}', this.checked)" class="filter-check w-3 h-3 rounded"> ${v}</label>`).join('')}
+                    </div>`;
+                container.appendChild(div);
+            });
+            document.getElementById('resetFilters').classList.remove('hidden');
+        }
+
+        function updateFilters(col, val, checked) {
+            if (!filters[col]) filters[col] = new Set();
+            if (checked) filters[col].add(val); else filters[col].delete(val);
+            if (!filters[col].size) delete filters[col];
+            filteredData = rawData.filter(r => Object.entries(filters).every(([c, s]) => s.has(r[c])));
+            updatePreview();
+            if (document.getElementById('mapContent').className.indexOf('hidden') === -1) renderMapMarkers();
+        }
+
+        function resetAllFilters() {
+            document.querySelectorAll('.filter-check').forEach(c => c.checked = false);
+            filters = {};
+            filteredData = [...rawData];
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const head = document.getElementById('tableHeader');
+            const body = document.getElementById('tableBody');
+            const count = document.getElementById('rowCount');
+            if (!filteredData.length) {
+                body.innerHTML = '<tr><td colspan="10" class="py-20 text-center text-slate-300 italic">No data matched...</td></tr>';
+                count.innerText = "0 Rows";
+                return;
+            }
+            const cols = Object.keys(filteredData[0]);
+            head.innerHTML = cols.map(c => `<th class="px-4 py-3 whitespace-nowrap bg-slate-50 border-b border-slate-200">${c}</th>`).join('');
+            body.innerHTML = filteredData.slice(0, 100).map(r => `
+                <tr class="hover:bg-sky-50 transition-colors border-b border-slate-100">
+                    ${cols.map(c => `<td class="px-4 py-2 border-r border-slate-50 last:border-r-0">${r[c]}</td>`).join('')}
+                </tr>`).join('');
+            count.innerText = `${filteredData.length} Total Rows`;
+        }
+
+        function openSplitModal() {
+            if (!filteredData.length) return showToast("Please import data first.");
+            const select = document.getElementById('splitColSelect');
+            select.innerHTML = Object.keys(filteredData[0]).map(c => `<option value="${c}">${c}</option>`).join('');
+            document.getElementById('splitModal').classList.remove('hidden');
+        }
+
+        function closeSplitModal() { document.getElementById('splitModal').classList.add('hidden'); }
+
+        async function confirmSplitToZip() {
+            if (!filteredData.length) return;
+            const col = document.getElementById('splitColSelect').value;
+            const groups = {};
+            
+            // Group data by chosen column
+            filteredData.forEach(r => {
+                const val = (r[col] || "Unspecified").toString().replace(/[/\\?%*:|"<>]/g, '-');
+                if (!groups[val]) groups[val] = [];
+                groups[val].push(r);
+            });
+
+            const zip = new JSZip();
+            showToast("Generating ZIP folder...");
+
+            // Create individual Excel files and add to ZIP
+            Object.entries(groups).forEach(([name, rows]) => {
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(rows);
+                XLSX.utils.book_append_sheet(wb, ws, "Data");
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                zip.file(`${name}.xlsx`, wbout);
+            });
+
+            // Generate ZIP and download
+            const content = await zip.generateAsync({ type: "blob" });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = `WQ_Split_Files_By_${col}.zip`;
+            link.click();
+            
+            closeSplitModal();
+            showToast("ZIP Folder Downloaded");
+        }
+
+        function runAnalysis() {
+            if (!filteredData.length) return showToast("No data available for analysis.");
+
+            const wb = XLSX.utils.book_new();
+            const seasons = [...new Set(filteredData.map(r => r.Season).filter(v => v !== "" && v !== "undefined"))].sort();
+            const sources = [...new Set(filteredData.map(r => r.Source).filter(v => v !== "" && v !== "undefined"))].sort();
+
+            const getStats = (vals) => {
+                if (!vals.length) return { min: 0, max: 0, avg: 0, std: 0 };
+                const sum = vals.reduce((a, b) => a + b, 0);
+                const avg = sum / vals.length;
+                const sqDiffs = vals.map(v => Math.pow(v - avg, 2));
+                const std = Math.sqrt(sqDiffs.reduce((a, b) => a + b, 0) / vals.length);
+                return { min: Math.min(...vals), max: Math.max(...vals), avg: avg.toFixed(2), std: std.toFixed(2) };
+            };
+
+            Object.entries(LIMITS).forEach(([param, lim]) => {
+                if (!filteredData[0].hasOwnProperty(param)) return;
+                
+                const b1 = lim.b1;
+                const b2 = lim.b2;
+                const unit = lim.unit || "";
+                const sameLimit = (b1 === b2);
+                const rows = [];
+
+                sources.forEach(source => {
+                    const row = { "Source": source };
+                    const all_vals = [];
+
+                    seasons.forEach(season => {
+                        const sub = filteredData.filter(r => r.Source === source && r.Season === season);
+                        const vals = sub.map(r => parseFloat(r[param])).filter(v => !isNaN(v));
+                        all_vals.push(...vals);
+
+                        const n = vals.length;
+                        const le = vals.filter(v => v <= b1).length;
+                        const mid = vals.filter(v => v > b1 && v <= b2).length;
+                        const gt = vals.filter(v => v > b2).length;
+
+                        row[`${season}_N`] = n;
+
+                        if (sameLimit) {
+                            row[`${season}_≤${b2} ${unit}`] = le;
+                            row[`${season}_>${b2} ${unit}`] = gt;
+                            row[`${season}_%≤${b2}`] = n ? Number(((le / n) * 100).toFixed(2)) : 0;
+                            row[`${season}_%>${b2}`] = n ? Number(((gt / n) * 100).toFixed(2)) : 0;
+                        } else {
+                            row[`${season}_≤${b1} ${unit}`] = le;
+                            row[`${season}_>${b1}–${b2} ${unit}`] = mid;
+                            row[`${season}_>${b2} ${unit}`] = gt;
+                            row[`${season}_%≤${b1}`] = n ? Number(((le / n) * 100).toFixed(2)) : 0;
+                            row[`${season}_%>${b1}–${b2}`] = n ? Number(((mid / n) * 100).toFixed(2)) : 0;
+                            row[`${season}_%>${b2}`] = n ? Number(((gt / n) * 100).toFixed(2)) : 0;
+                        }
+
+                        const s = getStats(vals);
+                        row[`${season}_Min`] = s.min;
+                        row[`${season}_Max`] = s.max;
+                        row[`${season}_Std`] = s.std;
+                        row[`${season}_Avg`] = s.avg;
+                    });
+
+                    const n_all = all_vals.length;
+                    const le_all = all_vals.filter(v => v <= b1).length;
+                    const mid_all = all_vals.filter(v => v > b1 && v <= b2).length;
+                    const gt_all = all_vals.filter(v => v > b2).length;
+
+                    row["ALL_N"] = n_all;
+                    if (sameLimit) {
+                        row[`ALL_%≤${b2}`] = n_all ? Number(((le_all / n_all) * 100).toFixed(2)) : 0;
+                        row[`ALL_%>${b2}`] = n_all ? Number(((gt_all / n_all) * 100).toFixed(2)) : 0;
+                    } else {
+                        row[`ALL_%≤${b1}`] = n_all ? Number(((le_all / n_all) * 100).toFixed(2)) : 0;
+                        row[`ALL_%>${b1}–${b2}`] = n_all ? Number(((mid_all / n_all) * 100).toFixed(2)) : 0;
+                        row[`ALL_%>${b2}`] = n_all ? Number(((gt_all / n_all) * 100).toFixed(2)) : 0;
+                    }
+
+                    rows.push(row);
+                });
+
+                if (rows.length) {
+                    const ws = XLSX.utils.json_to_sheet(rows);
+                    XLSX.utils.book_append_sheet(wb, ws, param.substring(0, 31));
+                }
+            });
+
+            XLSX.writeFile(wb, "WQ_Data_Fragmenter_Analysis.xlsx");
+            showToast("Detailed Excel Analysis Exported");
+        }
+
+        function runUnion() {
+            if (!filteredData.length) return;
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filteredData), "Union_Dataset");
+            XLSX.writeFile(wb, "WQ_Union_Export.xlsx");
+            showToast("Union File Created");
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            t.classList.remove('translate-y-20');
+            setTimeout(() => t.classList.add('translate-y-20'), 3000);
+        }
+    </script>
+</body>
+</html>

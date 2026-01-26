@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GWQ Data Process Engine - Hydro-Chemical OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        :root {
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.4);
+            --bg-dark: #020617;
+            --sidebar-bg: #030712;
+            --border-glass: rgba(255, 255, 255, 0.05);
+            --panel-glass: rgba(15, 23, 42, 0.8);
+            --time-color: #fb923c;
+            --date-color: #facc15;
+            --header-height: 56px;
+            --font-main: "Times New Roman", Times, serif;
+        }
+
+        body { 
+            font-family: var(--font-main); 
+            background: var(--bg-dark); 
+            margin: 0; 
+            height: 100vh;
+            overflow: hidden;
+            color: #e2e8f0;
+            display: flex;
+        }
+
+        #scientific-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background: 
+                radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(30, 64, 175, 0.05) 0%, transparent 50%),
+                #020617;
+        }
+
+        .grid-line {
+            position: absolute;
+            background: rgba(59, 130, 246, 0.03);
+        }
+
+        .particle {
+            position: absolute;
+            background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(1px);
+            opacity: 0.2;
+            animation: move linear infinite;
+        }
+
+        @keyframes move {
+            from { transform: translate(0, 0); }
+            to { transform: translate(var(--mx), var(--my)); }
+        }
+
+        .sidebar-nexus {
+            width: 80px;
+            height: 100vh;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-glass);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            z-index: 100;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+        }
+
+        @keyframes logo-pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.3); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        @keyframes drop-fall {
+            0% { transform: translateY(-15px) scaleY(1.1) scaleX(0.9); opacity: 0; }
+            10% { opacity: 1; }
+            60% { transform: translateY(10px) scaleY(1) scaleX(1); opacity: 1; }
+            80% { transform: translateY(18px) scaleY(0.8) scaleX(1.2); opacity: 0; }
+            100% { transform: translateY(-15px) scaleY(1.1) scaleX(0.9); opacity: 0; }
+        }
+
+        .main-logo-container {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, #166534, #15803d);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            position: relative;
+            animation: logo-pulse-green 3s infinite;
+            overflow: hidden;
+        }
+
+        .animated-drop {
+            animation: drop-fall 2s cubic-bezier(0.445, 0.05, 0.55, 0.95) infinite;
+        }
+
+        .app-btn {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            color: #64748b;
+            border: 1px solid var(--border-glass);
+        }
+
+        .app-btn:hover {
+            color: white;
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.3);
+            transform: scale(1.05);
+        }
+
+        .app-btn.active {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            box-shadow: 0 0 25px var(--accent-glow);
+            border-color: transparent;
+        }
+
+        .app-btn.active::before {
+            content: '';
+            position: absolute;
+            left: -14px;
+            width: 4px;
+            height: 20px;
+            background: #3b82f6;
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 10px #3b82f6;
+        }
+
+        .app-btn::after {
+            font-family: var(--font-main);
+            content: attr(data-label);
+            position: absolute;
+            left: 70px;
+            background: #1e293b;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+            opacity: 0;
+            transform: translateX(-10px);
+            pointer-events: none;
+            transition: all 0.2s;
+            border: 1px solid var(--border-glass);
+            z-index: 200;
+        }
+
+        .app-btn:hover::after {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        #master-viewport {
+            flex: 1;
+            height: 100vh;
+            position: relative;
+            z-index: 10;
+            background: #000;
+            padding-top: var(--header-height);
+            box-sizing: border-box;
+        }
+
+        iframe {
+            width: 100%;
+            height: calc(100vh - var(--header-height));
+            border: none;
+            position: absolute;
+            top: var(--header-height); 
+            left: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        iframe.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .header-status {
+            position: absolute;
+            top: 0; left: 80px; right: 0;
+            height: var(--header-height);
+            background: var(--panel-glass);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-glass);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            padding: 0 32px;
+            justify-content: space-between;
+        }
+
+        .data-stream {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .stream-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stream-label {
+            font-size: 10px;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .stream-value {
+            font-size: 14px;
+            transition: all 0.4s ease;
+        }
+
+        #platform-title {
+            color: #ef4444; 
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+        }
+
+        #platform-title.loaded {
+            color: #10b981; 
+            text-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .indicator-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0,0,0,0.3);
+            padding: 6px 16px;
+            border-radius: 99px;
+            border: 1px solid var(--border-glass);
+        }
+
+        #data-status-dot {
+            width: 8px; height: 8px;
+            background: #ef4444; 
+            border-radius: 50%;
+            box-shadow: 0 0 10px #ef4444;
+            transition: all 0.5s ease;
+        }
+
+        #data-status-dot.active {
+            background: #10b981; 
+            box-shadow: 0 0 15px #10b981;
+        }
+
+        .terminal-text {
+            font-size: 13px;
+            color: #3b82f6;
+            font-weight: bold;
+        }
+
+        .mono-telemetry {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .time-date-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            min-width: 120px;
+        }
+
+        #clock {
+            color: var(--time-color);
+            text-shadow: 0 0 8px rgba(251, 146, 60, 0.3);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+        }
+
+        #current-date {
+            color: var(--date-color);
+            text-shadow: 0 0 8px rgba(250, 204, 21, 0.3);
+            font-weight: bold;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="scientific-bg"></div>
+
+    <aside class="sidebar-nexus">
+        <div class="mb-8">
+            <div class="main-logo-container">
+                <svg class="animated-drop" width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" fill="#ffffff" />
+                </svg>
+            </div>
+        </div>
+
+        <nav class="flex flex-col items-center">
+            <div class="app-btn active" data-file="Splitoreflector.html" data-label="Splito-Reflector">
+                <i data-lucide="layers"></i>
+            </div>
+            <div class="app-btn" data-file="Combinations.html" data-label="Standard Combination">
+                <i data-lucide="beaker"></i>
+            </div>
+            <div class="app-btn" data-file="Combinations_pro.html" data-label="Combination Analysis Pro">
+                <i data-lucide="database"></i>
+            </div>
+            <div class="app-btn" data-file="Grid_analysis.html" data-label="Spatial Grid Engine">
+                <i data-lucide="grid"></i>
+            </div>
+            <div class="app-btn" data-file="Range_analysis.html" data-label="Compliance Reporting">
+                <i data-lucide="clipboard-check"></i>
+            </div>
+            <div class="app-btn" data-file="Sector_analysis.html" data-label="Radial Sector Analyst">
+                <i data-lucide="radar"></i>
+            </div>
+            <div class="app-btn" data-file="donut_chart.html" data-label="3D Statistics Visualizer">
+                <i data-lucide="pie-chart"></i>
+            </div>
+            <div class="app-btn" data-file="ttest.html" data-label="Paired T-Test Engine">
+                <i data-lucide="sigma"></i>
+            </div>
+        </nav>
+
+        <div class="mt-auto flex flex-col items-center gap-6">
+            <button onclick="location.reload()" class="p-3 text-slate-500 hover:text-white transition-colors" title="Reload System">
+                <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+            </button>
+            <div class="text-[9px] font-bold text-slate-700 tracking-[0.3em] uppercase rotate-180 [writing-mode:vertical-lr] pb-4">
+                ENGINE-STATION
+            </div>
+        </div>
+    </aside>
+
+    <div class="header-status">
+        <div class="data-stream">
+            <div class="stream-item">
+                <span class="stream-label">Platform Identity</span>
+                <div class="flex items-center gap-3">
+                    <div id="data-status-dot"></div>
+                    <span id="platform-title" class="stream-value font-bold">Meghnagar WQ Data Analytics</span>
+                </div>
+            </div>
+            <div class="h-8 w-[1px] bg-white/5"></div>
+            <div class="stream-item">
+                <span class="stream-label">System Node</span>
+                <span id="active-mod" class="text-white font-bold stream-value">Splito-Reflector</span>
+            </div>
+        </div>
+
+        <div class="indicator-group">
+            <span class="terminal-text">Jitendra Kumar // STA (Chemical) // Faridabad </span>
+            <div class="h-3 w-[1px] bg-blue-500/30"></div>
+            <div class="time-date-container">
+                <span id="clock" class="mono-telemetry leading-none">00:00:00</span>
+                <span id="current-date" class="mt-0.5">01 JAN 2024</span>
+            </div>
+        </div>
+    </div>
+
+    <main id="master-viewport"></main>
+
+    <script>
+        const MODULE_MAP = {
+            'Splitoreflector.html': 'Splito-Reflector',
+            'Combinations.html': 'Standard Combination',
+            'Combinations_pro.html': 'Combination Analysis Pro',
+            'Grid_analysis.html': 'Spatial Grid Engine',
+            'Range_analysis.html': 'Compliance Reporting',
+            'Sector_analysis.html': 'Radial Sector Analyst',
+            'donut_chart.html': '3D Statistics Visualizer',
+            'ttest.html': 'Paired T-Test Engine'
+        };
+
+        window.onload = () => {
+            lucide.createIcons();
+            initLabBackground();
+            initSystemClock();
+            loadModules();
+            initNavigation();
+            initMessageListener();
+        };
+
+        function initMessageListener() {
+            window.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'DATA_LOADED') {
+                    const dot = document.getElementById('data-status-dot');
+                    const title = document.getElementById('platform-title');
+                    dot.classList.add('active');
+                    title.classList.add('loaded');
+                }
+            });
+        }
+
+        function loadModules() {
+            const viewport = document.getElementById('master-viewport');
+            Object.keys(MODULE_MAP).forEach((file, index) => {
+                const frame = document.createElement('iframe');
+                frame.id = `view-${file}`;
+                frame.src = file;
+                if (index === 0) frame.classList.add('active');
+                viewport.appendChild(frame);
+            });
+        }
+
+        function initNavigation() {
+            const btns = document.querySelectorAll('.app-btn[data-file]');
+            btns.forEach(btn => {
+                btn.onclick = () => {
+                    const file = btn.getAttribute('data-file');
+                    btns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.querySelectorAll('iframe').forEach(f => f.classList.remove('active'));
+                    const targetFrame = document.getElementById(`view-${file}`);
+                    if (targetFrame) targetFrame.classList.add('active');
+                    document.getElementById('active-mod').innerText = MODULE_MAP[file];
+                };
+            });
+        }
+
+        function initLabBackground() {
+            const bg = document.getElementById('scientific-bg');
+            for(let i=0; i<10; i++) {
+                const line = document.createElement('div');
+                line.className = 'grid-line';
+                line.style.width = '1px'; line.style.height = '100%';
+                line.style.left = (i * 10) + '%';
+                bg.appendChild(line);
+            }
+            for (let i = 0; i < 40; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const size = Math.random() * 4 + 2;
+                p.style.width = size + 'px'; p.style.height = size + 'px';
+                p.style.left = Math.random() * 100 + '%'; p.style.top = Math.random() * 100 + '%';
+                const mx = (Math.random() - 0.5) * 200;
+                const my = (Math.random() - 0.5) * 200;
+                p.style.setProperty('--mx', mx + 'px');
+                p.style.setProperty('--my', my + 'px');
+                p.style.animationDuration = (Math.random() * 20 + 10) + 's';
+                p.style.animationDelay = (Math.random() * -20) + 's';
+                bg.appendChild(p);
+            }
+        }
+
+        function initSystemClock() {
+            const clockEl = document.getElementById('clock');
+            const dateEl = document.getElementById('current-date');
+            const updateTime = () => {
+                const now = new Date();
+                clockEl.innerText = now.toLocaleTimeString('en-US', { hour12: false });
+                const options = { day: '2-digit', month: 'short', year: 'numeric' };
+                dateEl.innerText = now.toLocaleDateString('en-GB', options).toUpperCase();
+            };
+            updateTime();
+            setInterval(updateTime, 1000);
+        }
+    </script>
+</body>
+</html>

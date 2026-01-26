@@ -1,0 +1,778 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groundwater Compliance Reporting Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Highcharts for 3D Graphics and Exporting -->
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/highcharts-3d.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;700&family=Roboto+Mono&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: #f8fafc; 
+            color: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .sticky-col { position: sticky; left: 0; background: white; z-index: 20; }
+        .sticky-header { position: sticky; top: 0; background: #f1f5f9; z-index: 30; }
+        table { border-collapse: separate; border-spacing: 0; }
+        
+        #chart-outer-container {
+            border-radius: 1.5rem;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        #chart-container {
+            height: 450px;
+            width: 100%;
+        }
+
+        /* Background Themes */
+        .theme-white { background: #ffffff !important; }
+        .theme-slate { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important; }
+        .theme-dark { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important; }
+        .theme-indigo { background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%) !important; }
+        .theme-emerald { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important; }
+
+        /* AI Pulse Animation */
+        .ai-pulse {
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-[1600px] mx-auto">
+        <!-- Header & Top Controls -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-2xl font-black text-yellow-900 flex items-center gap-3">
+                    <i data-lucide="database" class="text-yellow-600"></i>
+                    Compliance Reporting Engine
+                </h1>
+                <p class="text-sm text-orange-500 font-bold uppercase tracking-wider">IS : 10500 (Drinking Water Standard) Based Analysis </p>
+            </div>
+            
+            <div class="flex flex-wrap gap-3">
+                <button onclick="generateAISummary()" class="bg-indigo-50 text-indigo-700 px-6 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-100 transition-all border border-indigo-200">
+                  SYSTEM ONLINE  
+                </button>
+                <label class="cursor-pointer bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+                    <i data-lucide="upload-cloud" class="w-4 h-4"></i> Upload Data
+                    <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls">
+                </label>
+                <button onclick="exportReport()" class="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100">
+                    <i data-lucide="download" class="w-4 h-4"></i> Export Report (Excel)
+                </button>
+            </div>
+        </div>
+
+        <!-- AI Insights Modal -->
+        <div id="aiModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-indigo-50/50">
+                    <h2 class="text-xl font-black text-indigo-900 flex items-center gap-2">
+                        ✨ AI Analysis Report
+                    </h2>
+                    <button onclick="closeAIModal()" class="text-slate-400 hover:text-slate-600">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div id="aiContent" class="p-8 overflow-y-auto custom-scrollbar prose prose-slate max-w-none">
+                    <div class="flex flex-col items-center justify-center py-12 gap-4">
+                        <div class="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                        <p class="font-bold text-indigo-600 animate-pulse">Gemini is analyzing your groundwater data...</p>
+                    </div>
+                </div>
+                <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                    <button onclick="closeAIModal()" class="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visual Analytics Section -->
+        <div id="visual-summary" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 hidden">
+            <div id="chart-outer-container" class="lg:col-span-2 theme-white p-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center min-h-[500px] relative">
+                <div id="chart-container"></div>
+                <div class="absolute bottom-4 right-4 flex gap-2">
+                    <button onclick="downloadChart()" class="bg-white/80 backdrop-blur shadow-md p-3 rounded-xl hover:bg-white transition-all group" title="Save as JPEG">
+                        <i data-lucide="image" class="w-5 h-5 text-slate-600 group-hover:scale-110 transition-transform"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl shadow-xl shadow-slate-200 border border-slate-100 flex flex-col h-full overflow-y-auto max-h-[600px] custom-scrollbar">
+                <h3 class="text-lg font-black mb-4 text-slate-800 flex items-center gap-2">
+                    <i data-lucide="settings-2" class="w-5 h-5 text-indigo-500"></i>
+                    Chart Customization
+                </h3>
+                
+                <div class="space-y-6">
+                    <!-- Title & Theme -->
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Custom Chart Title</label>
+                            <input type="text" id="customChartTitle" oninput="updateReport()" placeholder="Analysis Title..." class="w-full bg-slate-50 border-none rounded-xl p-2 text-sm font-bold text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-2 ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Background Theme</label>
+                            <select id="chartTheme" onchange="applyTheme()" class="w-full bg-slate-50 border-none rounded-xl p-2 text-sm font-bold text-slate-700 outline-none ring-1 ring-slate-200">
+                                <option value="theme-white">Classic White</option>
+                                <option value="theme-slate">Slate Gradient</option>
+                                <option value="theme-dark">Deep Dark</option>
+                                <option value="theme-indigo">Soft Indigo</option>
+                                <option value="theme-emerald">Fresh Emerald</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Typography -->
+                    <div class="bg-slate-50 p-4 rounded-2xl space-y-4">
+                        <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest block">Typography Controls</span>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 block mb-1">Font Family</label>
+                                <select id="fontFamily" onchange="updateReport()" class="w-full text-xs p-2 rounded-lg border-none ring-1 ring-slate-200 font-bold">
+                                    <option value="'Plus Jakarta Sans'">Jakarta Sans</option>
+                                    <option value="Inter">Inter UI</option>
+                                    <option value="'Playfair Display'">Serif Classic</option>
+                                    <option value="'Roboto Mono'">Monospace</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 block mb-1">Font Size</label>
+                                <input type="number" id="fontSize" value="12" min="8" max="24" oninput="updateReport()" class="w-full text-xs p-2 rounded-lg border-none ring-1 ring-slate-200 font-bold">
+                            </div>
+                        </div>
+                        <div class="flex gap-4 items-center">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="fontBold" checked onchange="updateReport()" class="rounded text-indigo-600">
+                                <span class="text-[11px] font-bold text-slate-600">Bold</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="fontItalic" onchange="updateReport()" class="rounded text-indigo-600">
+                                <span class="text-[11px] font-bold text-slate-600">Italic</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Colors -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label id="labelCol1" class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Acc.</label>
+                            <input type="color" id="colorAcc" value="#10b981" onchange="updateReport()" class="w-full h-8 rounded cursor-pointer border-none p-0 bg-transparent">
+                        </div>
+                        <div id="col2Picker">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Perm.</label>
+                            <input type="color" id="colorPerm" value="#f59e0b" onchange="updateReport()" class="w-full h-8 rounded cursor-pointer border-none p-0 bg-transparent">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Above</label>
+                            <input type="color" id="colorFail" value="#f43f5e" onchange="updateReport()" class="w-full h-8 rounded cursor-pointer border-none p-0 bg-transparent">
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 pt-4 border-t border-slate-100">
+                        <div class="bg-slate-50 p-3 rounded-xl flex justify-between items-center">
+                            <span class="text-[10px] font-black uppercase opacity-60">Total Samples</span>
+                            <span class="text-xl font-black text-slate-800" id="stat-total">0</span>
+                        </div>
+                        <div class="bg-emerald-50 p-3 rounded-xl flex justify-between items-center">
+                            <span id="statLabel" class="text-[10px] font-black uppercase text-emerald-600">Safe Samples</span>
+                            <span class="text-xl font-black text-emerald-700" id="stat-safe">0</span>
+                        </div>
+                        <button onclick="mitigateNow()" class="w-full py-3 bg-amber-100 text-amber-800 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-200 transition-all border border-amber-200 mt-2">
+                            ✨ Suggest Mitigation Strategies
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-6 grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-6 items-end">
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">1. Reporting Level</label>
+                <select id="geoLevel" onchange="handleLevelChange()" class="w-full bg-slate-50 border-none rounded-xl p-3 font-bold text-slate-700 outline-none focus:ring-2 ring-indigo-500">
+                    <option value="State">State Wise</option>
+                    <option value="District">District Wise</option>
+                    <option value="Block">Block Wise</option>
+                </select>
+            </div>
+            <div id="stateFilterContainer">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">2. Choose State</label>
+                <select id="stateFilter" onchange="handleStateChange()" class="w-full bg-slate-50 border-none rounded-xl p-3 font-bold text-slate-700 outline-none focus:ring-2 ring-indigo-500">
+                    <option value="">All States</option>
+                </select>
+            </div>
+            <div id="distFilterContainer" class="hidden">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">3. Choose District</label>
+                <select id="distFilter" onchange="updateReport()" class="w-full bg-slate-50 border-none rounded-xl p-3 font-bold text-slate-700 outline-none focus:ring-2 ring-indigo-500">
+                    <option value="">All Districts</option>
+                </select>
+            </div>
+            <div class="md:col-span-2 lg:col-span-2">
+                <label class="text-[10px] font-black text-indigo-500 uppercase tracking-widest block mb-2">4. Active Parameter for Stats</label>
+                <select id="activeParam" onchange="updateReport()" class="w-full bg-indigo-50 border-none rounded-xl p-3 font-bold text-indigo-700 outline-none focus:ring-2 ring-indigo-500">
+                    <!-- Dynamic -->
+                </select>
+            </div>
+        </div>
+
+        <!-- Main Report Table -->
+        <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left text-xs" id="mainReportTable">
+                    <thead>
+                        <tr class="sticky-header" id="tableHeaderRow">
+                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">S.No.</th>
+                            <!-- Dynamic Geo Columns inserted here -->
+                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Total Samples</th>
+                            
+                            <th id="headerAcc" class="p-4 font-black text-emerald-600 uppercase tracking-tighter text-center bg-emerald-50/50">≤ Acc.<br><span class="text-[9px] opacity-70">(No / %)</span></th>
+                            <th id="headerPerm" class="p-4 font-black text-amber-600 uppercase tracking-tighter text-center bg-amber-50/50">> Acc. & ≤ Perm.<br><span class="text-[9px] opacity-70">(No / %)</span></th>
+                            <th id="headerFail" class="p-4 font-black text-rose-600 uppercase tracking-tighter text-center bg-rose-50/50">> Perm.<br><span class="text-[9px] opacity-70">(No / %)</span></th>
+                            
+                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center border-l border-slate-200">Min</th>
+                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Max</th>
+                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Avg</th>
+                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">SD</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportContent" class="divide-y divide-slate-100">
+                        <tr>
+                            <td colspan="15" class="p-20 text-center">
+                                <div class="flex flex-col items-center gap-4">
+                                    <i data-lucide="file-spreadsheet" class="w-12 h-12 text-slate-200"></i>
+                                    <p class="text-slate-400 font-bold uppercase tracking-widest">Please upload groundwater data to begin</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = ""; // Managed by environment
+        const PARAM_CONFIG = {
+            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH Level', keywords: ['ph', 'ph level', 'hydrogen'] },
+            'TDS': { b1: 500, b2: 2000, unit: 'mg/l', name: 'Total Dissolved Solids', keywords: ['tds', 'total dissolved solids'] },
+            'Turbidity': { b1: 1, b2: 5, unit: 'NTU', name: 'Turbidity', keywords: ['turbidity'] },
+            'Alkalinity': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Alkalinity', keywords: ['alkalinity', 'total alkalinity'] },
+            'TH': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Hardness', keywords: ['th', 'total hardness', 'hardness'] },
+            'EC': { b1: 750, b2: 3000, unit: 'µS/cm', name: 'Electrical Conductivity', keywords: ['ec', 'cond', 'conductivity', 'electrical conductivity'] },
+            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride', keywords: ['cl', 'chloride'] },
+            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate', keywords: ['no3', 'nitrate'] },
+            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride', keywords: ['f', 'fluoride'] },
+            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron', keywords: ['fe', 'iron', 'total iron'] },
+            'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic', keywords: ['as', 'arsenic'] },
+            'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium', keywords: ['u', 'uranium'] },
+            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc', keywords: ['zn', 'zinc'] },
+            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper', keywords: ['cu', 'copper'] },
+            'Pb': { b1: 10, b2: 10, unit: 'ppb', name: 'Lead', keywords: ['pb', 'lead'] },
+            'Cd': { b1: 3, b2: 3, unit: 'ppb', name: 'Cadmium', keywords: ['cd', 'cadmium'] },
+            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium', keywords: ['cr', 'chromium'] },
+            'Hg': { b1: 1, b2: 1, unit: 'ppb', name: 'Mercury', keywords: ['hg', 'mercury'] },
+            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel', keywords: ['ni', 'nickel'] },
+            'Se': { b1: 10, b2: 10, unit: 'ppb', name: 'Selenium', keywords: ['se', 'selenium'] },
+            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium', keywords: ['ca', 'calcium'] },
+            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium', keywords: ['mg', 'magnesium'] },
+            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate', keywords: ['so4', 'sulphate', 'sulfate'] }
+        };
+
+        let rawData = [];
+        let dataHeaders = {};
+        let headerMap = {}; // Maps Excel Header -> Config Key
+        let chart = null;
+
+        window.onload = () => lucide.createIcons();
+
+        // Gemini API Integration - Exponential Backoff
+        async function callGemini(prompt, systemPrompt = "You are a professional groundwater quality expert.") {
+            let retries = 5;
+            let delay = 1000;
+            
+            while (retries > 0) {
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            systemInstruction: { parts: [{ text: systemPrompt }] }
+                        })
+                    });
+                    const data = await response.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "No insights found.";
+                } catch (error) {
+                    retries--;
+                    if (retries === 0) throw error;
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        async function generateAISummary() {
+            if (!rawData.length) return;
+            openAIModal();
+            const level = document.getElementById('geoLevel').value;
+            const param = document.getElementById('activeParam').value;
+            const total = document.getElementById('stat-total').innerText;
+            const safe = document.getElementById('stat-safe').innerText;
+            const state = document.getElementById('stateFilter').value || "All States";
+
+            const prompt = `Analyze this groundwater data summary: 
+            Location Level: ${level} (${state}). 
+            Active Parameter: ${param}. 
+            Total Samples: ${total}. 
+            Samples within Acceptable Limit: ${safe}.
+            Please provide a professional executive summary including potential health impacts and high-level recommendations. Format with clear headings and bullet points.`;
+
+            try {
+                const result = await callGemini(prompt, "You are an environmental compliance officer writing an executive summary based on BIS standards.");
+                document.getElementById('aiContent').innerHTML = `<div class="text-sm leading-relaxed">${result.replace(/\n/g, '<br>')}</div>`;
+            } catch (err) {
+                document.getElementById('aiContent').innerHTML = `<p class="text-rose-500 font-bold">Error connecting to Gemini. Please try again later.</p>`;
+            }
+        }
+
+        async function mitigateNow() {
+            if (!rawData.length) return;
+            openAIModal();
+            const param = document.getElementById('activeParam').value;
+            const total = document.getElementById('stat-total').innerText;
+            const safe = document.getElementById('stat-safe').innerText;
+            const above = parseInt(total) - parseInt(safe);
+
+            const prompt = `In our current groundwater survey for ${param}, we found ${above} samples out of ${total} that exceed the acceptable BIS limits. 
+            Suggest specific mitigation strategies (both community-level and domestic) to treat this parameter. 
+            Keep the advice technical yet actionable.`;
+
+            try {
+                const result = await callGemini(prompt, "You are a water treatment engineer providing technical mitigation solutions.");
+                document.getElementById('aiContent').innerHTML = `<div class="text-sm leading-relaxed">${result.replace(/\n/g, '<br>')}</div>`;
+            } catch (err) {
+                document.getElementById('aiContent').innerHTML = `<p class="text-rose-500 font-bold">Error generating strategies.</p>`;
+            }
+        }
+
+        function openAIModal() {
+            document.getElementById('aiModal').classList.remove('hidden');
+            document.getElementById('aiContent').innerHTML = `
+                <div class="flex flex-col items-center justify-center py-12 gap-4">
+                    <div class="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                    <p class="font-bold text-indigo-600 animate-pulse">✨ Gemini is thinking...</p>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function closeAIModal() {
+            document.getElementById('aiModal').classList.add('hidden');
+        }
+
+        document.getElementById('fileInput').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const wb = XLSX.read(evt.target.result, { type: 'binary' });
+                rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                identifyHeaders();
+                initParamSelector();
+                populateStateFilter();
+                document.getElementById('visual-summary').classList.remove('hidden');
+                updateReport();
+            };
+            reader.readAsBinaryString(file);
+        };
+
+        function applyTheme() {
+            const theme = document.getElementById('chartTheme').value;
+            const container = document.getElementById('chart-outer-container');
+            container.className = `lg:col-span-2 p-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center min-h-[500px] relative ${theme}`;
+            updateReport();
+        }
+
+        function identifyHeaders() {
+            if (rawData.length === 0) return;
+            const keys = Object.keys(rawData[0]);
+            const find = (targets) => keys.find(k => targets.some(t => k.toLowerCase().trim() === t.toLowerCase()));
+            
+            dataHeaders = {
+                state: find(['State', 'State_Name', 'State/UT']),
+                district: find(['District', 'Dist']),
+                block: find(['Block', 'Tehsil']),
+                params: []
+            };
+
+            // Intelligent Parameter Mapping
+            headerMap = {};
+            keys.forEach(header => {
+                const hLower = header.toLowerCase().trim();
+                // Check against all config keys and their keywords
+                // Sort keys by length desc to match 'Fe' before 'F' if ambiguous, though keywords handle this better
+                const matchedKey = Object.keys(PARAM_CONFIG).find(key => {
+                    const config = PARAM_CONFIG[key];
+                    // 1. Exact Key Match
+                    if (hLower === key.toLowerCase()) return true;
+                    // 2. Keyword Match (Exact word or contained with boundary check usually, but simple includes for now with keywords is safer)
+                    if (config.keywords && config.keywords.some(kw => {
+                        // Strict check: Header is exactly keyword OR Header contains keyword with brackets e.g. "Iron (Fe)"
+                        return hLower === kw || hLower.includes(`(${kw})`) || hLower.includes(`${kw} `) || hLower === kw; 
+                    })) return true;
+                    // 3. Fallback: Check if keyword is contained in header (e.g. "Total Iron")
+                     if (config.keywords && config.keywords.some(kw => {
+                         if (hLower.includes(kw)) {
+                             // Anti-Collision: Don't match 'F' in 'Fe' or 'Sulfate'
+                             if (kw === 'f' && hLower.includes('fe')) return false; 
+                             return true;
+                         }
+                         return false;
+                     })) return true;
+                     return false;
+                });
+
+                if (matchedKey) {
+                    dataHeaders.params.push(header);
+                    headerMap[header] = matchedKey;
+                }
+            });
+        }
+
+        function initParamSelector() {
+            const sel = document.getElementById('activeParam');
+            sel.innerHTML = dataHeaders.params.map(p => `<option value="${p}">${p}</option>`).join('');
+        }
+
+        function populateStateFilter() {
+            const sel = document.getElementById('stateFilter');
+            sel.innerHTML = '<option value="">All States</option>';
+            const states = [...new Set(rawData.map(d => String(d[dataHeaders.state] || '').trim()))].filter(v => v).sort();
+            states.forEach(v => sel.add(new Option(v, v)));
+        }
+
+        function handleLevelChange() {
+            const level = document.getElementById('geoLevel').value;
+            document.getElementById('distFilterContainer').classList.toggle('hidden', level !== 'Block');
+            handleStateChange(); 
+        }
+
+        function handleStateChange() {
+            const level = document.getElementById('geoLevel').value;
+            const state = document.getElementById('stateFilter').value;
+            const distSel = document.getElementById('distFilter');
+            distSel.innerHTML = '<option value="">All Districts</option>';
+            if (level === 'Block' && state) {
+                const districts = [...new Set(rawData
+                    .filter(d => String(d[dataHeaders.state] || '').trim() === state)
+                    .map(d => String(d[dataHeaders.district] || '').trim())
+                )].filter(v => v).sort();
+                districts.forEach(v => distSel.add(new Option(v, v)));
+            }
+            updateReport();
+        }
+
+        function getStats(arr) {
+            if (!arr.length) return { min: 0, max: 0, avg: 0, std: 0 };
+            const n = arr.length;
+            const min = Math.min(...arr);
+            const max = Math.max(...arr);
+            const avg = arr.reduce((a, b) => a + b, 0) / n;
+            const std = Math.sqrt(arr.map(x => Math.pow(x - avg, 2)).reduce((a, b) => a + b, 0) / n);
+            return { min, max, avg, std };
+        }
+
+        function downloadChart() {
+            if (chart) chart.exportChart({ type: 'image/jpeg', filename: 'Groundwater_Compliance' });
+        }
+
+        function initChart(data, paramName) {
+            const customTitle = document.getElementById('customChartTitle').value;
+            const theme = document.getElementById('chartTheme').value;
+            
+            // Typography Config
+            const fontFamily = document.getElementById('fontFamily').value;
+            const fontSize = parseInt(document.getElementById('fontSize').value);
+            const isBold = document.getElementById('fontBold').checked;
+            const isItalic = document.getElementById('fontItalic').checked;
+
+            const fontStyle = {
+                fontFamily: fontFamily,
+                fontSize: `${fontSize}px`,
+                fontWeight: isBold ? '700' : '400',
+                fontStyle: isItalic ? 'italic' : 'normal',
+                color: theme === 'theme-dark' ? '#f8fafc' : '#1e293b'
+            };
+
+            chart = Highcharts.chart('chart-container', {
+                chart: { 
+                    type: 'pie', 
+                    options3d: { enabled: true, alpha: 45, beta: 0 }, 
+                    backgroundColor: 'transparent' 
+                },
+                title: { 
+                    text: customTitle || `Compliance: ${paramName}`, 
+                    style: { ...fontStyle, fontSize: `${fontSize + 6}px`, fontWeight: '800' } 
+                },
+                tooltip: { 
+                    style: { fontFamily: fontFamily },
+                    pointFormat: '<b>{point.y} samples</b> ({point.percentage:.1f}%)' 
+                },
+                plotOptions: {
+                    pie: {
+                        innerSize: 160,
+                        depth: 50,
+                        dataLabels: {
+                            enabled: true,
+                            format: '<b>{point.name}</b><br>{point.percentage:.1f}% ({point.y})',
+                            style: fontStyle,
+                            connectorColor: theme === 'theme-dark' ? '#64748b' : '#cbd5e1'
+                        }
+                    }
+                },
+                series: [{ name: 'Samples', data: data }],
+                credits: { enabled: false },
+                exporting: { 
+                    enabled: false,
+                    chartOptions: {
+                        chart: { 
+                            backgroundColor: theme === 'theme-white' ? '#ffffff' : 
+                                            theme === 'theme-dark' ? '#1e293b' : 
+                                            theme === 'theme-indigo' ? '#eef2ff' : 
+                                            theme === 'theme-emerald' ? '#ecfdf5' : '#f1f5f9'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateReport() {
+            if (!rawData.length) return;
+
+            const level = document.getElementById('geoLevel').value;
+            const stateVal = document.getElementById('stateFilter').value;
+            const distVal = document.getElementById('distFilter').value;
+            const activeParam = document.getElementById('activeParam').value;
+            
+            // Retrieve Config Key from Map instead of fuzzy searching again
+            const configKey = headerMap[activeParam]; 
+            const config = PARAM_CONFIG[configKey];
+            
+            // Fallback for safety
+            if (!config) return;
+
+            const unit = config.unit;
+            const isSingleLimit = config.b1 === config.b2 && configKey !== 'pH';
+
+            // Prepare Header UI
+            let accLabel, permLabel, failLabel;
+            if (configKey === 'pH') {
+                accLabel = `pH: ${config.b1}-${config.b2}`;
+                permLabel = `N/A`;
+                failLabel = `Out Range`;
+                document.getElementById('headerPerm').style.display = 'none';
+            } else if (isSingleLimit) {
+                accLabel = `≤${config.b1} ${unit}`;
+                failLabel = `>${config.b1} ${unit}`;
+                document.getElementById('headerPerm').style.display = 'none';
+                document.getElementById('col2Picker').style.display = 'none';
+                document.getElementById('labelCol1').innerText = "Limit";
+            } else {
+                accLabel = `≤${config.b1} ${unit}`;
+                permLabel = `>${config.b1}-${config.b2} ${unit}`;
+                failLabel = `>${config.b2} ${unit}`;
+                document.getElementById('headerPerm').style.display = 'table-cell';
+                document.getElementById('col2Picker').style.display = 'block';
+                document.getElementById('labelCol1').innerText = "Acc.";
+            }
+
+            document.getElementById('headerAcc').innerHTML = `${accLabel}<br>(N/%)`;
+            document.getElementById('headerPerm').innerHTML = `${permLabel}<br>(N/%)`;
+            document.getElementById('headerFail').innerHTML = `${failLabel}<br>(N/%)`;
+
+            // Clear and Rebuild Headers for Dynamic Geo Columns
+            const headerRow = document.getElementById('tableHeaderRow');
+            headerRow.innerHTML = `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">S.No.</th>`;
+            
+            let currentOffset = 60;
+            if (level === 'District') {
+                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">State</th>`;
+                currentOffset += 120;
+                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">District</th>`;
+            } else if (level === 'Block') {
+                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">State</th>`;
+                currentOffset += 120;
+                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">District</th>`;
+                currentOffset += 120;
+                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">Block</th>`;
+            } else {
+                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">State</th>`;
+            }
+
+            headerRow.innerHTML += `
+                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Total Samples</th>
+                <th id="headerAcc" class="p-4 font-black text-emerald-600 uppercase tracking-tighter text-center bg-emerald-50/50">${accLabel}<br>(N/%)</th>
+                <th id="headerPerm" class="p-4 font-black text-amber-600 uppercase tracking-tighter text-center bg-amber-50/50" style="display: ${(!isSingleLimit && configKey !== 'pH' ? 'table-cell' : 'none')}">${permLabel}<br>(N/%)</th>
+                <th id="headerFail" class="p-4 font-black text-rose-600 uppercase tracking-tighter text-center bg-rose-50/50">${failLabel}<br>(N/%)</th>
+                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center border-l border-slate-200">Min</th>
+                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Max</th>
+                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Avg</th>
+                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">SD</th>
+            `;
+
+            // Filter Data
+            let filtered = rawData;
+            if (stateVal) filtered = filtered.filter(d => String(d[dataHeaders.state] || '').trim() === stateVal);
+            if (level === 'Block' && distVal) filtered = filtered.filter(d => String(d[dataHeaders.district] || '').trim() === distVal);
+
+            let tAcc = 0, tPerm = 0, tFail = 0;
+            const groupKey = level === 'State' ? dataHeaders.state : (level === 'District' ? dataHeaders.district : dataHeaders.block);
+            const groups = {};
+            const allVals = [];
+
+            filtered.forEach(d => {
+                const loc = String(d[groupKey] || 'Unknown').trim();
+                if (!groups[loc]) groups[loc] = { samples: [], state: String(d[dataHeaders.state] || ''), district: String(d[dataHeaders.district] || '') };
+                groups[loc].samples.push(d);
+
+                const v = parseFloat(d[activeParam]);
+                if (isNaN(v)) return;
+                allVals.push(v);
+
+                if (configKey === 'pH') {
+                    if (v >= config.b1 && v <= config.b2) tAcc++; else tFail++;
+                } else if (isSingleLimit) {
+                    if (v <= config.b1) tAcc++; else tFail++;
+                } else {
+                    if (v <= config.b1) tAcc++;
+                    else if (v <= config.b2) tPerm++;
+                    else tFail++;
+                }
+            });
+
+            // Update Chart & Global Stats
+            const cAcc = document.getElementById('colorAcc').value;
+            const cPerm = document.getElementById('colorPerm').value;
+            const cFail = document.getElementById('colorFail').value;
+
+            initChart([
+                { name: accLabel, y: tAcc, color: cAcc },
+                ...(isSingleLimit || configKey === 'pH' ? [] : [{ name: permLabel, y: tPerm, color: cPerm }]),
+                { name: failLabel, y: tFail, color: cFail }
+            ], activeParam);
+
+            document.getElementById('stat-total').innerText = filtered.length;
+            document.getElementById('stat-safe').innerText = tAcc;
+
+            // Render Table
+            const container = document.getElementById('reportContent');
+            container.innerHTML = '';
+
+            const sortedEntries = Object.entries(groups).sort();
+            sortedEntries.forEach(([name, data], idx) => {
+                const samples = data.samples;
+                const total = samples.length;
+                const vals = samples.map(s => parseFloat(s[activeParam])).filter(v => !isNaN(v));
+                let nAcc = 0, nPerm = 0, nFail = 0;
+                vals.forEach(v => {
+                    if (configKey === 'pH' || isSingleLimit) {
+                        if ((configKey === 'pH' && v >= config.b1 && v <= config.b2) || (configKey !== 'pH' && v <= config.b1)) nAcc++; else nFail++;
+                    } else {
+                        if (v <= config.b1) nAcc++; else if (v <= config.b2) nPerm++; else nFail++;
+                    }
+                });
+
+                const stats = getStats(vals);
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors font-medium text-slate-700";
+                
+                let complianceCells = `<td class="p-4 text-center bg-emerald-50/20"><div class="font-black text-emerald-700">${nAcc}</div><div class="text-[9px] opacity-60">${((nAcc/total)*100).toFixed(1)}%</div></td>`;
+                if (!isSingleLimit && configKey !== 'pH') {
+                    complianceCells += `<td class="p-4 text-center bg-amber-50/20"><div class="font-black text-amber-700">${nPerm}</div><div class="text-[9px] opacity-60">${((nPerm/total)*100).toFixed(1)}%</div></td>`;
+                }
+                complianceCells += `<td class="p-4 text-center bg-rose-50/20"><div class="font-black text-rose-700">${nFail}</div><div class="text-[9px] opacity-60">${((nFail/total)*100).toFixed(1)}%</div></td>`;
+
+                let geoCells = '';
+                if (level === 'District') {
+                    geoCells = `<td class="p-4 sticky-col bg-white border-r" style="left: 60px;">${data.state}</td>`;
+                    geoCells += `<td class="p-4 sticky-col bg-white border-r font-black text-slate-900" style="left: 180px;">${name}</td>`;
+                } else if (level === 'Block') {
+                    geoCells = `<td class="p-4 sticky-col bg-white border-r" style="left: 60px;">${data.state}</td>`;
+                    geoCells += `<td class="p-4 sticky-col bg-white border-r" style="left: 180px;">${data.district}</td>`;
+                    geoCells += `<td class="p-4 sticky-col bg-white border-r font-black text-slate-900" style="left: 300px;">${name}</td>`;
+                } else {
+                    geoCells = `<td class="p-4 sticky-col bg-white border-r font-black text-slate-900" style="left: 60px;">${name}</td>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="p-4 sticky-col bg-white border-r text-slate-400 font-bold">${idx + 1}</td>
+                    ${geoCells}
+                    <td class="p-4 text-center font-bold">${total}</td>
+                    ${complianceCells}
+                    <td class="p-4 text-center border-l">${stats.min.toFixed(2)}</td>
+                    <td class="p-4 text-center">${stats.max.toFixed(2)}</td>
+                    <td class="p-4 text-center font-black text-indigo-600">${stats.avg.toFixed(2)}</td>
+                    <td class="p-4 text-center text-slate-400">${stats.std.toFixed(2)}</td>
+                `;
+                container.appendChild(tr);
+            });
+
+            // Add Total Aggregation Row
+            if (sortedEntries.length > 0) {
+                const totalSamplesCount = filtered.length;
+                const statsTotal = getStats(allVals);
+                const trTotal = document.createElement('tr');
+                trTotal.className = "bg-slate-900 text-white font-black";
+                
+                let complianceTotalCells = `<td class="p-4 text-center"><div class="text-emerald-400">${tAcc}</div><div class="text-[9px] opacity-60">${((tAcc/totalSamplesCount)*100).toFixed(1)}%</div></td>`;
+                if (!isSingleLimit && configKey !== 'pH') {
+                    complianceTotalCells += `<td class="p-4 text-center"><div class="text-amber-400">${tPerm}</div><div class="text-[9px] opacity-60">${((tPerm/totalSamplesCount)*100).toFixed(1)}%</div></td>`;
+                }
+                complianceTotalCells += `<td class="p-4 text-center"><div class="text-rose-400">${tFail}</div><div class="text-[9px] opacity-60">${((tFail/totalSamplesCount)*100).toFixed(1)}%</div></td>`;
+
+                let geoSpan = level === 'State' ? 1 : (level === 'District' ? 2 : 3);
+                trTotal.innerHTML = `
+                    <td class="p-4 sticky-col bg-slate-900 border-r text-slate-400">-</td>
+                    <td class="p-4 sticky-col bg-slate-900 border-r" colspan="${geoSpan}" style="left: 60px; text-align: center;">TOTAL SUMMARY</td>
+                    <td class="p-4 text-center">${totalSamplesCount}</td>
+                    ${complianceTotalCells}
+                    <td class="p-4 text-center border-l border-slate-700">${statsTotal.min.toFixed(2)}</td>
+                    <td class="p-4 text-center">${statsTotal.max.toFixed(2)}</td>
+                    <td class="p-4 text-center text-indigo-300">${statsTotal.avg.toFixed(2)}</td>
+                    <td class="p-4 text-center text-slate-400">${statsTotal.std.toFixed(2)}</td>
+                `;
+                container.appendChild(trTotal);
+            }
+
+            lucide.createIcons();
+        }
+
+        function exportReport() {
+            const wb = XLSX.utils.table_to_book(document.getElementById('mainReportTable'));
+            XLSX.writeFile(wb, `Compliance_${new Date().getTime()}.xlsx`);
+        }
+    </script>
+</body>
+</html>

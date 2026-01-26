@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Groundwater Donut - Professional Styling</title>
+    <!-- Dependencies -->
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/highcharts-3d.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f1f5f9;
+            min-height: 100vh;
+            padding: 1.5rem;
+        }
+        #chart-container { 
+            height: 550px; 
+            width: 100%; 
+        }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        .control-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 900;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .limit-error {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <!-- Sidebar -->
+    <div class="lg:col-span-1 space-y-4 max-h-[90vh] overflow-y-auto pr-2 custom-scrollbar">
+        
+        <!-- Visibility Toggles -->
+        <div class="control-card border-l-4 border-amber-500">
+            <h3 class="section-title">👁️ Visibility Controls</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
+                    <input type="checkbox" id="showTitle" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-amber-600">
+                    <span class="text-[10px] font-bold text-slate-600 uppercase">Title</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
+                    <input type="checkbox" id="showN" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-amber-600">
+                    <span class="text-[10px] font-bold text-slate-600 uppercase">Total (N)</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
+                    <input type="checkbox" id="showSmallN" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-amber-600">
+                    <span class="text-[10px] font-bold text-slate-600 uppercase">Count (n)</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
+                    <input type="checkbox" id="showLegend" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-amber-600">
+                    <span class="text-[10px] font-bold text-slate-600 uppercase">Legends</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- 0. Parameter Details -->
+        <div class="control-card border-l-4 border-indigo-500">
+            <h3 class="section-title">🧪 Parameter Details</h3>
+            <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Parameter</label>
+                        <input type="text" id="paramName" value="Fluoride" oninput="updateChartFromUI()" 
+                            class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Unit</label>
+                        <input type="text" id="paramUnit" value="mg/L" oninput="updateChartFromUI()" 
+                            class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Acc. Limit</label>
+                        <input type="text" id="limitAcc" value="1.0" oninput="updateChartFromUI()" 
+                            class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Perm. Limit</label>
+                        <input type="text" id="limitPerm" value="1.5" oninput="updateChartFromUI()" 
+                            class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. Content & Data -->
+        <div class="control-card">
+            <h3 class="section-title">📊 Sample Analysis & Data</h3>
+            <div class="space-y-3">
+                <div class="mb-4">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Chart Title Text</label>
+                    <input type="text" id="chartTitleInput" value="Groundwater Quality Analysis" oninput="updateChartFromUI()" 
+                        class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 ring-indigo-500 outline-none font-medium">
+                </div>
+
+                <div class="mb-4 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                    <label class="text-[10px] font-bold text-indigo-600 uppercase block mb-1">Total Samples (N)</label>
+                    <input type="number" id="totalSamplesN" value="100" oninput="updateChartFromUI()" 
+                        class="w-full bg-white border border-indigo-200 rounded-md p-1.5 text-sm font-bold focus:ring-2 ring-indigo-400 outline-none">
+                </div>
+                
+                <div class="space-y-3">
+                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="checkAcc" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-indigo-600">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase">Acceptable</span>
+                            </div>
+                            <input type="color" id="colAcc" value="#10b981" oninput="updateChartFromUI()" class="h-4 w-8 cursor-pointer">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="valAcc" value="60" min="0" max="100" oninput="handleValueChange(this)" class="w-1/2 bg-white border border-slate-200 rounded p-1 text-right text-xs font-bold" placeholder="%">
+                            <span class="text-[10px] text-slate-400 font-bold">n=<span id="countAcc">60</span></span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="checkPerm" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-indigo-600">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase">Permissible</span>
+                            </div>
+                            <input type="color" id="colPerm" value="#f59e0b" oninput="updateChartFromUI()" class="h-4 w-8 cursor-pointer">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="valPerm" value="25" min="0" max="100" oninput="handleValueChange(this)" class="w-1/2 bg-white border border-slate-200 rounded p-1 text-right text-xs font-bold" placeholder="%">
+                            <span class="text-[10px] text-slate-400 font-bold">n=<span id="countPerm">25</span></span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="checkFail" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-indigo-600">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase">Beyond Limit</span>
+                            </div>
+                            <input type="color" id="colFail" value="#f43f5e" oninput="updateChartFromUI()" class="h-4 w-8 cursor-pointer">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="valFail" value="15" min="0" max="100" oninput="handleValueChange(this)" class="w-1/2 bg-white border border-slate-200 rounded p-1 text-right text-xs font-bold" placeholder="%">
+                            <span class="text-[10px] text-slate-400 font-bold">n=<span id="countFail">15</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div id="totalBadge" class="text-center text-[10px] font-black mt-2 py-1 rounded bg-slate-100 transition-colors duration-300">Total: 100%</div>
+                <div id="limitWarning" class="hidden text-[9px] text-rose-500 font-bold text-center mt-1 uppercase">⚠️ Total cannot exceed 100%</div>
+            </div>
+        </div>
+
+        <!-- 2. Typography & Style -->
+        <div class="control-card">
+            <h3 class="section-title">🖋️ Typography & Style</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Font Family</label>
+                    <select id="fontFamily" onchange="updateChartFromUI()" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none">
+                        <option value="'Segoe UI', sans-serif">Segoe UI (Modern)</option>
+                        <option value="'Georgia', serif">Georgia (Serif)</option>
+                        <option value="'Courier New', monospace">Courier (Monospace)</option>
+                        <option value="'Verdana', sans-serif">Verdana (Clean)</option>
+                        <option value="'Impact', sans-serif">Impact (Bold)</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Title Size</label>
+                        <input type="number" id="titleSize" value="24" oninput="updateChartFromUI()" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Label Size</label>
+                        <input type="number" id="labelSize" value="14" oninput="updateChartFromUI()" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Title Color</label>
+                        <input type="color" id="titleColor" value="#1e293b" oninput="updateChartFromUI()" class="h-8 w-full cursor-pointer bg-transparent">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Label Color</label>
+                        <input type="color" id="labelColor" value="#334155" oninput="updateChartFromUI()" class="h-8 w-full cursor-pointer bg-transparent">
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btnBold" onclick="toggleStyle('bold')" class="flex-1 py-2 text-[10px] font-black border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">BOLD</button>
+                    <button id="btnItalic" onclick="toggleStyle('italic')" class="flex-1 py-2 text-[10px] font-black border border-slate-200 rounded-lg italic hover:bg-slate-50 transition-colors">ITALIC</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 3D & Layout -->
+        <div class="control-card">
+            <h3 class="section-title">🎡 3D & Layout</h3>
+            <div class="space-y-4">
+                <div>
+                    <div class="range-label mb-1 flex justify-between">
+                        <label class="text-[10px] uppercase font-bold text-slate-400">Rotation (Beta)</label>
+                        <span id="txtBeta" class="text-[10px] font-bold text-indigo-600">0°</span>
+                    </div>
+                    <input type="range" id="optBeta" min="0" max="360" value="0" oninput="updateChartFromUI()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                </div>
+                <div>
+                    <div class="range-label mb-1 flex justify-between">
+                        <label class="text-[10px] uppercase font-bold text-slate-400">Tilt X (Alpha)</label>
+                        <span id="txtAlpha" class="text-[10px] font-bold text-indigo-600">45°</span>
+                    </div>
+                    <input type="range" id="optAlpha" min="0" max="90" value="45" oninput="updateChartFromUI()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                </div>
+                <div>
+                    <div class="range-label mb-1 flex justify-between">
+                        <label class="text-[10px] uppercase font-bold text-slate-400">Depth (Z)</label>
+                        <span id="txtDepth" class="text-[10px] font-bold text-indigo-600">55px</span>
+                    </div>
+                    <input type="range" id="optDepth" min="0" max="150" value="55" oninput="updateChartFromUI()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                </div>
+                <div>
+                    <div class="range-label mb-1 flex justify-between">
+                        <label class="text-[10px] uppercase font-bold text-slate-400">Inner Size</label>
+                        <span id="txtInner" class="text-[10px] font-bold text-indigo-600">60%</span>
+                    </div>
+                    <input type="range" id="optInner" min="0" max="85" value="60" oninput="updateChartFromUI()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Export -->
+        <div class="control-card bg-slate-50 border-slate-200">
+            <h3 class="section-title text-slate-900">📸 HD Export Settings</h3>
+            <div class="mb-3">
+                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Export BG Color</label>
+                <div class="flex items-center gap-2">
+                    <input type="color" id="exportBgColor" value="#ffffff" class="h-8 w-12 cursor-pointer bg-transparent">
+                    <span class="text-[10px] text-slate-500 font-medium">JPEG Background</span>
+                </div>
+            </div>
+            <button id="downloadBtn" onclick="downloadAsJPEG()" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
+                💾 Download HD JPEG
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Chart View -->
+    <div class="lg:col-span-3">
+        <div id="chart-wrapper" class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center min-h-[700px]">
+            <div id="chart-container"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+let activeChart = null;
+let isBold = true;
+let isItalic = false;
+
+function handleValueChange(input) {
+    let val = parseFloat(input.value) || 0;
+    if (val < 0) input.value = 0;
+    if (val > 100) input.value = 100;
+    const vAcc = parseFloat(document.getElementById('valAcc').value) || 0;
+    const vPerm = parseFloat(document.getElementById('valPerm').value) || 0;
+    const vFail = parseFloat(document.getElementById('valFail').value) || 0;
+    const total = vAcc + vPerm + vFail;
+    if (total > 100) {
+        const excess = total - 100;
+        input.value = Math.max(0, parseFloat(input.value) - excess).toFixed(1);
+        const badge = document.getElementById('totalBadge');
+        badge.classList.add('limit-error', 'bg-rose-100', 'text-rose-600');
+        document.getElementById('limitWarning').classList.remove('hidden');
+        setTimeout(() => { badge.classList.remove('limit-error'); }, 500);
+    } else {
+        document.getElementById('totalBadge').classList.remove('bg-rose-100', 'text-rose-600');
+        document.getElementById('limitWarning').classList.add('hidden');
+    }
+    updateChartFromUI();
+}
+
+function toggleStyle(type) {
+    if(type === 'bold') {
+        isBold = !isBold;
+        document.getElementById('btnBold').classList.toggle('bg-slate-900', isBold);
+        document.getElementById('btnBold').classList.toggle('text-white', isBold);
+    } else {
+        isItalic = !isItalic;
+        document.getElementById('btnItalic').classList.toggle('bg-slate-900', isItalic);
+        document.getElementById('btnItalic').classList.toggle('text-white', isItalic);
+    }
+    updateChartFromUI();
+}
+
+function renderComplianceDonut(data, options = {}) {
+    const config = {
+        containerId: 'chart-container',
+        title: '',
+        subtitle: '',
+        showTitle: true,
+        showLegend: true,
+        showSmallN: true,
+        fontFamily: "'Segoe UI', sans-serif",
+        titleSize: 24,
+        labelSize: 14,
+        titleColor: '#1e293b',
+        labelColor: '#334155',
+        fontWeight: 'bold',
+        fontStyle: 'normal',
+        depth: 55,
+        innerSize: '60%',
+        alpha: 45,
+        beta: 0,
+        ...options
+    };
+
+    activeChart = Highcharts.chart(config.containerId, {
+        chart: {
+            type: 'pie',
+            options3d: { 
+                enabled: true, 
+                alpha: config.alpha, 
+                beta: config.beta 
+            },
+            backgroundColor: 'transparent',
+            margin: [80, 20, 80, 20]
+        },
+        title: {
+            text: config.showTitle ? config.title : null,
+            style: {
+                fontFamily: config.fontFamily,
+                fontSize: config.titleSize + 'px',
+                fontWeight: config.fontWeight,
+                fontStyle: config.fontStyle,
+                color: config.titleColor
+            }
+        },
+        subtitle: {
+            text: config.showTitle ? config.subtitle : null,
+            style: {
+                fontFamily: config.fontFamily,
+                fontSize: (config.titleSize * 0.6) + 'px',
+                color: '#64748b'
+            }
+        },
+        tooltip: {
+            headerFormat: '<span style="font-size: 12px; font-weight:bold">{point.key}</span><br/>',
+            pointFormat: 'Percentage: <b>{point.y:.1f}%</b><br/>Samples: <b>{point.count}</b>'
+        },
+        plotOptions: {
+            pie: {
+                innerSize: config.innerSize,
+                depth: config.depth,
+                dataLabels: {
+                    enabled: true,
+                    format: config.showSmallN 
+                        ? '<b>{point.name}</b><br>{point.y}% (n={point.count})' 
+                        : '<b>{point.name}</b><br>{point.y}%',
+                    style: { 
+                        textOutline: 'none',
+                        fontFamily: config.fontFamily,
+                        fontSize: config.labelSize + 'px',
+                        fontWeight: config.fontWeight,
+                        fontStyle: config.fontStyle,
+                        color: config.labelColor
+                    },
+                    connectorWidth: 1.5,
+                    distance: 35
+                },
+                showInLegend: config.showLegend
+            }
+        },
+        legend: {
+            enabled: config.showLegend,
+            itemStyle: {
+                fontFamily: config.fontFamily,
+                fontWeight: config.fontWeight,
+                color: config.labelColor
+            }
+        },
+        series: [{
+            name: 'Compliance',
+            data: data
+        }],
+        credits: { enabled: false },
+        exporting: {
+            enabled: false // Custom download button used instead
+        }
+    });
+}
+
+function updateChartFromUI() {
+    const N = parseFloat(document.getElementById('totalSamplesN').value) || 0;
+    const v1 = parseFloat(document.getElementById('valAcc').value) || 0;
+    const v2 = parseFloat(document.getElementById('valPerm').value) || 0;
+    const v3 = parseFloat(document.getElementById('valFail').value) || 0;
+    
+    const count1 = Math.round((v1 / 100) * N);
+    const count2 = Math.round((v2 / 100) * N);
+    const count3 = Math.round((v3 / 100) * N);
+
+    document.getElementById('countAcc').innerText = count1;
+    document.getElementById('countPerm').innerText = count2;
+    document.getElementById('countFail').innerText = count3;
+
+    const showTitle = document.getElementById('showTitle').checked;
+    const showN = document.getElementById('showN').checked;
+    const showSmallN = document.getElementById('showSmallN').checked;
+    const showLegend = document.getElementById('showLegend').checked;
+
+    const pName = document.getElementById('paramName').value;
+    const pUnit = document.getElementById('paramUnit').value;
+    const lAcc = document.getElementById('limitAcc').value;
+    const lPerm = document.getElementById('limitPerm').value;
+
+    const fFamily = document.getElementById('fontFamily').value;
+    const tSize = document.getElementById('titleSize').value;
+    const lSize = document.getElementById('labelSize').value;
+    const tColor = document.getElementById('titleColor').value;
+    const lColor = document.getElementById('labelColor').value;
+    const customTitle = document.getElementById('chartTitleInput').value || '';
+    
+    const alphaVal = parseInt(document.getElementById('optAlpha').value);
+    const betaVal = parseInt(document.getElementById('optBeta').value);
+    const depthVal = parseInt(document.getElementById('optDepth').value);
+    const innerVal = parseInt(document.getElementById('optInner').value);
+
+    document.getElementById('txtAlpha').innerText = alphaVal + '°';
+    document.getElementById('txtBeta').innerText = betaVal + '°';
+    document.getElementById('txtDepth').innerText = depthVal + 'px';
+    document.getElementById('txtInner').innerText = innerVal + '%';
+    
+    const total = v1 + v2 + v3;
+    const badge = document.getElementById('totalBadge');
+    badge.innerText = `Total: ${total.toFixed(1)}%`;
+    
+    if (total > 100.05) {
+        badge.classList.add('bg-rose-100', 'text-rose-700');
+    } else if (Math.abs(total - 100) < 0.1) {
+        badge.classList.remove('bg-rose-100', 'text-rose-700');
+        badge.classList.add('bg-emerald-100', 'text-emerald-700');
+    } else {
+        badge.classList.remove('bg-rose-100', 'text-rose-700', 'bg-emerald-100', 'text-emerald-700');
+    }
+
+    const data = [];
+    if(document.getElementById('checkAcc').checked) {
+        data.push({ name: `Acceptable (≤${lAcc} ${pUnit})`, y: v1, count: count1, color: document.getElementById('colAcc').value });
+    }
+    if(document.getElementById('checkPerm').checked) {
+        data.push({ name: `Permissible (${lAcc}-${lPerm} ${pUnit})`, y: v2, count: count2, color: document.getElementById('colPerm').value });
+    }
+    if(document.getElementById('checkFail').checked) {
+        data.push({ name: `Beyond Limit (>${lPerm} ${pUnit})`, y: v3, count: count3, color: document.getElementById('colFail').value });
+    }
+
+    renderComplianceDonut(data, {
+        title: customTitle + (showN && N > 0 ? ` (N=${N})` : ''),
+        subtitle: pName ? `Analysis of ${pName} (${pUnit})` : '',
+        showTitle: showTitle,
+        showLegend: showLegend,
+        showSmallN: showSmallN,
+        fontFamily: fFamily,
+        titleSize: tSize,
+        labelSize: lSize,
+        titleColor: tColor,
+        labelColor: lColor,
+        fontWeight: isBold ? 'bold' : 'normal',
+        fontStyle: isItalic ? 'italic' : 'normal',
+        alpha: alphaVal,
+        beta: betaVal,
+        depth: depthVal,
+        innerSize: innerVal + '%'
+    });
+}
+
+function downloadAsJPEG() {
+    if (!activeChart) return;
+
+    const btn = document.getElementById('downloadBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⌛ Generating...';
+    btn.disabled = true;
+
+    const bgColor = document.getElementById('exportBgColor').value;
+    const titleColor = document.getElementById('titleColor').value;
+    const labelColor = document.getElementById('labelColor').value;
+
+    // We use exportChart with an explicit chartOptions block.
+    // This forces Highcharts to create a temporary instance for rendering
+    // with these specific hardcoded background values.
+    activeChart.exportChart({
+        type: 'image/jpeg',
+        filename: 'groundwater_analysis_report',
+        sourceWidth: 1200,
+        sourceHeight: 800,
+        scale: 2 // High Quality
+    }, {
+        chart: {
+            backgroundColor: bgColor,
+            plotBackgroundColor: bgColor,
+            style: {
+                fontFamily: document.getElementById('fontFamily').value
+            }
+        },
+        title: {
+            style: { color: titleColor }
+        },
+        legend: {
+            itemStyle: { color: labelColor }
+        },
+        plotOptions: {
+            pie: {
+                dataLabels: {
+                    style: { color: labelColor }
+                }
+            }
+        }
+    });
+
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }, 2000);
+}
+
+window.onload = () => {
+    document.getElementById('btnBold').classList.add('bg-slate-900', 'text-white');
+    updateChartFromUI();
+};
+</script>
+</body>
+</html>

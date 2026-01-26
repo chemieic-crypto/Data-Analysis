@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GWQ | Paired Hypothesis Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        :root { --primary: #0ea5e9; --bg-slate: #f8fafc; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-slate); color: #1e293b; }
+        .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); }
+        .sig-pill { padding: 2px 6px; border-radius: 4px; font-size: 8px; font-weight: 800; display: inline-block; width: 100%; text-align: center; }
+        .sig-yes { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .sig-no { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .paired-badge { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; }
+        .stat-val { font-family: 'ui-monospace', monospace; font-size: 9px; font-weight: 600; }
+        .toggle-btn-active { background: #0ea5e9 !important; color: white !important; border-color: #0284c7 !important; }
+        .tab-val { color: #64748b; font-size: 9px; font-weight: 700; font-family: 'ui-monospace', monospace; }
+        .tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; }
+        .tab-btn.active { border-color: #0ea5e9; color: #0ea5e9; font-weight: 800; }
+        .inv-val { font-size: 14px; font-weight: 800; color: #0f172a; }
+        .source-pill { font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 4px; }
+        
+        .marquee {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            background: #1e3a8a; 
+            color: #e0f2fe; 
+            padding: 10px 0;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            z-index: 50;
+            border-top: 2px solid #3b82f6;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+        }
+        .marquee-content {
+            display: inline-block;
+            animation: marquee 60s linear infinite; 
+        }
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen pb-16">
+
+    <div class="max-w-full mx-auto">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight flex items-center gap-3">
+                    <span class="p-2 bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-200">
+                        <i data-lucide="layers" class="w-6 h-6"></i>
+                    </span>
+                    Ground Water Quality<span class="text-emerald-600 text-2xl font-black italic">Paired Statistics</span> ENGINE
+                </h1>
+                <p class="text-slate-500 text-sm mt-2 font-medium italic">Paired Comparison Analysis: Student's Paired t-test & Wilcoxon Signed-Rank</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <label class="cursor-pointer bg-white border-2 border-slate-200 hover:border-emerald-500 px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 text-sm shadow-sm group">
+                    <i data-lucide="file-up" class="w-4 h-4 group-hover:text-emerald-600"></i>
+                    Upload Dataset
+                    <input type="file" id="fileInput" class="hidden" accept=".csv, .xlsx, .xls">
+                </label>
+                <div id="exportGroup" class="hidden flex gap-2">
+                    <button onclick="exportCurrentView()" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-bold hover:bg-slate-800 transition-all text-sm shadow-xl flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i> Export Current View
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <aside class="lg:col-span-2 space-y-4">
+                <div class="glass-card rounded-3xl p-5 border-amber-100 bg-white">
+                    <h2 class="text-xs font-black text-amber-600 uppercase tracking-widest mb-4">Confidence Level</h2>
+                    <div class="flex flex-col gap-2">
+                        <button onclick="setConfidence(0.90, this)" class="conf-btn text-[10px] font-bold py-2 px-3 rounded-xl border border-slate-200">90% (α=0.10)</button>
+                        <button onclick="setConfidence(0.95, this)" class="conf-btn toggle-btn-active text-[10px] font-bold py-2 px-3 rounded-xl border border-slate-200">95% (α=0.05)</button>
+                        <button onclick="setConfidence(0.99, this)" class="conf-btn text-[10px] font-bold py-2 px-3 rounded-xl border border-slate-200">99% (α=0.01)</button>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl p-5 border-emerald-100 bg-white">
+                    <h2 class="text-xs font-black text-emerald-600 uppercase tracking-widest mb-4">Inventory Summary</h2>
+                    <div class="space-y-4">
+                        <div class="p-3 bg-blue-50/50 rounded-xl">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[9px] font-bold text-blue-600 uppercase">Pre-Monsoon</span>
+                                <span id="invPre" class="inv-val">0</span>
+                            </div>
+                            <div id="sourcePre" class="flex flex-wrap gap-1"></div>
+                        </div>
+                        <!-- Rainy Season Section Added -->
+                        <div class="p-3 bg-amber-50/50 rounded-xl">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[9px] font-bold text-amber-600 uppercase">Rainy Season</span>
+                                <span id="invRainy" class="inv-val">0</span>
+                            </div>
+                            <div id="sourceRainy" class="flex flex-wrap gap-1"></div>
+                        </div>
+                        <div class="p-3 bg-emerald-50/50 rounded-xl">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[9px] font-bold text-emerald-600 uppercase">Post-Monsoon</span>
+                                <span id="invPost" class="inv-val">0</span>
+                            </div>
+                            <div id="sourcePost" class="flex flex-wrap gap-1"></div>
+                        </div>
+                        <div class="p-3 bg-indigo-50/50 rounded-xl flex justify-between items-center">
+                            <span class="text-[9px] font-bold text-indigo-600 uppercase">Paired Count</span>
+                            <span id="commonLocs" class="inv-val text-indigo-700">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl p-5 bg-white">
+                    <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Data Filters</h2>
+                    <div id="filterContainer" class="space-y-5 max-h-[30vh] overflow-y-auto custom-scrollbar"></div>
+                </div>
+            </aside>
+
+            <main class="lg:col-span-10">
+                <div class="glass-card rounded-[2rem] overflow-hidden bg-white mb-6">
+                    <div class="flex border-b bg-slate-50/50 px-6">
+                        <button onclick="switchTab('stats')" id="btn-tab-stats" class="tab-btn active px-4 py-4 text-xs font-bold uppercase tracking-wider">Statistical Matrix</button>
+                        <button onclick="switchTab('pairs')" id="btn-tab-pairs" class="tab-btn px-4 py-4 text-xs font-bold uppercase tracking-wider">Location-wise Paired Data</button>
+                    </div>
+
+                    <div id="view-stats" class="tab-content">
+                        <div class="p-5 flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <h3 class="font-bold text-slate-800 text-sm">Hypothesis Testing Results</h3>
+                                <span id="alphaDisplay" class="paired-badge">α = 0.05</span>
+                            </div>
+                            <div id="sampleInfoStats" class="text-[10px] font-bold text-slate-400 uppercase">n=0 pairs</div>
+                        </div>
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table id="resultsTable" class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-[9px] font-black text-slate-500 uppercase border-b">
+                                        <th class="px-6 py-4 bg-white sticky left-0 z-10" rowspan="2">Parameter</th>
+                                        <th class="px-4 py-4 text-center border-x" colspan="2">Mean Values</th>
+                                        <th class="px-4 py-4 text-center bg-indigo-50/30" colspan="6">Student's Paired T-Test</th>
+                                        <th class="px-4 py-4 text-center bg-emerald-50/30" colspan="3">Wilcoxon Signed-Rank</th>
+                                    </tr>
+                                    <tr class="text-[8px] font-bold text-slate-400 uppercase border-b bg-slate-50/30">
+                                        <th class="px-3 py-2 text-center border-l">Pre</th>
+                                        <th class="px-3 py-2 text-center">Post</th>
+                                        <th class="px-2 py-2 text-center bg-indigo-50/50">DF</th>
+                                        <th class="px-2 py-2 text-center bg-indigo-50/50">Mean Diff</th>
+                                        <th class="px-2 py-2 text-center bg-indigo-50/50">T-Calc</th>
+                                        <th class="px-2 py-2 text-center bg-indigo-50/50">T-Crit</th>
+                                        <th class="px-2 py-2 text-center bg-indigo-50/50">P-Value</th>
+                                        <th class="px-2 py-2 text-center bg-indigo-50/50">Sig?</th>
+                                        <th class="px-2 py-2 text-center bg-emerald-50/50">W-Stat</th>
+                                        <th class="px-2 py-2 text-center bg-emerald-50/50">P-Val</th>
+                                        <th class="px-2 py-2 text-center bg-emerald-50/50">Sig?</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="statsBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="view-pairs" class="tab-content hidden">
+                        <div class="p-5 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800 text-sm">Paired Well Comparisons</h3>
+                            <div id="sampleInfoPairs" class="text-[10px] font-bold text-slate-400 uppercase">n=0 locations</div>
+                        </div>
+                        <div class="overflow-x-auto custom-scrollbar max-h-[70vh]">
+                            <table id="pairsTable" class="w-full text-left border-collapse">
+                                <thead id="pairsHead" class="text-[9px] font-black text-slate-500 uppercase border-b sticky top-0 z-20 bg-slate-50">
+                                    <!-- Dynamic content -->
+                                </thead>
+                                <tbody id="pairsBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <footer class="marquee">
+        <div class="marquee-content">
+            DISCLAIMER: Paired Location identification and synchronization logic is strictly based on the unique combination of Well_ID, Location name, and precise Geographic Coordinates (Latitude & Longitude) of the monitored wells across seasons. &nbsp;&nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp;&nbsp;
+            DISCLAIMER: Paired Location identification and synchronization logic is strictly based on the unique combination of Well_ID, Location name, and precise Geographic Coordinates (Latitude & Longitude) of the monitored wells across seasons.
+        </div>
+    </footer>
+
+    <script>
+        let rawData = [];
+        let filteredData = [];
+        let filters = {};
+        let commonLocationKeys = new Set();
+        let currentConfidence = 0.95;
+        let activeTab = 'stats';
+
+        const TARGET_PARAMS = ['pH','EC','CO3','HCO3','Cl','SO4','NO3','F','PO4','SiO2','TH','Ca','Mg','Na','K','TDS','Cr','Mn','Fe','Ni','Cu','Zn','As','Se','Cd','Hg','Pb','U','dO18','dD','d-Excess'];
+
+        function switchTab(tab) {
+            activeTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(`btn-tab-${tab}`).classList.add('active');
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+        }
+
+        function normalCDF(x) {
+            const t = 1 / (1 + 0.2316419 * Math.abs(x));
+            const d = 0.3989423 * Math.exp(-x * x / 2);
+            const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+            return x > 0 ? 1 - p : p;
+        }
+
+        function setConfidence(val, btn) {
+            currentConfidence = val;
+            document.querySelectorAll('.conf-btn').forEach(b => b.classList.remove('toggle-btn-active'));
+            btn.classList.add('toggle-btn-active');
+            document.getElementById('alphaDisplay').innerText = `α = ${(1 - val).toFixed(2)}`;
+            if (rawData.length) calculateStats();
+        }
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const wb = XLSX.read(evt.target.result, { type: 'binary' });
+                rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+                identifyPairs();
+                filteredData = [...rawData];
+                setupFilters();
+                calculateStats();
+                document.getElementById('exportGroup').classList.remove('hidden');
+            };
+            reader.readAsBinaryString(file);
+        });
+
+        function cleanSeason(val) {
+            const s = String(val || "").toLowerCase();
+            if (s.includes("pre")) return "pre";
+            if (s.includes("post") || s.includes("non")) return "post";
+            if (s.includes("rainy") || s.includes("monsoon")) return "rainy";
+            return s;
+        }
+
+        function getLocKey(r) {
+            const lat = parseFloat(r.Latitude || 0).toFixed(4);
+            const lon = parseFloat(r.Longitude || 0).toFixed(4);
+            const loc = String(r.Location || r.Well || r.Site || "Unknown").trim();
+            const id = String(r.Well_ID || r["Well ID"] || r.ID || "N/A").trim();
+            return `${loc}|${id}|${lat}|${lon}`;
+        }
+
+        function identifyPairs() {
+            const map = {};
+            const preSet = new Set();
+            const postSet = new Set();
+            const rainySet = new Set();
+            const sourcePreCounts = {};
+            const sourcePostCounts = {};
+            const sourceRainyCounts = {};
+
+            rawData.forEach(r => {
+                const key = getLocKey(r);
+                const season = cleanSeason(r.Season);
+                const source = String(r.Source || "Other").trim();
+                
+                if (!map[key]) map[key] = { pre: false, post: false, rainy: false };
+                
+                if (season === "pre") {
+                    map[key].pre = true;
+                    preSet.add(key);
+                    sourcePreCounts[source] = (sourcePreCounts[source] || 0) + 1;
+                } else if (season === "post") {
+                    map[key].post = true;
+                    postSet.add(key);
+                    sourcePostCounts[source] = (sourcePostCounts[source] || 0) + 1;
+                } else if (season === "rainy") {
+                    map[key].rainy = true;
+                    rainySet.add(key);
+                    sourceRainyCounts[source] = (sourceRainyCounts[source] || 0) + 1;
+                }
+            });
+
+            commonLocationKeys = new Set(Object.keys(map).filter(k => map[k].pre && map[k].post));
+            
+            document.getElementById('invPre').innerText = preSet.size;
+            document.getElementById('invPost').innerText = postSet.size;
+            document.getElementById('invRainy').innerText = rainySet.size;
+            document.getElementById('commonLocs').innerText = commonLocationKeys.size;
+
+            const renderSources = (counts, containerId, bgColor, textColor) => {
+                const container = document.getElementById(containerId);
+                container.innerHTML = Object.entries(counts)
+                    .map(([src, count]) => `<span class="source-pill ${bgColor} ${textColor}">${src}: ${count}</span>`)
+                    .join('');
+            };
+
+            renderSources(sourcePreCounts, 'sourcePre', 'bg-blue-100', 'text-blue-700');
+            renderSources(sourcePostCounts, 'sourcePost', 'bg-emerald-100', 'text-emerald-700');
+            renderSources(sourceRainyCounts, 'sourceRainy', 'bg-amber-100', 'text-amber-700');
+        }
+
+        function setupFilters() {
+            const cols = ["District", "Block", "Source"];
+            const container = document.getElementById('filterContainer');
+            container.innerHTML = '';
+            cols.forEach(col => {
+                const vals = [...new Set(rawData.map(r => String(r[col] || "")))].filter(v => v && v !== "undefined").sort();
+                if (!vals.length) return;
+                const section = document.createElement('div');
+                section.innerHTML = `<label class="block text-[10px] font-black text-slate-400 uppercase mb-2">${col}</label>
+                    <div class="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+                        ${vals.map(v => `<label class="flex items-center gap-2 p-1 rounded hover:bg-white cursor-pointer">
+                            <input type="checkbox" onchange="updateFilters('${col}', '${v}', this.checked)" class="w-3 h-3 rounded text-emerald-600">
+                            <span class="text-[10px] font-bold text-slate-600">${v}</span>
+                        </label>`).join('')}
+                    </div>`;
+                container.appendChild(section);
+            });
+        }
+
+        function updateFilters(col, val, checked) {
+            if (!filters[col]) filters[col] = new Set();
+            if (checked) filters[col].add(val); else filters[col].delete(val);
+            if (!filters[col].size) delete filters[col];
+            filteredData = rawData.filter(r => Object.entries(filters).every(([c, s]) => s.has(String(r[c]))));
+            calculateStats();
+        }
+
+        function runPairedTTest(pre, post) {
+            const n = pre.length;
+            if (n < 2) return { t: 0, p: 1, tab: 0, meanDiff: 0, df: 0 };
+            const diffs = pre.map((v, i) => v - post[i]);
+            const meanDiff = jStat.mean(diffs);
+            const stdDiff = jStat.stdev(diffs, true);
+            const sem = stdDiff / Math.sqrt(n);
+            const t = meanDiff / sem;
+            const df = n - 1;
+            const p = 2 * (1 - jStat.studentt.cdf(Math.abs(t), df));
+            const tab = jStat.studentt.inv(1 - (1 - currentConfidence) / 2, df);
+            return { t: isFinite(t)?t:0, p: isFinite(p)?p:1, tab: isFinite(tab)?tab:0, meanDiff, df };
+        }
+
+        function runWilcoxon(a, b) {
+            let diffs = a.map((v, i) => v - b[i]).filter(d => d !== 0);
+            const n = diffs.length;
+            if (n < 5) return { w: 0, p: 1.0 };
+            let sorted = diffs.map(d => ({ d, abs: Math.abs(d) })).sort((x, y) => x.abs - y.abs);
+            for (let i = 0, rank = 1; i < n; ) {
+                let j = i; while (j < n && sorted[j].abs === sorted[i].abs) j++;
+                let avgRank = (i + 1 + j) / 2;
+                for (let k = i; k < j; k++) sorted[k].rank = avgRank;
+                i = j;
+            }
+            let wPlus = 0; sorted.forEach(o => { if (o.d > 0) wPlus += o.rank; });
+            const expected = n * (n + 1) / 4;
+            const sigma = Math.sqrt(n * (n + 1) * (2 * n + 1) / 24);
+            const z = (wPlus - expected) / sigma;
+            const p = 2 * (1 - normalCDF(Math.abs(z)));
+            return { w: wPlus, p: isFinite(p) ? p : 1 };
+        }
+
+        function calculateStats() {
+            const bodyStats = document.getElementById('statsBody');
+            const bodyPairs = document.getElementById('pairsBody');
+            const headPairs = document.getElementById('pairsHead');
+            
+            const preData = filteredData.filter(r => cleanSeason(r.Season) === "pre");
+            const postData = filteredData.filter(r => cleanSeason(r.Season) === "post");
+            
+            const preMap = new Map(preData.map(r => [getLocKey(r), r]));
+            const postMap = new Map(postData.map(r => [getLocKey(r), r]));
+            
+            const activeKeys = [...preMap.keys()].filter(k => postMap.has(k)).sort();
+            
+            document.getElementById('sampleInfoStats').innerText = `n = ${activeKeys.length} pairs`;
+            document.getElementById('sampleInfoPairs').innerText = `n = ${activeKeys.length} locations`;
+
+            if (activeKeys.length < 1) {
+                const empty = `<tr><td colspan="20" class="py-24 text-center text-rose-500 font-bold italic">Insufficient Synced Pairs</td></tr>`;
+                bodyStats.innerHTML = empty;
+                bodyPairs.innerHTML = empty;
+                return;
+            }
+
+            const availableParams = TARGET_PARAMS.filter(p => rawData[0] && rawData[0].hasOwnProperty(p));
+
+            let statsHtml = '';
+            availableParams.forEach(p => {
+                const pairs = activeKeys.map(k => {
+                    const v1 = parseFloat(preMap.get(k)[p]);
+                    const v2 = parseFloat(postMap.get(k)[p]);
+                    return (!isNaN(v1) && !isNaN(v2)) ? [v1, v2] : null;
+                }).filter(x => x !== null);
+                if (pairs.length < 2) return;
+                const preVals = pairs.map(x => x[0]), postVals = pairs.map(x => x[1]);
+                const pTest = runPairedTTest(preVals, postVals);
+                const wxTest = runWilcoxon(preVals, postVals);
+                const alpha = (1 - currentConfidence);
+                statsHtml += `<tr class="group hover:bg-slate-50">
+                    <td class="px-6 py-4 bg-white sticky left-0 font-black text-slate-700 text-[11px] border-r">${p}</td>
+                    <td class="px-2 py-4 text-center stat-val">${jStat.mean(preVals).toFixed(2)}</td>
+                    <td class="px-2 py-4 text-center stat-val border-r">${jStat.mean(postVals).toFixed(2)}</td>
+                    <td class="px-2 py-4 text-center stat-val text-slate-500 bg-indigo-50/20">${pTest.df}</td>
+                    <td class="px-2 py-4 text-center stat-val text-indigo-800 bg-indigo-50/20">${pTest.meanDiff.toFixed(3)}</td>
+                    <td class="px-2 py-4 text-center stat-val text-indigo-700 bg-indigo-50/20">${pTest.t.toFixed(3)}</td>
+                    <td class="px-2 py-4 text-center tab-val bg-indigo-50/20">${pTest.tab.toFixed(3)}</td>
+                    <td class="px-2 py-4 text-center stat-val text-indigo-600 bg-indigo-50/20">${pTest.p.toFixed(4)}</td>
+                    <td class="px-2 py-4 text-center bg-indigo-50/20 border-r"><span class="sig-pill ${pTest.p < alpha ? 'sig-yes' : 'sig-no'}">${pTest.p < alpha ? 'YES' : 'NO'}</span></td>
+                    <td class="px-2 py-4 text-center stat-val text-emerald-700 bg-emerald-50/20">${wxTest.w.toFixed(1)}</td>
+                    <td class="px-2 py-4 text-center stat-val text-emerald-600 bg-emerald-50/20">${wxTest.p.toFixed(4)}</td>
+                    <td class="px-2 py-4 text-center bg-emerald-50/20"><span class="sig-pill ${wxTest.p < alpha ? 'sig-yes' : 'sig-no'}">${wxTest.p < alpha ? 'YES' : 'NO'}</span></td>
+                </tr>`;
+            });
+            bodyStats.innerHTML = statsHtml;
+
+            let headHtml = `<tr class="bg-slate-100">
+                <th class="px-4 py-3 sticky left-0 z-30 bg-slate-100 border-b" rowspan="2">Well ID</th>
+                <th class="px-4 py-3 sticky left-[100px] z-30 bg-slate-100 border-b" rowspan="2">Location</th>
+                <th class="px-4 py-3 bg-slate-100 border-b" rowspan="2">Latitude</th>
+                <th class="px-4 py-3 bg-slate-100 border-b" rowspan="2">Longitude</th>`;
+            availableParams.forEach(p => {
+                headHtml += `<th class="px-4 py-2 text-center border-x border-slate-300" colspan="2">${p}</th>`;
+            });
+            headHtml += `</tr><tr class="bg-slate-50 border-b">`;
+            availableParams.forEach(() => {
+                headHtml += `<th class="px-2 py-1 text-[7px] text-center border-l bg-blue-50/50">PRE</th>
+                             <th class="px-2 py-1 text-[7px] text-center bg-emerald-50/50">POST</th>`;
+            });
+            headHtml += `</tr>`;
+            headPairs.innerHTML = headHtml;
+
+            let pairsHtml = '';
+            activeKeys.forEach(key => {
+                const pre = preMap.get(key);
+                const post = postMap.get(key);
+                const [loc, id, lat, lon] = key.split('|');
+                pairsHtml += `<tr class="hover:bg-slate-50 border-b text-[10px]">
+                    <td class="px-4 py-3 sticky left-0 z-10 bg-white border-r font-bold text-slate-500">${id}</td>
+                    <td class="px-4 py-3 sticky left-[100px] z-10 bg-white border-r font-bold text-slate-800 whitespace-nowrap">${loc}</td>
+                    <td class="px-4 py-3 text-slate-500 stat-val border-r">${lat}</td>
+                    <td class="px-4 py-3 text-slate-500 stat-val border-r">${lon}</td>`;
+                availableParams.forEach(p => {
+                    const vPre = parseFloat(pre[p]);
+                    const vPost = parseFloat(post[p]);
+                    pairsHtml += `<td class="px-2 py-3 text-center stat-val bg-blue-50/20">${isNaN(vPre)?'-':vPre.toFixed(2)}</td>
+                                  <td class="px-2 py-3 text-center stat-val bg-emerald-50/20 border-r">${isNaN(vPost)?'-':vPost.toFixed(2)}</td>`;
+                });
+                pairsHtml += `</tr>`;
+            });
+            bodyPairs.innerHTML = pairsHtml;
+
+            lucide.createIcons();
+        }
+
+        function exportCurrentView() {
+            const tableId = activeTab === 'stats' ? 'resultsTable' : 'pairsTable';
+            const table = document.getElementById(tableId);
+            const wb = XLSX.utils.table_to_book(table);
+            XLSX.writeFile(wb, `GWQ_Export_${activeTab}.xlsx`);
+        }
+    </script>
+</body>
+</html>
