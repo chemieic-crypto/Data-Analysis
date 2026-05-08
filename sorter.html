@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groundwater Non-Compliance Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style id="theme-styles">
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        :root {
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent: #2563eb;
+            --accent-foreground: #ffffff;
+            --border: #e2e8f0;
+            --header-bg: #ffffff;
+            --table-hover: #f1f5f9;
+            --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        }
+
+        [data-theme="midnight"] {
+            --bg-main: #020617;
+            --bg-card: #0f172a;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --accent-foreground: #020617;
+            --border: #1e293b;
+            --header-bg: #0f172a;
+            --table-hover: #1e293b;
+            --card-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+        }
+
+        [data-theme="forest"] {
+            --bg-main: #f0fdf4;
+            --bg-card: #ffffff;
+            --text-main: #14532d;
+            --text-muted: #3f6212;
+            --accent: #16a34a;
+            --accent-foreground: #ffffff;
+            --border: #dcfce7;
+            --header-bg: #ffffff;
+            --table-hover: #f0fdf4;
+            --card-shadow: 0 4px 6px -1px rgb(20 83 45 / 0.05);
+        }
+
+        [data-theme="royal"] {
+            --bg-main: #faf5ff;
+            --bg-card: #ffffff;
+            --text-main: #3b0764;
+            --text-muted: #7e22ce;
+            --accent: #9333ea;
+            --accent-foreground: #ffffff;
+            --border: #f3e8ff;
+            --header-bg: #ffffff;
+            --table-hover: #f3e8ff;
+            --card-shadow: 0 4px 6px -1px rgb(88 28 135 / 0.05);
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-main); 
+            color: var(--text-main);
+            transition: all 0.3s ease;
+        }
+
+        .card { 
+            background: var(--bg-card); 
+            border-radius: 16px; 
+            box-shadow: var(--card-shadow); 
+            border: 1px solid var(--border);
+        }
+
+        header { background-color: var(--header-bg); border-bottom: 1px solid var(--border); }
+        
+        .sidebar-item-active { 
+            background-color: var(--accent) !important; 
+            color: var(--accent-foreground) !important; 
+        }
+
+        .level-btn { 
+            border: 1px solid var(--border); 
+            color: var(--text-muted); 
+            background: var(--bg-card);
+            transition: all 0.2s; 
+        }
+
+        .level-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        
+        .bg-accent { background-color: var(--accent); color: var(--accent-foreground); }
+        .text-accent { color: var(--accent); }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        
+        .tab-btn { border-bottom: 3px solid transparent; opacity: 0.6; transition: all 0.3s; }
+        .tab-active { border-bottom: 3px solid var(--accent); color: var(--accent) !important; opacity: 1 !important; }
+
+        th { color: var(--text-muted); border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; padding: 1.25rem 0.75rem; }
+        tr:hover { background-color: var(--table-hover); }
+
+        #errorModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.2s;
+        }
+        .theme-dot:hover { transform: scale(1.2); }
+        .theme-dot.active { border-color: var(--text-main); }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Validation Modal -->
+    <div id="errorModal">
+        <div class="card p-8 max-w-md w-full mx-4 text-center">
+            <div class="bg-rose-100 text-rose-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <i data-lucide="alert-circle" class="w-8 h-8"></i>
+            </div>
+            <h2 class="text-xl font-black mb-2" id="errorTitle">Incomplete Data</h2>
+            <p id="errorMsg" class="text-sm text-muted mb-6 leading-relaxed"></p>
+            <button onclick="closeModal()" class="w-full bg-accent text-accent-foreground py-3.5 rounded-xl font-bold shadow-lg hover:opacity-90 transition-opacity">Understood</button>
+        </div>
+    </div>
+
+    <header class="sticky top-0 z-50 px-4 md:px-8 py-4 flex justify-between items-center shadow-sm">
+        <div class="flex items-center gap-4">
+            <div class="bg-accent p-2 rounded-lg transition-colors duration-300 shadow-lg shadow-blue-500/20">
+                <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-lg tracking-tight hidden md:block">संदूषण क्रम निर्धारण विश्लेषक</h1>
+                <h1 class="font-extrabold text-lg tracking-tight md:hidden">Compliance</h1>
+                <div class="flex gap-2 mt-1">
+                    <div onclick="changeTheme('default')" class="theme-dot bg-blue-600 active" title="Modern Blue"></div>
+                    <div onclick="changeTheme('midnight')" class="theme-dot bg-slate-800" title="Midnight Dark"></div>
+                    <div onclick="changeTheme('forest')" class="theme-dot bg-green-600" title="Forest Green"></div>
+                    <div onclick="changeTheme('royal')" class="theme-dot bg-purple-600" title="Royal Purple"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex gap-3">
+            <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls, .csv">
+            <button onclick="document.getElementById('fileInput').click()" class="level-btn px-4 md:px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span class="hidden md:inline">Upload Data</span>
+                <span class="md:hidden">Upload</span>
+            </button>
+            <button onclick="exportToExcel()" id="exportBtn" class="hidden bg-accent text-accent-foreground px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:opacity-90 shadow-lg shadow-blue-500/20">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span class="hidden md:inline">Export Results</span>
+                <span class="md:hidden">Export</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="p-4 md:p-8 max-w-[1600px] mx-auto grid grid-cols-12 gap-8">
+        
+        <!-- SIDEBAR -->
+        <aside class="col-span-12 lg:col-span-3 space-y-6">
+            <div class="card p-6">
+                <label class="text-[10px] font-black uppercase block mb-4 tracking-widest opacity-50">Analysis Depth</label>
+                <div class="grid grid-cols-1 gap-2">
+                    <button onclick="changeLevel('State')" id="btn-State" class="level-btn text-left px-4 py-3 text-xs font-bold rounded-xl flex justify-between items-center sidebar-item-active">
+                        STATE LEVEL <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                    </button>
+                    <button onclick="changeLevel('District')" id="btn-District" class="level-btn text-left px-4 py-3 text-xs font-bold rounded-xl flex justify-between items-center">
+                        DISTRICT LEVEL <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                    </button>
+                    <button onclick="changeLevel('Block')" id="btn-Block" class="level-btn text-left px-4 py-3 text-xs font-bold rounded-xl flex justify-between items-center">
+                        BLOCK LEVEL <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                    </button>
+                </div>
+
+                <div class="mt-8">
+                    <label class="text-[10px] font-black uppercase block mb-2 tracking-widest opacity-50">Target Parameter</label>
+                    <select id="parameterSelect" onchange="performAnalysis()" class="w-full rounded-xl px-4 py-3 text-sm font-bold border border-border bg-slate-50 dark:bg-slate-900 outline-none focus:border-accent transition-colors"></select>
+                </div>
+
+                <div class="mt-6 pt-6 border-t border-border">
+                    <label class="text-[10px] font-black uppercase block mb-3 tracking-widest opacity-50">Alert Threshold</label>
+                    <div class="flex gap-2">
+                        <select id="thresholdType" onchange="performAnalysis()" class="rounded-xl text-[10px] font-black px-3 py-2 border border-border bg-slate-50 dark:bg-slate-900 focus:border-accent outline-none">
+                            <option value="percent">% RATE</option>
+                            <option value="count">COUNT</option>
+                        </select>
+                        <input type="number" id="thresholdValue" value="10" oninput="performAnalysis()" 
+                            class="w-full rounded-xl px-4 py-2 text-sm font-bold border border-border outline-none bg-slate-50 dark:bg-slate-900 focus:border-accent">
+                    </div>
+                </div>
+            </div>
+
+            <div id="sideSummary" class="hidden space-y-4">
+                <div class="card p-5 border-l-4 border-accent">
+                    <div class="text-[10px] font-black uppercase opacity-60 mb-1">Total Groups</div>
+                    <div id="sideTotalRegions" class="text-2xl font-black">0</div>
+                </div>
+                <div class="card p-5 border-l-4 border-rose-500">
+                    <div class="text-[10px] font-black uppercase opacity-60 mb-1">High Risk Areas</div>
+                    <div id="sideAlertRegions" class="text-2xl font-black text-rose-500">0</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CONTENT -->
+        <section class="col-span-12 lg:col-span-9 space-y-6">
+            <div id="placeholder" class="card py-32 flex flex-col items-center justify-center text-center px-6 border-dashed">
+                <div class="bg-accent/10 p-6 rounded-3xl mb-6 animate-pulse">
+                    <i data-lucide="database" class="w-12 h-12 text-accent"></i>
+                </div>
+                <h2 class="text-2xl font-black">No Data Loaded</h2>
+                <p class="text-muted text-sm mt-3 max-w-xs leading-relaxed">Upload your excel file to generate state, district, or block-wise compliance reports.</p>
+                <div class="mt-8 flex gap-3">
+                    <button onclick="document.getElementById('fileInput').click()" class="bg-accent text-accent-foreground px-6 py-3 rounded-xl font-bold text-sm hover:opacity-90 shadow-lg shadow-blue-500/20 transition-all">
+                        Upload Excel File
+                    </button>
+                    <button onclick="loadDemoData()" class="border border-border text-muted hover:text-accent hover:border-accent px-6 py-3 rounded-xl font-bold text-sm bg-transparent transition-all">
+                        Try Demo Data
+                    </button>
+                </div>
+            </div>
+
+            <div id="analysisContent" class="hidden space-y-6">
+                <!-- Overview Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="card p-6 bg-accent text-accent-foreground relative overflow-hidden group">
+                        <div class="absolute -right-4 -bottom-4 bg-white/10 w-24 h-24 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
+                        <div class="text-[10px] font-bold uppercase opacity-70 tracking-widest mb-1">Analysed Samples</div>
+                        <div id="totalSamples" class="text-3xl font-black relative z-10">0</div>
+                    </div>
+                    <div class="card p-6 relative overflow-hidden group">
+                         <div class="absolute -right-4 -bottom-4 bg-rose-500/10 w-24 h-24 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
+                        <div class="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-1">Non-Compliant</div>
+                        <div id="totalFails" class="text-3xl font-black text-rose-600 dark:text-rose-400 relative z-10">0</div>
+                    </div>
+                    <div class="card p-6">
+                        <div class="text-[10px] font-black uppercase tracking-widest text-muted mb-1">Failure Rate</div>
+                        <div id="failPercent" class="text-3xl font-black">0%</div>
+                    </div>
+                </div>
+
+                <div class="flex gap-8 border-b border-border">
+                    <button id="tab-alpha" onclick="setTab('alpha')" class="tab-btn pb-3 text-[10px] font-black tab-active uppercase tracking-widest">Master List</button>
+                    <button id="tab-ranking" onclick="setTab('ranking')" class="tab-btn pb-3 text-[10px] font-black uppercase tracking-widest">Risk Ranking</button>
+                </div>
+
+                <div class="card overflow-hidden">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left">
+                            <thead id="tableHead" class="bg-slate-50/50 dark:bg-white/5"></thead>
+                            <tbody id="resultsBody" class="text-[11px] font-bold"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const PARAM_CONFIG = {
+            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH Level' },
+            'TDS': { b1: 500, b2: 2000, unit: 'mg/l', name: 'Total Dissolved Solids' },
+            'Turbidity': { b1: 1, b2: 5, unit: 'NTU', name: 'Turbidity' },
+            'Alkalinity': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Alkalinity' },
+            'TH': { b1: 200, b2: 600, unit: 'mg/l as CaCO3', name: 'Total Hardness' },
+            'EC': { b1: 750, b2: 3000, unit: 'µS/cm', name: 'Electrical Conductivity' },
+            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride' },
+            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate' },
+            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride' },
+            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron' },
+            'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic' },
+            'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium' },
+            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc' },
+            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper' },
+            'Pb': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Lead' },
+            'Cd': { b1: 0.003, b2: 0.003, unit: 'mg/L', name: 'Cadmium' },
+            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium' },
+            'Hg': { b1: 0.001, b2: 0.001, unit: 'mg/L', name: 'Mercury' },
+            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel' },
+            'Se': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Selenium' },
+            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium' },
+            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium' },
+            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate' },
+            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese' },
+            'Al': { b1: 0.03, b2: 0.2, unit: 'mg/l', name: 'Aluminum' },
+            'Ba': { b1: 0.7, b2: 0.7, unit: 'mg/l', name: 'Barium' },
+            'B': { b1: 0.5, b2: 2.4, unit: 'mg/l', name: 'Boron' }
+        };
+
+        let rawData = [];
+        let currentLevel = 'State';
+        let analyzedData = [];
+        let currentTab = 'alpha';
+
+        window.onload = () => {
+            lucide.createIcons();
+            const select = document.getElementById('parameterSelect');
+            Object.entries(PARAM_CONFIG).forEach(([key, cfg]) => {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = `${cfg.name} (${key})`;
+                select.appendChild(opt);
+            });
+            select.value = 'NO3';
+        };
+
+        function changeTheme(theme) {
+            document.body.setAttribute('data-theme', theme === 'default' ? '' : theme);
+            document.querySelectorAll('.theme-dot').forEach(dot => {
+                dot.classList.toggle('active', dot.getAttribute('title').toLowerCase().includes(theme));
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('errorModal').style.display = 'none';
+        }
+
+        function loadDemoData() {
+            const states = ['Andhra Pradesh', 'Telangana', 'Karnataka', 'Tamil Nadu', 'Maharashtra'];
+            const districts = ['Central', 'North', 'South', 'East', 'West', 'Rural', 'Urban'];
+            const blocks = ['Block A', 'Block B', 'Block C', 'Block D', 'Block E'];
+            
+            rawData = [];
+            for(let i=0; i<800; i++) {
+                const s = states[Math.floor(Math.random() * states.length)];
+                const d = districts[Math.floor(Math.random() * districts.length)];
+                const b = blocks[Math.floor(Math.random() * blocks.length)];
+                
+                const row = {
+                    'State': s, 'District': d, 'Block': b,
+                    'pH': (6 + Math.random() * 3).toFixed(1),
+                    'TDS': Math.floor(400 + Math.random() * 2000),
+                    'NO3': Math.floor(10 + Math.random() * 100),
+                    'F': (0.5 + Math.random() * 2.5).toFixed(1)
+                };
+                rawData.push(row);
+            }
+            document.getElementById('placeholder').classList.add('hidden');
+            performAnalysis();
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const workbook = XLSX.read(evt.target.result, { type: 'binary' });
+                rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                document.getElementById('placeholder').classList.add('hidden');
+                performAnalysis();
+            };
+            reader.readAsBinaryString(file);
+        });
+
+        function changeLevel(level) {
+            currentLevel = level;
+            document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('sidebar-item-active'));
+            document.getElementById(`btn-${level}`).classList.add('sidebar-item-active');
+            performAnalysis();
+        }
+
+        function setTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+            performAnalysis();
+        }
+
+        /**
+         * Enhanced column retrieval:
+         * Now supports more flexible matching to prevent 'undefined' keys from breaking analysis.
+         */
+        function getCol(row, name) {
+            if (!row) return '';
+            const search = name.toLowerCase().trim();
+            const key = Object.keys(row).find(k => k.toLowerCase().trim() === search);
+            return key ? String(row[key]).trim() : '';
+        }
+
+        function performAnalysis() {
+            if (!rawData || !rawData.length) return;
+
+            const param = document.getElementById('parameterSelect').value;
+            const pConfig = PARAM_CONFIG[param];
+            const groups = {};
+
+            rawData.forEach(row => {
+                // Get identifying columns
+                const state = getCol(row, 'State');
+                const dist = getCol(row, 'District');
+                const block = getCol(row, 'Block');
+                
+                // Requirement Check
+                if (currentLevel === 'State' && !state) return;
+                if (currentLevel === 'District' && (!state || !dist)) return;
+                if (currentLevel === 'Block' && (!state || !dist || !block)) return;
+
+                // Create Unique Key
+                let key = state;
+                if (currentLevel === 'District') key = `${state}|${dist}`;
+                if (currentLevel === 'Block') key = `${state}|${dist}|${block}`;
+
+                if (!groups[key]) {
+                    groups[key] = { 
+                        state: state || 'Unknown', 
+                        dist: dist || '', 
+                        block: block || '', 
+                        total: 0, 
+                        fail: 0 
+                    };
+                }
+
+                const val = parseFloat(getCol(row, param));
+                groups[key].total++;
+
+                let isFail = false;
+                if (!isNaN(val)) {
+                    if (param === 'pH') {
+                        if (val < pConfig.b1 || val > pConfig.b2) isFail = true;
+                    } else {
+                        if (val > pConfig.b2) isFail = true;
+                    }
+                }
+                
+                if (isFail) groups[key].fail++;
+            });
+
+            const thr = parseFloat(document.getElementById('thresholdValue').value) || 0;
+            const thrT = document.getElementById('thresholdType').value;
+
+            // Calculate results and Filter based on threshold
+            analyzedData = Object.values(groups).map(g => ({
+                ...g,
+                percentage: g.total > 0 ? (g.fail / g.total) * 100 : 0
+            })).filter(g => {
+                return thrT === 'percent' ? g.percentage >= thr : g.fail >= thr;
+            });
+
+            // Sorting logic
+            if (currentTab === 'ranking') {
+                analyzedData.sort((a, b) => {
+                    if (thrT === 'count') {
+                        if (b.fail !== a.fail) return b.fail - a.fail;
+                        return a.total - b.total; 
+                    } else {
+                        const diff = b.percentage - a.percentage;
+                        if (Math.abs(diff) > 0.01) return diff;
+                        return a.total - b.total; 
+                    }
+                });
+            } else {
+                analyzedData.sort((a, b) => {
+                    const sComp = a.state.localeCompare(b.state);
+                    if (sComp !== 0) return sComp;
+                    const dComp = (a.dist || '').localeCompare(b.dist || '');
+                    if (dComp !== 0) return dComp;
+                    return (a.block || '').localeCompare(b.block || '');
+                });
+            }
+
+            // Update Summary Stats
+            const totalS = Object.values(groups).reduce((acc, curr) => acc + curr.total, 0);
+            const totalF = Object.values(groups).reduce((acc, curr) => acc + curr.fail, 0);
+            
+            document.getElementById('totalSamples').textContent = totalS.toLocaleString();
+            document.getElementById('totalFails').textContent = totalF.toLocaleString();
+            document.getElementById('failPercent').textContent = totalS > 0 ? `${((totalF / totalS) * 100).toFixed(1)}%` : '0%';
+            
+            document.getElementById('sideTotalRegions').textContent = Object.keys(groups).length;
+            document.getElementById('sideAlertRegions').textContent = analyzedData.length;
+
+            document.getElementById('analysisContent').classList.remove('hidden');
+            document.getElementById('sideSummary').classList.remove('hidden');
+            document.getElementById('exportBtn').classList.remove('hidden');
+            renderTable();
+        }
+
+        function renderTable() {
+            const head = document.getElementById('tableHead');
+            const body = document.getElementById('resultsBody');
+            
+            let h = `<tr><th class="px-6">#</th><th class="px-4">STATE</th>`;
+            if (currentLevel !== 'State') h += `<th class="px-4">DISTRICT</th>`;
+            if (currentLevel === 'Block') h += `<th class="px-4">BLOCK</th>`;
+            h += `<th class="px-4 text-center">SAMPLES</th><th class="px-4 text-center">FAILURES</th><th class="px-4 text-center">RATE</th><th class="px-6">INTENSITY</th></tr>`;
+            head.innerHTML = h;
+
+            if (analyzedData.length === 0) {
+                body.innerHTML = `<tr><td colspan="10" class="py-20 text-center opacity-40 uppercase tracking-widest">No regions meet the alert threshold</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = analyzedData.map((d, i) => `
+                <tr class="border-b border-border/50 group hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <td class="px-6 py-4 opacity-30 font-mono text-[10px]">${i + 1}</td>
+                    <td class="px-4 py-4 uppercase font-bold text-xs">${d.state}</td>
+                    ${currentLevel !== 'State' ? `<td class="px-4 py-4 uppercase text-xs opacity-80">${d.dist}</td>` : ''}
+                    ${currentLevel === 'Block' ? `<td class="px-4 py-4 uppercase text-xs opacity-60">${d.block}</td>` : ''}
+                    <td class="px-4 py-4 text-center opacity-60 font-mono">${d.total}</td>
+                    <td class="px-4 py-4 text-center text-rose-500 font-black font-mono">${d.fail}</td>
+                    <td class="px-4 py-4 text-center font-black">${d.percentage.toFixed(1)}%</td>
+                    <td class="px-6 py-4">
+                        <div class="w-full bg-slate-100 dark:bg-white/5 h-2 rounded-full overflow-hidden">
+                            <div class="bg-accent h-full transition-all duration-500 relative" style="width:${d.percentage}%"></div>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function exportToExcel() {
+            const param = document.getElementById('parameterSelect').value;
+            
+            const dataToExport = analyzedData.map((d, i) => {
+                const row = { 'Sl. No.': i + 1, 'State': d.state };
+                if (currentLevel !== 'State') row['District'] = d.dist;
+                if (currentLevel === 'Block') row['Block'] = d.block;
+                row['Total Samples'] = d.total;
+                row['Non-Compliant'] = d.fail;
+                row['Failure Rate (%)'] = d.percentage.toFixed(2);
+                return row;
+            });
+
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wscols = [{wch: 8}, {wch: 25}, {wch: 25}, {wch: 25}, {wch: 15}, {wch: 15}, {wch: 15}];
+            ws['!cols'] = wscols;
+
+            const fileName = `Groundwater_${param}_Compliance_${currentLevel}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Compliance Report");
+            XLSX.writeFile(wb, fileName);
+        }
+    </script>
+</body>
+</html>

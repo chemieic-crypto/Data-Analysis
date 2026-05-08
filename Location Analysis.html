@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Quality Analysis Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Updated for Full Screen Height and both axis scroll */
+        .table-container { 
+            flex-grow: 1; 
+            overflow: auto; 
+            height: 100%;
+            min-height: 0;
+            scrollbar-width: thin; 
+        }
+        .table-container::-webkit-scrollbar { width: 8px; height: 8px; }
+        .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .table-container::-webkit-scrollbar-track { background: #f8fafc; }
+        
+        th { position: sticky; top: 0; background: #f8fafc; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 700; }
+        
+        .card { background: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border: 1px solid #e2e8f0; }
+        select { cursor: pointer; }
+
+        /* Custom Header Animations */
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        
+        /* Generic Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    </style>
+</head>
+<body class="bg-slate-50 h-screen flex flex-col overflow-hidden">
+
+    <!-- Premium Top Navigation / Branding -->
+    <nav class="relative overflow-hidden bg-slate-900 shadow-xl shrink-0 z-20">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 opacity-90"></div>
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-30"></div>
+        
+        <div class="absolute -right-20 -top-20 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+        <div class="absolute right-40 -bottom-40 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+        <div class="absolute -left-20 top-20 w-72 h-72 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+
+        <div class="relative w-full px-6 md:px-10 py-5 flex flex-col md:flex-row justify-between items-center gap-6 z-10">
+            <div class="flex items-center gap-5 w-full md:w-auto justify-center md:justify-start">
+                <div class="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-600 shadow-[0_0_30px_rgba(59,130,246,0.5)] border border-white/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    <div class="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-indigo-900 shadow-sm"></div>
+                </div>
+                <div class="text-center md:text-left">
+                    <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200 tracking-tight drop-shadow-sm mb-1">
+                        Affected Locations Analysis
+                    </h1>
+                    <div class="flex items-center justify-center md:justify-start gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse shadow-[0_0_8px_rgba(96,165,250,0.8)]"></span>
+                        <p class="text-xs text-blue-100/80 uppercase tracking-[0.2em] font-medium">Groundwater Monitoring System</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex flex-col items-center md:items-end w-full md:w-auto">
+                <div class="group flex items-center gap-4 bg-white/5 hover:bg-white/10 transition-all duration-300 px-4 py-2 rounded-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] backdrop-blur-md cursor-default w-full md:w-auto justify-center">
+                    <div class="bg-blue-500/20 p-2 rounded-xl text-blue-200 group-hover:bg-blue-500/40 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-[9px] font-bold uppercase text-blue-300/80 tracking-widest mb-0.5">Developed By</p>
+                        <p class="text-xs font-semibold text-white tracking-wide">
+                            Jitendra Kumar <span class="text-blue-400 font-light mx-1.5">|</span> <span class="text-blue-100/90 font-medium text-[10px]">STA (Chemical)</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400 opacity-90"></div>
+    </nav>
+
+    <!-- Main Content wrapper configured to take remaining height and 100% width -->
+    <div class="w-full flex-grow flex flex-col px-6 md:px-10 py-4 gap-4 overflow-hidden z-10">
+        
+        <!-- Controls area -->
+        <div class="shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">Data Insights</h2>
+                <p class="text-slate-500 text-sm">Analyze chemical parameters and statistical significance against Permissible Limits.</p>
+            </div>
+            <div id="export-actions" class="hidden animate-in fade-in slide-in-from-right-4 duration-500">
+                <button onclick="exportToExcel()" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Export to Excel
+                </button>
+            </div>
+        </div>
+
+        <div class="shrink-0 card p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div class="relative group">
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Source Data File (CSV/Excel)</label>
+                    <div class="relative flex items-center">
+                        <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all cursor-pointer">
+                    </div>
+                </div>
+                <div class="flex items-end h-full">
+                    <button onclick="handleFileUpload()" class="w-full md:w-auto bg-slate-800 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-slate-900 transition-all shadow active:scale-95 text-sm">
+                        Run Analysis
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="shrink-0 flex space-x-8 border-b border-slate-200 px-2 mt-2">
+            <button onclick="switchTab('state')" id="tab-state" class="pb-2 px-2 text-sm transition-all tab-active">State-Wise Summary</button>
+            <button onclick="switchTab('district')" id="tab-district" class="pb-2 px-2 text-sm transition-all text-slate-400 font-medium hover:text-slate-600">Detailed District Analysis</button>
+            <button onclick="switchTab('block')" id="tab-block" class="pb-2 px-2 text-sm transition-all text-slate-400 font-medium hover:text-slate-600">Block-Wise Analysis</button>
+        </div>
+
+        <!-- Filters Section -->
+        <div id="filter-panel" class="shrink-0 hidden card p-4 bg-slate-50 border-slate-200">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <!-- State Filter -->
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-500 mb-1.5 tracking-wider">Select State</label>
+                    <select id="stateFilter" onchange="handleStateFilterChange()" class="w-full border-slate-200 border rounded-xl p-2 text-sm text-slate-700 font-semibold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
+                        <option value="All">All States</option>
+                    </select>
+                </div>
+
+                <!-- District Filter -->
+                <div id="district-filter-container" class="hidden">
+                    <label class="block text-[10px] font-black uppercase text-slate-500 mb-1.5 tracking-wider">Select District</label>
+                    <select id="districtFilter" onchange="handleDistrictFilterChange()" class="w-full border-slate-200 border rounded-xl p-2 text-sm text-slate-700 font-semibold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
+                        <option value="All">All Districts</option>
+                    </select>
+                </div>
+
+                <!-- Block Filter -->
+                <div id="block-filter-container" class="hidden">
+                    <label class="block text-[10px] font-black uppercase text-slate-500 mb-1.5 tracking-wider">Select Block</label>
+                    <select id="blockFilter" onchange="renderBlockTable()" class="w-full border-slate-200 border rounded-xl p-2 text-sm text-slate-700 font-semibold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
+                        <option value="All">All Blocks</option>
+                    </select>
+                </div>
+
+                <!-- Custom Multi-Select Parameter Dropdown -->
+                <div id="param-filter-container" class="relative">
+                    <label class="block text-[10px] font-black uppercase text-blue-600 mb-1.5 tracking-wider">Select Parameter(s)</label>
+                    <div class="relative">
+                        <div onclick="toggleParamDropdown()" class="w-full border-blue-200 border rounded-xl p-2 text-sm text-blue-700 font-semibold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all bg-white cursor-pointer flex justify-between items-center">
+                            <span id="paramDropdownText" class="truncate pr-4">Select Parameters</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                        <!-- Dropdown list panel -->
+                        <div id="paramDropdownList" class="hidden absolute z-50 w-full mt-1 bg-white border border-blue-200 rounded-xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar flex flex-col">
+                            <!-- Checkboxes injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div id="content" class="card flex-grow flex flex-col overflow-hidden relative shadow-inner">
+            <div id="loading" class="absolute inset-0 z-20 bg-white/80 backdrop-blur-sm hidden flex-col items-center justify-center">
+                <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent mb-3"></div>
+                <p class="text-slate-600 font-medium text-sm">Calculating analytical summaries...</p>
+            </div>
+            
+            <div id="tableContainer" class="table-container w-full bg-white relative">
+                <div class="flex flex-col items-center justify-center h-full text-center p-8">
+                    <div class="bg-slate-50 inline-block p-5 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <p class="text-slate-400 font-medium text-sm">System Ready. Please upload a dataset to begin.</p>
+                </div>
+            </div>
+        </div>
+
+        <footer class="shrink-0 text-center text-slate-400 text-[10px] py-1">
+            &copy; 2024 Water Quality Management System | Chemical Parameter Analysis Portal
+        </footer>
+    </div>
+
+    <!-- Container for custom alerts to avoid browser native alert blocking in preview -->
+    <div id="alert-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] flex flex-col gap-2 w-full max-w-sm"></div>
+
+    <!-- COMPREHENSIVE COLUMN MAPPING MODAL -->
+    <div id="column-mapping-modal" class="hidden fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 lg:p-10">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col transform transition-all max-h-full">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-100 p-2 rounded-lg text-blue-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-lg leading-tight">Map File Columns</h3>
+                        <p class="text-xs text-slate-500 font-medium">Verify auto-detected columns or manually map them to dashboard parameters.</p>
+                    </div>
+                </div>
+                <button onclick="closeMappingModal()" class="text-slate-400 hover:text-slate-600 hover:bg-slate-200 p-2 rounded-xl transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-grow bg-white">
+                <div class="mb-8">
+                    <h4 class="font-bold text-slate-800 text-sm mb-4 uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-6 h-px bg-slate-300"></span>
+                        Geographical Information
+                        <span class="flex-grow h-px bg-slate-100"></span>
+                    </h4>
+                    <div id="geo-mapping-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-4 uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-6 h-px bg-slate-300"></span>
+                        Chemical Parameters
+                        <span class="flex-grow h-px bg-slate-100"></span>
+                    </h4>
+                    <div id="chem-mapping-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-5">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+                <button onclick="closeMappingModal()" class="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-all">Cancel</button>
+                <button onclick="confirmMapping()" class="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg rounded-xl transition-all flex items-center gap-2">
+                    Start Analysis
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Override standard alert to work gracefully in the preview frame
+        window.alert = function(message) {
+            const container = document.getElementById('alert-container');
+            const alertBox = document.createElement('div');
+            alertBox.className = 'bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all duration-300 transform translate-y-[-20px] opacity-0 flex items-center justify-between gap-4';
+            alertBox.innerHTML = `
+                <span class="text-sm font-medium">${message}</span>
+                <button onclick="this.parentElement.remove()" class="text-white/80 hover:text-white">&times;</button>
+            `;
+            container.appendChild(alertBox);
+            
+            // Animate in
+            requestAnimationFrame(() => {
+                alertBox.classList.remove('translate-y-[-20px]', 'opacity-0');
+            });
+            
+            // Auto remove
+            setTimeout(() => {
+                if (alertBox.parentElement) {
+                    alertBox.classList.add('opacity-0');
+                    setTimeout(() => alertBox.remove(), 300);
+                }
+            }, 4000);
+        };
+
+        let rawData = [];
+        let currentTab = 'state';
+        let selectedParams = [];
+        
+        // ADDED pH WITH RANGE LIMIT
+        const limits = {
+            'pH': '6.5 - 8.5', 'EC': 3000, 'NO3': 45, 'F': 1.5, 'TH': 600, 'Cl': 1000,
+            'Ca': 200, 'Mg': 100, 'SO4': 400, 'SAR': 26, 'RSC': 2.5,
+            'Fe': 1.0, 'Mn': 0.3, 'As': 10, 'U': 30, 'Zn': 15,
+            'Cu': 1.5, 'Pb': 0.01, 'Al': 0.2, 'Ba': 0.7, 'B' : 2.4,
+            'Cd': 0.003, 'Cr': 0.05, 'Hg': 0.001, 'Ni': 0.02, 'Se': 0.01
+        };
+
+        const paramUnits = {
+            'pH': '', 'EC': 'μS/cm', 'NO3': 'mg/L', 'F': 'mg/L', 'TH': 'mg/L', 'Cl': 'mg/L',
+            'Ca': 'mg/L', 'Mg': 'mg/L', 'SO4': 'mg/L', 'SAR': '-', 'RSC': 'meq/L',
+            'Fe': 'mg/L', 'Mn': 'mg/L', 'As': 'ppb', 'U': 'ppb', 'Zn': 'mg/L',
+            'Cu': 'mg/L', 'Pb': 'mg/L', 'Al': 'mg/L', 'Ba': 'mg/L', 'B' : 'mg/L',
+            'Cd': 'mg/L', 'Cr': 'mg/L', 'Hg': 'mg/L', 'Ni': 'mg/L', 'Se': 'mg/L'
+        };
+
+        const decimalRules = {
+            no: ['EC', 'NO3', 'TH', 'Cl', 'Ca', 'Mg', 'SO4', 'As', 'U', 'Zn'],
+            two: ['pH', 'F', 'SAR', 'RSC', 'Cu', 'B'], // Added pH to two decimals
+            three: ['Fe', 'Mn', 'Pb', 'Al', 'Ba', 'Cd', 'Cr', 'Hg', 'Ni', 'Se']
+        };
+
+        // NEW HELPER: Checks if a value is outside the permissible limits dynamically
+        function isExceeding(param, val) {
+            const num = parseFloat(val);
+            if (isNaN(num)) return false;
+            if (param === 'pH') {
+                return num < 6.5 || num > 8.5; // pH is affected if outside 6.5 - 8.5
+            }
+            return num > limits[param]; // Other params affected if strictly greater than limit
+        }
+
+        // --- NEW LOADING HELPERS ---
+        function showLoading() {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('loading').classList.add('flex');
+        }
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('loading').classList.remove('flex');
+        }
+
+        document.addEventListener('click', function(event) {
+            const container = document.getElementById('param-filter-container');
+            const list = document.getElementById('paramDropdownList');
+            if (container && list && !container.contains(event.target)) {
+                if (!list.classList.contains('hidden')) {
+                    list.classList.add('hidden');
+                }
+            }
+        });
+
+        // Helper function to convert strings to Proper Case
+        function toProperCase(str) {
+            if (!str || typeof str !== 'string') return str;
+            return str.trim().toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
+        }
+
+        // Helper function for rendering statistical rules visually
+        function formatValue(param, val) {
+            if (val === null || val === undefined || isNaN(val) || val === '' || val === '-') return '-';
+            val = parseFloat(val);
+            if (decimalRules.no.includes(param)) return Math.round(val).toString();
+            if (decimalRules.two.includes(param)) return val.toFixed(2);
+            if (decimalRules.three.includes(param)) return val.toFixed(3);
+            return val.toFixed(2);
+        }
+
+        // Helper for exporting pure numerical values matching the decimal logic safely
+        function formatForExcel(param, val) {
+            if (val === '-' || isNaN(val)) return '-';
+            return parseFloat(formatValue(param, val));
+        }
+
+        // Calculates min, max, average, and standard deviation robustly
+        function calculateStats(subset, param) {
+            let validValues = [];
+            for (let i = 0; i < subset.length; i++) {
+                let val = parseFloat(subset[i][param]);
+                if (!isNaN(val)) validValues.push(val);
+            }
+            
+            if (validValues.length === 0) return { min: '-', max: '-', avg: '-', stdDev: '-' };
+            
+            let min = validValues[0];
+            let max = validValues[0];
+            let sum = 0;
+            
+            for (let i = 0; i < validValues.length; i++) {
+                if (validValues[i] < min) min = validValues[i];
+                if (validValues[i] > max) max = validValues[i];
+                sum += validValues[i];
+            }
+            
+            const avg = sum / validValues.length;
+            
+            let stdDev = 0;
+            if (validValues.length > 1) {
+                let sqDiffSum = 0;
+                for (let i = 0; i < validValues.length; i++) {
+                    sqDiffSum += Math.pow(validValues[i] - avg, 2);
+                }
+                stdDev = Math.sqrt(sqDiffSum / (validValues.length - 1));
+            }
+            
+            return { min, max, avg, stdDev };
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            ['state', 'district', 'block'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    btn.className = 'pb-2 px-2 text-sm transition-all tab-active';
+                } else {
+                    btn.className = 'pb-2 px-2 text-sm transition-all text-slate-400 font-medium hover:text-slate-600';
+                }
+            });
+            
+            const isState = tab === 'state';
+            const isBlock = tab === 'block';
+            
+            document.getElementById('district-filter-container').classList.toggle('hidden', isState);
+            document.getElementById('block-filter-container').classList.toggle('hidden', !isBlock);
+            
+            if (rawData.length > 0) {
+                if (!isState) updateDistrictFilter();
+                if (isBlock) updateBlockFilter();
+                
+                if (tab === 'state') renderStateTable();
+                else if (tab === 'district') renderDistrictTable();
+                else if (tab === 'block') renderBlockTable();
+            }
+        }
+
+        function handleStateFilterChange() {
+            if (currentTab === 'district') {
+                updateDistrictFilter();
+                renderDistrictTable();
+            } else if (currentTab === 'block') {
+                updateDistrictFilter();
+                updateBlockFilter();
+                renderBlockTable();
+            } else {
+                renderStateTable();
+            }
+        }
+
+        function handleDistrictFilterChange() {
+            if (currentTab === 'block') {
+                updateBlockFilter();
+                renderBlockTable();
+            } else {
+                renderDistrictTable();
+            }
+        }
+
+        async function handleFileUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) return;
+            showLoading();
+            document.getElementById('tableContainer').innerHTML = '';
+            try {
+                const fileName = file.name.toLowerCase();
+                if (fileName.endsWith('.csv')) {
+                    Papa.parse(file, {
+                        header: true,
+                        dynamicTyping: true,
+                        skipEmptyLines: true,
+                        complete: (results) => showMappingModal(results.data)
+                    });
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const firstSheetName = workbook.SheetNames[0];
+                            const json = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
+                            showMappingModal(json);
+                        } catch (err) {
+                            alert("Failed to parse Excel file. Ensure it is a valid format.");
+                            hideLoading();
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+            } catch (err) {
+                alert("Error reading file: " + err.message);
+                hideLoading();
+            }
+        }
+
+        let pendingData = null;
+
+        function showMappingModal(data) {
+            if (!data || data.length === 0) {
+                alert("The uploaded file appears to be empty or improperly formatted.");
+                hideLoading();
+                return;
+            }
+
+            pendingData = data;
+            
+            // Extract distinct headers from the first few rows
+            const headers = [];
+            for(let i = 0; i < Math.min(data.length, 5); i++) {
+                Object.keys(data[i]).forEach(k => {
+                    if(!headers.includes(k) && k.trim() !== '') headers.push(k);
+                });
+            }
+
+            // Helper to generate dynamic select dropdowns
+            const createSelectHTML = (id, label, guessKeywords, isGeo = false) => {
+                let html = `
+                <div class="flex flex-col gap-1.5 relative group">
+                    <label class="text-[10px] font-black uppercase tracking-wider truncate pl-1 ${isGeo ? 'text-indigo-600' : 'text-blue-600'}" title="${label}">${label}</label>
+                    <select id="${id}" class="w-full border-slate-200 border rounded-xl p-2 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer bg-slate-50 hover:bg-slate-100 hover:border-slate-300">
+                        <option value="">-- Skip --</option>`;
+                
+                let matched = false;
+                headers.forEach(h => {
+                    const cleanH = h.split('(')[0].trim().toUpperCase();
+                    let isMatch = false;
+                    
+                    if (!matched && guessKeywords) {
+                        // Priority 1: Exact match
+                        isMatch = guessKeywords.some(kw => cleanH === kw.toUpperCase());
+                        
+                        // Priority 2: Partial loose match (only if keyword > 2 chars to avoid short params like 'F' matching 'FILE')
+                        if(!isMatch) {
+                            isMatch = guessKeywords.some(kw => kw.length > 2 && cleanH.includes(kw.toUpperCase()));
+                        }
+                        
+                        if (isMatch) matched = true;
+                    }
+                    html += `<option value="${h}" ${isMatch ? 'selected' : ''}>${h}</option>`;
+                });
+                
+                html += `</select></div>`;
+                return html;
+            };
+
+            // Build Geo Fields mapping
+            let geoHtml = '';
+            geoHtml += createSelectHTML('map_State', 'State', ['STATE'], true);
+            geoHtml += createSelectHTML('map_District', 'District', ['DISTRICT'], true);
+            geoHtml += createSelectHTML('map_Block', 'Block / Tehsil', ['BLOCK', 'TEHSIL', 'TALUKA', 'MANDAL'], true);
+            geoHtml += createSelectHTML('map_Location', 'Location / Village', ['LOCATION', 'VILLAGE', 'CITY', 'HABITATION', 'SITE'], true);
+            document.getElementById('geo-mapping-container').innerHTML = geoHtml;
+
+            // Build Chem Fields mapping (All limits + Na, CO3, HCO3)
+            let chemHtml = '';
+            const allChemParams = [...Object.keys(limits), 'Na', 'CO3', 'HCO3'];
+            allChemParams.forEach(p => {
+                chemHtml += createSelectHTML(`map_${p}`, p, [p.toUpperCase()]);
+            });
+            document.getElementById('chem-mapping-container').innerHTML = chemHtml;
+
+            document.getElementById('column-mapping-modal').classList.remove('hidden');
+            hideLoading();
+        }
+
+        function closeMappingModal() {
+            document.getElementById('column-mapping-modal').classList.add('hidden');
+            pendingData = null;
+            document.getElementById('fileInput').value = ""; // Reset input
+        }
+
+        function confirmMapping() {
+            // Harvest mappings from the UI
+            const mapping = {
+                State: document.getElementById('map_State').value,
+                District: document.getElementById('map_District').value,
+                Block: document.getElementById('map_Block').value,
+                Location: document.getElementById('map_Location').value,
+            };
+            
+            const allChemParams = [...Object.keys(limits), 'Na', 'CO3', 'HCO3'];
+            allChemParams.forEach(p => {
+                const selectElement = document.getElementById(`map_${p}`);
+                if (selectElement) {
+                    mapping[p] = selectElement.value;
+                }
+            });
+
+            document.getElementById('column-mapping-modal').classList.add('hidden');
+            showLoading();
+
+            // Short timeout to allow UI transition to loading state
+            setTimeout(() => {
+                processMappedData(mapping);
+            }, 50);
+        }
+
+        function processMappedData(mapping) {
+            // Apply column mapping dynamically based on user selection
+            rawData = pendingData.map(row => {
+                let normalized = {};
+
+                // Map Geo fields with strict fallback
+                normalized.State = (mapping.State && row[mapping.State] !== undefined && row[mapping.State] !== null) 
+                                   ? toProperCase(String(row[mapping.State])) : "Unknown State";
+                                   
+                normalized.District = (mapping.District && row[mapping.District] !== undefined && row[mapping.District] !== null) 
+                                      ? toProperCase(String(row[mapping.District])) : "Unknown District";
+                                      
+                normalized.Block = (mapping.Block && row[mapping.Block] !== undefined && row[mapping.Block] !== null) 
+                                   ? toProperCase(String(row[mapping.Block])) : "Unknown Block";
+                                   
+                normalized.Location = (mapping.Location && row[mapping.Location] !== undefined && row[mapping.Location] !== null) 
+                                      ? toProperCase(String(row[mapping.Location])) : "Unknown Location";
+
+                // Map Chemical parameters directly from explicit dropdown selections
+                const allChemParams = [...Object.keys(limits), 'Na', 'CO3', 'HCO3'];
+                allChemParams.forEach(p => {
+                    const mappedColName = mapping[p];
+                    if (mappedColName && row[mappedColName] !== undefined && row[mappedColName] !== null && row[mappedColName] !== '') {
+                        normalized[p] = row[mappedColName];
+                    }
+                });
+                
+                // --- Derived Parameters Logic (SAR, RSC) ---
+                const getNum = (v) => { const p = parseFloat(v); return isNaN(p) ? 0 : p; };
+                
+                const ca = getNum(normalized.Ca);
+                const mg = getNum(normalized.Mg);
+                const na = getNum(normalized.Na);
+                const co3 = getNum(normalized.CO3);
+                const hco3 = getNum(normalized.HCO3);
+
+                const ca_meq = ca / 20.04;
+                const mg_meq = mg / 12.15;
+                const na_meq = na / 22.99;
+                const co3_meq = co3 / 30.0;
+                const hco3_meq = hco3 / 61.02;
+
+                if (normalized.SAR === undefined && normalized.Na !== undefined && normalized.Ca !== undefined && normalized.Mg !== undefined) {
+                    if (ca_meq + mg_meq > 0) {
+                        normalized.SAR = na_meq / Math.sqrt((ca_meq + mg_meq) / 2);
+                    } else {
+                        normalized.SAR = 0;
+                    }
+                }
+
+                if (normalized.RSC === undefined && (normalized.CO3 !== undefined || normalized.HCO3 !== undefined) && normalized.Ca !== undefined && normalized.Mg !== undefined) {
+                    normalized.RSC = (co3_meq + hco3_meq) - (ca_meq + mg_meq);
+                }
+
+                return normalized;
+            });
+            
+            pendingData = null; // Clear from memory
+
+            document.getElementById('export-actions').classList.remove('hidden');
+            document.getElementById('filter-panel').classList.remove('hidden');
+            populateStateFilter();
+            populateParamSelector();
+            switchTab(currentTab);
+            hideLoading();
+        }
+
+        function populateStateFilter() {
+            const selector = document.getElementById('stateFilter');
+            const states = [...new Set(rawData.map(d => d.State))].filter(Boolean).sort();
+            selector.innerHTML = '<option value="All">All States</option>';
+            states.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                selector.appendChild(opt);
+            });
+        }
+
+        function updateDistrictFilter() {
+            const state = document.getElementById('stateFilter').value;
+            const selector = document.getElementById('districtFilter');
+            let filteredDistricts;
+            if (state === 'All') {
+                filteredDistricts = [...new Set(rawData.map(d => d.District))].filter(Boolean).sort();
+            } else {
+                filteredDistricts = [...new Set(rawData.filter(d => d.State === state).map(d => d.District))].filter(Boolean).sort();
+            }
+            const currentVal = selector.value;
+            selector.innerHTML = '<option value="All">All Districts</option>';
+            filteredDistricts.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d;
+                opt.textContent = d;
+                if (d === currentVal) opt.selected = true;
+                selector.appendChild(opt);
+            });
+        }
+
+        function updateBlockFilter() {
+            const state = document.getElementById('stateFilter').value;
+            const district = document.getElementById('districtFilter').value;
+            const selector = document.getElementById('blockFilter');
+            
+            let filteredData = rawData;
+            if (state !== 'All') filteredData = filteredData.filter(d => d.State === state);
+            if (district !== 'All') filteredData = filteredData.filter(d => d.District === district);
+            
+            const filteredBlocks = [...new Set(filteredData.map(d => d.Block))].filter(Boolean).sort();
+            
+            const currentVal = selector.value;
+            selector.innerHTML = '<option value="All">All Blocks</option>';
+            filteredBlocks.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                opt.textContent = b;
+                if (b === currentVal) opt.selected = true;
+                selector.appendChild(opt);
+            });
+        }
+
+        function toggleParamDropdown() {
+            document.getElementById('paramDropdownList').classList.toggle('hidden');
+        }
+
+        function populateParamSelector() {
+            const list = document.getElementById('paramDropdownList');
+            list.innerHTML = '';
+            
+            const availableParams = Object.keys(limits).filter(p => rawData.some(row => row.hasOwnProperty(p)));
+            if (availableParams.length === 0) {
+                alert("No recognized chemical parameters found in the dataset headers. Please check your file.");
+                return;
+            }
+
+            const allDiv = document.createElement('div');
+            allDiv.className = "px-4 py-2 border-b border-slate-200 hover:bg-slate-50 flex items-center gap-3 sticky top-0 bg-white z-10 shadow-sm";
+            allDiv.innerHTML = `
+                <input type="checkbox" id="param_all" onchange="toggleAllParams(this)" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer">
+                <label for="param_all" class="text-xs font-bold text-slate-800 cursor-pointer flex-1 select-none">All Parameters</label>
+            `;
+            list.appendChild(allDiv);
+
+            availableParams.forEach(p => {
+                const div = document.createElement('div');
+                div.className = "px-4 py-1.5 hover:bg-slate-50 flex items-center gap-3 transition-colors";
+                div.innerHTML = `
+                    <input type="checkbox" id="param_${p}" value="${p}" onchange="handleParamChange()" class="param-checkbox w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer">
+                    <label for="param_${p}" class="text-xs font-medium text-slate-700 cursor-pointer flex-1 select-none">${p}</label>
+                `;
+                list.appendChild(div);
+            });
+
+            document.getElementById(`param_${availableParams[0]}`).checked = true;
+            handleParamChange();
+        }
+
+        function toggleAllParams(cb) {
+            const checkboxes = document.querySelectorAll('.param-checkbox');
+            checkboxes.forEach(c => c.checked = cb.checked);
+            handleParamChange();
+        }
+
+        function handleParamChange() {
+            const checkboxes = document.querySelectorAll('.param-checkbox:checked');
+            selectedParams = Array.from(checkboxes).map(c => c.value);
+            
+            const allCb = document.getElementById('param_all');
+            const totalCbs = document.querySelectorAll('.param-checkbox').length;
+            
+            if (checkboxes.length === totalCbs && totalCbs > 0) {
+                allCb.checked = true;
+                allCb.indeterminate = false;
+            } else if (checkboxes.length > 0) {
+                allCb.checked = false;
+                allCb.indeterminate = true;
+            } else {
+                allCb.checked = false;
+                allCb.indeterminate = false;
+            }
+
+            const text = document.getElementById('paramDropdownText');
+            if (selectedParams.length === 0) {
+                text.textContent = "Select Parameters";
+            } else if (selectedParams.length === totalCbs) {
+                text.textContent = "All Parameters";
+            } else if (selectedParams.length <= 3) {
+                text.textContent = selectedParams.join(", ");
+            } else {
+                text.textContent = `${selectedParams.length} Parameters Selected`;
+            }
+
+            if (rawData.length > 0) {
+                if (currentTab === 'state') renderStateTable();
+                else if (currentTab === 'district') renderDistrictTable();
+                else if (currentTab === 'block') renderBlockTable();
+            }
+        }
+
+        function renderStateTable() {
+            const container = document.getElementById('tableContainer');
+            if (selectedParams.length === 0) {
+                container.innerHTML = '<div class="flex items-center justify-center h-full"><div class="text-center text-slate-500 font-medium">Please select at least one parameter to view the analysis.</div></div>';
+                return;
+            }
+
+            const selectedState = document.getElementById('stateFilter').value;
+            let states = [...new Set(rawData.map(d => d.State))].filter(Boolean).sort();
+            if (selectedState !== 'All') {
+                states = [selectedState];
+            }
+            
+            let html = `<table id="stateTable" class="w-full text-xs text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 text-slate-500 uppercase text-[9px] font-black tracking-widest">
+                        <th class="p-3 border-b whitespace-nowrap">State</th>
+                        <th class="p-3 border-b whitespace-nowrap">Parameter</th>
+                        <th class="p-3 border-b whitespace-nowrap">Permissible Limit</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">Analyzed Districts</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">Analyzed (n)</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Min</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Max</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Avg</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Std Dev</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">Above Limit</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">% Above Limit</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">Partially Affected Districts</th>
+                        <th class="p-3 border-b">Name(s) Partially Affected Districts </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">`;
+            states.forEach(state => {
+                selectedParams.forEach(param => {
+                    const subset = rawData.filter(d => d.State === state && d[param] !== undefined && d[param] !== null && d[param] !== '');
+                    if (subset.length === 0) return;
+                    
+                    const availableDistrictsCount = [...new Set(subset.map(d => d.District))].filter(Boolean).length;
+                    
+                    // Modified to use the dynamic isExceeding rule function
+                    const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                    
+                    const pct = ((exceeding.length / subset.length) * 100).toFixed(2);
+                    const affectedDistList = [...new Set(exceeding.map(d => d.District))].filter(Boolean).sort();
+                    const affectedDistrictsCount = affectedDistList.length;
+                    const affectedDistrictsNames = affectedDistList.join(", ");
+                    
+                    const stats = calculateStats(subset, param);
+
+                    html += `
+                        <tr class="hover:bg-slate-50 transition-colors group">
+                            <td class="p-3 font-bold text-slate-700 whitespace-nowrap">${state}</td>
+                            <td class="p-3 font-bold text-blue-600 whitespace-nowrap">${param}</td>
+                            <td class="p-3 text-[10px] text-slate-500 font-medium whitespace-nowrap">${(limits[param] + ' ' + (paramUnits[param] || '')).trim()}</td>
+                            <td class="p-3 text-slate-600 text-center">${availableDistrictsCount}</td>
+                            <td class="p-3 text-slate-600 text-center">${subset.length}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.min)}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.max)}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.avg)}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.stdDev)}</td>
+                            <td class="p-3 text-red-600 font-bold text-center">${exceeding.length}</td>
+                            <td class="p-3 font-semibold text-center ${pct > 0 ? 'text-amber-600' : 'text-slate-400'}">${pct}%</td>
+                            <td class="p-3 text-blue-800 font-bold text-center">${affectedDistrictsCount}</td>
+                            <td class="p-3 text-[10px] font-medium text-slate-600 max-w-[150px] truncate" title="${affectedDistrictsNames}">${affectedDistrictsNames || '-'}</td>
+                        </tr>`;
+                });
+            });
+
+            // Add Totals for State Table
+            if (states.length > 0) {
+                selectedParams.forEach(param => {
+                    const subset = rawData.filter(d => states.includes(d.State) && d[param] !== undefined && d[param] !== null && d[param] !== '');
+                    if (subset.length === 0) return;
+                    
+                    const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                    const pct = ((exceeding.length / subset.length) * 100).toFixed(2);
+                    const affectedDistList = [...new Set(exceeding.map(d => d.District))].filter(Boolean);
+                    const totalAvailableDistrictsCount = [...new Set(subset.map(d => d.State + '_' + d.District))].filter(Boolean).length;
+                    
+                    const stats = calculateStats(subset, param);
+                    
+                    html += `
+                        <tr class="bg-blue-100/50 hover:bg-blue-100 transition-colors group border-t-2 border-blue-200">
+                            <td class="p-3 font-black text-slate-800 whitespace-nowrap">TOTAL</td>
+                            <td class="p-3 font-black text-blue-700 whitespace-nowrap">${param}</td>
+                            <td class="p-3 text-[10px] text-slate-600 font-bold whitespace-nowrap">${(limits[param] + ' ' + (paramUnits[param] || '')).trim()}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${totalAvailableDistrictsCount}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${subset.length}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.min)}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.max)}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.avg)}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.stdDev)}</td>
+                            <td class="p-3 text-red-700 font-black text-center">${exceeding.length}</td>
+                            <td class="p-3 font-black text-center ${pct > 0 ? 'text-amber-700' : 'text-slate-600'}">${pct}%</td>
+                            <td class="p-3 text-blue-900 font-black text-center">${affectedDistList.length}</td>
+                            <td class="p-3 text-[10px] font-bold text-slate-700 text-center">-</td>
+                        </tr>`;
+                });
+            }
+
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        function renderDistrictTable() {
+            const container = document.getElementById('tableContainer');
+            if (selectedParams.length === 0) {
+                container.innerHTML = '<div class="flex items-center justify-center h-full"><div class="text-center text-slate-500 font-medium">Please select at least one parameter to view the analysis.</div></div>';
+                return;
+            }
+
+            const selectedState = document.getElementById('stateFilter').value;
+            const selectedDistrict = document.getElementById('districtFilter').value;
+            
+            let filteredData = rawData;
+            if (selectedState !== 'All') filteredData = filteredData.filter(d => d.State === selectedState);
+            if (selectedDistrict !== 'All') filteredData = filteredData.filter(d => d.District === selectedDistrict);
+            const districts = [...new Set(filteredData.map(d => d.District))].filter(Boolean).sort();
+            
+            let html = `<table id="districtTable" class="w-full text-xs text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 text-slate-500 uppercase text-[9px] font-black tracking-widest">
+                        <th class="p-3 border-b whitespace-nowrap">State</th>
+                        <th class="p-3 border-b whitespace-nowrap">District</th>
+                        <th class="p-3 border-b whitespace-nowrap">Parameter</th>
+                        <th class="p-3 border-b whitespace-nowrap">Limit</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">Analyzed</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Min</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Max</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Avg</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Std Dev</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">Above Limit</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">% Above Limit</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">Affected Blocks</th>
+                        <th class="p-3 border-b">Name(s) of Affected Blocks</th>
+                        <th class="p-3 border-b">Name(s) of Affected Locations </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">`;
+                
+            districts.forEach(dist => {
+                selectedParams.forEach(param => {
+                    const limit = limits[param];
+                    const unit = paramUnits[param] || '';
+                    const subset = filteredData.filter(d => d.District === dist && d[param] !== undefined && d[param] !== null && d[param] !== '');
+                    if (subset.length === 0) return;
+                    
+                    const state = subset[0].State;
+                    
+                    // Modified to use the dynamic isExceeding rule function
+                    const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                    
+                    const pct = ((exceeding.length / subset.length) * 100).toFixed(2);
+                    const affectedBlockList = [...new Set(exceeding.map(d => d.Block))].filter(Boolean).sort();
+                    const affectedBlocksCount = affectedBlockList.length;
+                    const affectedBlocksNames = affectedBlockList.join(", ");
+                    
+                    const stats = calculateStats(subset, param);
+
+                    const locationDetails = exceeding
+                        .sort((a, b) => parseFloat(b[param]) - parseFloat(a[param]))
+                        .map(d => `${d.Location} (${formatValue(param, d[param])}${unit ? ' ' + unit : ''})`)
+                        .join(", ");
+
+                    html += `
+                        <tr class="hover:bg-slate-50 transition-colors align-top group">
+                            <td class="p-3 text-slate-500 whitespace-nowrap">${state}</td>
+                            <td class="p-3 font-bold text-slate-800 whitespace-nowrap">${dist}</td>
+                            <td class="p-3 font-bold text-blue-600 whitespace-nowrap">${param}</td>
+                            <td class="p-3 text-[10px] text-slate-500 font-medium whitespace-nowrap">${(limit + ' ' + unit).trim()}</td>
+                            <td class="p-3 text-slate-600 text-center">${subset.length}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.min)}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.max)}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.avg)}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.stdDev)}</td>
+                            <td class="p-3 text-red-600 font-bold text-center">${exceeding.length}</td>
+                            <td class="p-3 font-semibold text-center ${pct > 0 ? 'text-amber-600' : 'text-slate-400'}">${pct}%</td>
+                            <td class="p-3 text-blue-800 font-bold text-center">${affectedBlocksCount}</td>
+                            <td class="p-3 text-[10px] font-medium text-slate-600 max-w-[150px] truncate" title="${affectedBlocksNames}">${affectedBlocksNames || '-'}</td>
+                            <td class="p-3 text-[9px] max-w-[200px] truncate leading-relaxed text-slate-700" title="${locationDetails}">${locationDetails || '-'}</td>
+                        </tr>`;
+                });
+            });
+
+            // Add Totals for District Table
+            if (districts.length > 0) {
+                selectedParams.forEach(param => {
+                    const limit = limits[param];
+                    const unit = paramUnits[param] || '';
+                    const subset = filteredData.filter(d => d[param] !== undefined && d[param] !== null && d[param] !== '');
+                    if (subset.length === 0) return;
+                    
+                    const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                    const pct = ((exceeding.length / subset.length) * 100).toFixed(2);
+                    const affectedBlockList = [...new Set(exceeding.map(d => d.Block))].filter(Boolean);
+                    
+                    const stats = calculateStats(subset, param);
+
+                    html += `
+                        <tr class="bg-blue-100/50 hover:bg-blue-100 transition-colors border-t-2 border-blue-200 group">
+                            <td class="p-3 font-black text-slate-800 whitespace-nowrap">TOTAL</td>
+                            <td class="p-3 font-black text-slate-800 whitespace-nowrap">-</td>
+                            <td class="p-3 font-black text-blue-700 whitespace-nowrap">${param}</td>
+                            <td class="p-3 text-[10px] text-slate-600 font-bold whitespace-nowrap">${(limit + ' ' + unit).trim()}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${subset.length}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.min)}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.max)}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.avg)}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.stdDev)}</td>
+                            <td class="p-3 text-red-700 font-black text-center">${exceeding.length}</td>
+                            <td class="p-3 font-black text-center ${pct > 0 ? 'text-amber-700' : 'text-slate-600'}">${pct}%</td>
+                            <td class="p-3 text-blue-900 font-black text-center">${affectedBlockList.length}</td>
+                            <td class="p-3 text-[10px] font-bold text-slate-700 text-center">-</td>
+                            <td class="p-3 text-[10px] font-bold text-slate-700 text-center">-</td>
+                        </tr>`;
+                });
+            }
+
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        function renderBlockTable() {
+            const container = document.getElementById('tableContainer');
+            if (selectedParams.length === 0) {
+                container.innerHTML = '<div class="flex items-center justify-center h-full"><div class="text-center text-slate-500 font-medium">Please select at least one parameter to view the analysis.</div></div>';
+                return;
+            }
+
+            const selectedState = document.getElementById('stateFilter').value;
+            const selectedDistrict = document.getElementById('districtFilter').value;
+            const selectedBlock = document.getElementById('blockFilter').value;
+            
+            let filteredData = rawData;
+            if (selectedState !== 'All') filteredData = filteredData.filter(d => d.State === selectedState);
+            if (selectedDistrict !== 'All') filteredData = filteredData.filter(d => d.District === selectedDistrict);
+            if (selectedBlock !== 'All') filteredData = filteredData.filter(d => d.Block === selectedBlock);
+            
+            const blocks = [];
+            const blockSet = new Set();
+            filteredData.forEach(d => {
+                if(d.Block) {
+                    const key = `${d.State}_${d.District}_${d.Block}`;
+                    if(!blockSet.has(key)) {
+                        blockSet.add(key);
+                        blocks.push({ State: d.State, District: d.District, Block: d.Block });
+                    }
+                }
+            });
+            
+            blocks.sort((a, b) => {
+                if (a.State !== b.State) return a.State.localeCompare(b.State);
+                if (a.District !== b.District) return a.District.localeCompare(b.District);
+                return a.Block.localeCompare(b.Block);
+            });
+            
+            let html = `<table id="blockTable" class="w-full text-xs text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 text-slate-500 uppercase text-[9px] font-black tracking-widest">
+                        <th class="p-3 border-b whitespace-nowrap">State</th>
+                        <th class="p-3 border-b whitespace-nowrap">District</th>
+                        <th class="p-3 border-b whitespace-nowrap">Block</th>
+                        <th class="p-3 border-b whitespace-nowrap">Parameter</th>
+                        <th class="p-3 border-b whitespace-nowrap">Limit</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">Analyzed</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Min</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Max</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Avg</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap bg-blue-50/50">Std Dev</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">Above Limit</th>
+                        <th class="p-3 border-b text-center whitespace-nowrap">% Above Limit</th>
+                        <th class="p-3 border-b">Name(s) of Affected Locations </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">`;
+                
+            blocks.forEach(bInfo => {
+                selectedParams.forEach(param => {
+                    const limit = limits[param];
+                    const unit = paramUnits[param] || '';
+                    const subset = filteredData.filter(d => d.State === bInfo.State && d.District === bInfo.District && d.Block === bInfo.Block && d[param] !== undefined && d[param] !== null && d[param] !== '');
+                    if (subset.length === 0) return;
+                    
+                    // Modified to use the dynamic isExceeding rule function
+                    const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                    
+                    const pct = ((exceeding.length / subset.length) * 100).toFixed(2);
+                    
+                    const stats = calculateStats(subset, param);
+
+                    const locationDetails = exceeding
+                        .sort((a, b) => parseFloat(b[param]) - parseFloat(a[param]))
+                        .map(d => `${d.Location} (${formatValue(param, d[param])}${unit ? ' ' + unit : ''})`)
+                        .join(", ");
+
+                    html += `
+                        <tr class="hover:bg-slate-50 transition-colors align-top group">
+                            <td class="p-3 text-slate-500 whitespace-nowrap">${bInfo.State}</td>
+                            <td class="p-3 font-medium text-slate-600 whitespace-nowrap">${bInfo.District}</td>
+                            <td class="p-3 font-bold text-slate-800 whitespace-nowrap">${bInfo.Block}</td>
+                            <td class="p-3 font-bold text-blue-600 whitespace-nowrap">${param}</td>
+                            <td class="p-3 text-[10px] text-slate-500 font-medium whitespace-nowrap">${(limit + ' ' + unit).trim()}</td>
+                            <td class="p-3 text-slate-600 text-center">${subset.length}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.min)}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.max)}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.avg)}</td>
+                            <td class="p-3 text-slate-600 text-center bg-blue-50/20">${formatValue(param, stats.stdDev)}</td>
+                            <td class="p-3 text-red-600 font-bold text-center">${exceeding.length}</td>
+                            <td class="p-3 font-semibold text-center ${pct > 0 ? 'text-amber-600' : 'text-slate-400'}">${pct}%</td>
+                            <td class="p-3 text-[9px] max-w-[200px] truncate leading-relaxed text-slate-700" title="${locationDetails}">${locationDetails || '-'}</td>
+                        </tr>`;
+                });
+            });
+
+            // Add Totals for Block Table
+            if (blocks.length > 0) {
+                selectedParams.forEach(param => {
+                    const limit = limits[param];
+                    const unit = paramUnits[param] || '';
+                    const subset = filteredData.filter(d => d[param] !== undefined && d[param] !== null && d[param] !== '');
+                    if (subset.length === 0) return;
+                    
+                    const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                    const pct = ((exceeding.length / subset.length) * 100).toFixed(2);
+                    
+                    const stats = calculateStats(subset, param);
+
+                    html += `
+                        <tr class="bg-blue-100/50 hover:bg-blue-100 transition-colors border-t-2 border-blue-200 group">
+                            <td class="p-3 font-black text-slate-800 whitespace-nowrap">TOTAL</td>
+                            <td class="p-3 font-black text-slate-800 whitespace-nowrap">-</td>
+                            <td class="p-3 font-black text-slate-800 whitespace-nowrap">-</td>
+                            <td class="p-3 font-black text-blue-700 whitespace-nowrap">${param}</td>
+                            <td class="p-3 text-[10px] text-slate-600 font-bold whitespace-nowrap">${(limit + ' ' + unit).trim()}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${subset.length}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.min)}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.max)}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.avg)}</td>
+                            <td class="p-3 font-bold text-slate-800 text-center">${formatValue(param, stats.stdDev)}</td>
+                            <td class="p-3 text-red-700 font-black text-center">${exceeding.length}</td>
+                            <td class="p-3 font-black text-center ${pct > 0 ? 'text-amber-700' : 'text-slate-600'}">${pct}%</td>
+                            <td class="p-3 text-[10px] font-bold text-slate-700 text-center">-</td>
+                        </tr>`;
+                });
+            }
+
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        function exportToExcel() {
+            if (rawData.length === 0 || selectedParams.length === 0) return;
+            
+            const wb = XLSX.utils.book_new();
+            let exportData = [];
+            let fileName = "";
+            let sheetName = "";
+
+            if (currentTab === 'state') {
+                const selectedState = document.getElementById('stateFilter').value;
+                let states = [...new Set(rawData.map(d => d.State))].filter(Boolean).sort();
+                if (selectedState !== 'All') {
+                    states = [selectedState];
+                }
+
+                exportData.push([
+                    "State", 
+                    "Parameter", 
+                    "Permissible Limit", 
+                    "No. of Districts Analysed",
+                    "No. of Samples Analysed", 
+                    "Minimum",
+                    "Maximum",
+                    "Average",
+                    "Std. Deviation",
+                    "No. of Samples above Permissible Limit", 
+                    "% of Samples above Permissible Limit", 
+                    "No. of Partially Affected Districts", 
+                    "Name(s) Partially Affected Districts"
+                ]);
+
+                states.forEach(state => {
+                    selectedParams.forEach(param => {
+                        const subset = rawData.filter(d => d.State === state && d[param] !== undefined && d[param] !== null && d[param] !== '');
+                        if (subset.length === 0) return;
+                        
+                        const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                        const pct = (exceeding.length / subset.length) * 100;
+                        const affectedDistList = [...new Set(exceeding.map(d => d.District))].filter(Boolean).sort();
+                        const availableDistrictsCount = [...new Set(subset.map(d => d.District))].filter(Boolean).length;
+                        
+                        const stats = calculateStats(subset, param);
+
+                        exportData.push([
+                            state,
+                            param,
+                            (limits[param] + ' ' + (paramUnits[param] || '')).trim(),
+                            availableDistrictsCount,
+                            subset.length,
+                            formatForExcel(param, stats.min),
+                            formatForExcel(param, stats.max),
+                            formatForExcel(param, stats.avg),
+                            formatForExcel(param, stats.stdDev),
+                            exceeding.length,
+                            Number(pct.toFixed(2)),
+                            affectedDistList.length,
+                            affectedDistList.join(", ")
+                        ]);
+                    });
+                });
+
+                // Add Export Totals
+                if (states.length > 0) {
+                    selectedParams.forEach(param => {
+                        const subset = rawData.filter(d => states.includes(d.State) && d[param] !== undefined && d[param] !== null && d[param] !== '');
+                        if (subset.length === 0) return;
+                        
+                        const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                        const pct = (exceeding.length / subset.length) * 100;
+                        const affectedDistList = [...new Set(exceeding.map(d => d.District))].filter(Boolean);
+                        const totalAvailableDistrictsCount = [...new Set(subset.map(d => d.State + '_' + d.District))].filter(Boolean).length;
+                        
+                        const stats = calculateStats(subset, param);
+
+                        exportData.push([
+                            "TOTAL",
+                            param,
+                            (limits[param] + ' ' + (paramUnits[param] || '')).trim(),
+                            totalAvailableDistrictsCount,
+                            subset.length,
+                            formatForExcel(param, stats.min),
+                            formatForExcel(param, stats.max),
+                            formatForExcel(param, stats.avg),
+                            formatForExcel(param, stats.stdDev),
+                            exceeding.length,
+                            Number(pct.toFixed(2)),
+                            affectedDistList.length,
+                            "-"
+                        ]);
+                    });
+                }
+
+                fileName = "State_Summary_WQ.xlsx";
+                sheetName = "State Summary";
+
+            } else if (currentTab === 'district') {
+                const selectedState = document.getElementById('stateFilter').value;
+                const selectedDistrict = document.getElementById('districtFilter').value;
+
+                exportData.push([
+                    "State", 
+                    "District", 
+                    "Parameter",
+                    "Permissible Limit",
+                    "No of Samples Analysed", 
+                    "Minimum",
+                    "Maximum",
+                    "Average",
+                    "Std. Deviation",
+                    "No. of Samples Above Permissible Limit", 
+                    "% of Samples above Permissible Limit", 
+                    "No. of Partially Affected Blocks", 
+                    "Name(s) of Partially Affected Blocks", 
+                    "Name(s) of Affected Locations"
+                ]);
+
+                let filteredData = rawData;
+                if (selectedState !== 'All') filteredData = filteredData.filter(d => d.State === selectedState);
+                if (selectedDistrict !== 'All') filteredData = filteredData.filter(d => d.District === selectedDistrict);
+                const districts = [...new Set(filteredData.map(d => d.District))].filter(Boolean).sort();
+
+                districts.forEach(dist => {
+                    selectedParams.forEach(param => {
+                        const limit = limits[param];
+                        const unit = paramUnits[param] || '';
+                        const subset = filteredData.filter(d => d.District === dist && d[param] !== undefined && d[param] !== null && d[param] !== '');
+                        if (subset.length === 0) return;
+                        
+                        const state = subset[0].State;
+                        
+                        const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                        const pct = (exceeding.length / subset.length) * 100;
+                        const affectedBlockList = [...new Set(exceeding.map(d => d.Block))].filter(Boolean).sort();
+                        
+                        const stats = calculateStats(subset, param);
+
+                        const locationDetails = exceeding
+                            .sort((a, b) => parseFloat(b[param]) - parseFloat(a[param]))
+                            .map(d => `${d.Location} (${formatValue(param, d[param])}${unit ? ' ' + unit : ''})`)
+                            .join(", ");
+
+                        exportData.push([
+                            state,
+                            dist,
+                            param,
+                            (limit + ' ' + unit).trim(),
+                            subset.length,
+                            formatForExcel(param, stats.min),
+                            formatForExcel(param, stats.max),
+                            formatForExcel(param, stats.avg),
+                            formatForExcel(param, stats.stdDev),
+                            exceeding.length,
+                            Number(pct.toFixed(2)),
+                            affectedBlockList.length,
+                            affectedBlockList.join(", "),
+                            locationDetails
+                        ]);
+                    });
+                });
+
+                // Add Export Totals
+                if (districts.length > 0) {
+                    selectedParams.forEach(param => {
+                        const limit = limits[param];
+                        const unit = paramUnits[param] || '';
+                        const subset = filteredData.filter(d => d[param] !== undefined && d[param] !== null && d[param] !== '');
+                        if (subset.length === 0) return;
+                        
+                        const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                        const pct = (exceeding.length / subset.length) * 100;
+                        const affectedBlockList = [...new Set(exceeding.map(d => d.Block))].filter(Boolean);
+                        
+                        const stats = calculateStats(subset, param);
+
+                        exportData.push([
+                            "TOTAL",
+                            "-",
+                            param,
+                            (limit + ' ' + unit).trim(),
+                            subset.length,
+                            formatForExcel(param, stats.min),
+                            formatForExcel(param, stats.max),
+                            formatForExcel(param, stats.avg),
+                            formatForExcel(param, stats.stdDev),
+                            exceeding.length,
+                            Number(pct.toFixed(2)),
+                            affectedBlockList.length,
+                            "-",
+                            "-"
+                        ]);
+                    });
+                }
+
+                fileName = `District_Analysis_MultiParam.xlsx`;
+                sheetName = "District Analysis";
+            } else if (currentTab === 'block') {
+                const selectedState = document.getElementById('stateFilter').value;
+                const selectedDistrict = document.getElementById('districtFilter').value;
+                const selectedBlock = document.getElementById('blockFilter').value;
+
+                exportData.push([
+                    "State", 
+                    "District",
+                    "Block",
+                    "Parameter",
+                    "Permissible Limit",
+                    "No of Samples Analysed", 
+                    "Minimum",
+                    "Maximum",
+                    "Average",
+                    "Std. Deviation",
+                    "No. of Samples Above Permissible Limit", 
+                    "% of Samples above Permissible Limit", 
+                    "Name(s) of Affected Locations"
+                ]);
+
+                let filteredData = rawData;
+                if (selectedState !== 'All') filteredData = filteredData.filter(d => d.State === selectedState);
+                if (selectedDistrict !== 'All') filteredData = filteredData.filter(d => d.District === selectedDistrict);
+                if (selectedBlock !== 'All') filteredData = filteredData.filter(d => d.Block === selectedBlock);
+                
+                const blocks = [];
+                const blockSet = new Set();
+                filteredData.forEach(d => {
+                    if(d.Block) {
+                        const key = `${d.State}_${d.District}_${d.Block}`;
+                        if(!blockSet.has(key)) {
+                            blockSet.add(key);
+                            blocks.push({ State: d.State, District: d.District, Block: d.Block });
+                        }
+                    }
+                });
+
+                blocks.sort((a, b) => {
+                    if (a.State !== b.State) return a.State.localeCompare(b.State);
+                    if (a.District !== b.District) return a.District.localeCompare(b.District);
+                    return a.Block.localeCompare(b.Block);
+                });
+
+                blocks.forEach(bInfo => {
+                    selectedParams.forEach(param => {
+                        const limit = limits[param];
+                        const unit = paramUnits[param] || '';
+                        const subset = filteredData.filter(d => d.State === bInfo.State && d.District === bInfo.District && d.Block === bInfo.Block && d[param] !== undefined && d[param] !== null && d[param] !== '');
+                        if (subset.length === 0) return;
+                        
+                        const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                        const pct = (exceeding.length / subset.length) * 100;
+                        const stats = calculateStats(subset, param);
+
+                        const locationDetails = exceeding
+                            .sort((a, b) => parseFloat(b[param]) - parseFloat(a[param]))
+                            .map(d => `${d.Location} (${formatValue(param, d[param])}${unit ? ' ' + unit : ''})`)
+                            .join(", ");
+
+                        exportData.push([
+                            bInfo.State,
+                            bInfo.District,
+                            bInfo.Block,
+                            param,
+                            (limit + ' ' + unit).trim(),
+                            subset.length,
+                            formatForExcel(param, stats.min),
+                            formatForExcel(param, stats.max),
+                            formatForExcel(param, stats.avg),
+                            formatForExcel(param, stats.stdDev),
+                            exceeding.length,
+                            Number(pct.toFixed(2)),
+                            locationDetails
+                        ]);
+                    });
+                });
+
+                // Add Export Totals
+                if (blocks.length > 0) {
+                    selectedParams.forEach(param => {
+                        const limit = limits[param];
+                        const unit = paramUnits[param] || '';
+                        const subset = filteredData.filter(d => d[param] !== undefined && d[param] !== null && d[param] !== '');
+                        if (subset.length === 0) return;
+                        
+                        const exceeding = subset.filter(d => isExceeding(param, d[param]));
+                        const pct = (exceeding.length / subset.length) * 100;
+                        const stats = calculateStats(subset, param);
+
+                        exportData.push([
+                            "TOTAL",
+                            "-",
+                            "-",
+                            param,
+                            (limit + ' ' + unit).trim(),
+                            subset.length,
+                            formatForExcel(param, stats.min),
+                            formatForExcel(param, stats.max),
+                            formatForExcel(param, stats.avg),
+                            formatForExcel(param, stats.stdDev),
+                            exceeding.length,
+                            Number(pct.toFixed(2)),
+                            "-"
+                        ]);
+                    });
+                }
+
+                fileName = `Block_Analysis_MultiParam.xlsx`;
+                sheetName = "Block Analysis";
+            }
+
+            const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+            // 1. Auto-adjust Column Widths based on content
+            const colWidths = [];
+            exportData.forEach((row) => {
+                row.forEach((cell, colIndex) => {
+                    const cellValue = cell !== null && cell !== undefined ? cell.toString() : "";
+                    const width = Math.min(Math.max(cellValue.length, 12), 50); 
+                    if (!colWidths[colIndex] || colWidths[colIndex].wch < width) {
+                        colWidths[colIndex] = { wch: width + 2 }; 
+                    }
+                });
+            });
+            ws['!cols'] = colWidths;
+
+            // 2. Apply Custom Styles
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!ws[cellRef]) continue;
+
+                    const isHeader = (R === 0);
+                    const isTotal = (ws[XLSX.utils.encode_cell({ r: R, c: 0 })] && ws[XLSX.utils.encode_cell({ r: R, c: 0 })].v === "TOTAL");
+                    
+                    ws[cellRef].s = {
+                        font: {
+                            name: "Times New Roman",
+                            sz: 12,
+                            bold: isHeader || isTotal,
+                            color: isHeader ? { rgb: "FFFFFF" } : { rgb: "000000" }
+                        },
+                        fill: isHeader ? { fgColor: { rgb: "000000" } } : (isTotal ? { fgColor: { rgb: "E2E8F0" } } : undefined),
+                        border: {
+                            top: { style: "thin", color: { rgb: "000000" } },
+                            bottom: { style: "thin", color: { rgb: "000000" } },
+                            left: { style: "thin", color: { rgb: "000000" } },
+                            right: { style: "thin", color: { rgb: "000000" } }
+                        },
+                        alignment: {
+                            vertical: "center",
+                            horizontal: isHeader ? "center" : "left",
+                            wrapText: true
+                        }
+                    };
+                }
+            }
+
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            XLSX.writeFile(wb, fileName);
+        }
+    </script>
+</body>
+</html>

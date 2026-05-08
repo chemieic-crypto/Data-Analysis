@@ -1,0 +1,1952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USSL & Piper Diagram Analysis</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {}
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- html2canvas for HD Graph Downloads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Leaflet CSS & JS for Mapping -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.4); }
+        
+        select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+        /* Style tweaks for map popup readability */
+        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 4px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2); }
+        .leaflet-popup-content { margin: 10px 12px; }
+    </style>
+</head>
+<body class="transition-colors duration-500 antialiased bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useRef, useCallback } = React;
+
+        const EQ_WEIGHTS = {
+            Ca: 20.04, Mg: 12.15, Na: 22.99, K: 39.10,
+            Cl: 35.45, SO4: 48.03, HCO3: 61.02, CO3: 30.00
+        };
+
+        const INITIAL_FACIES_NAMES = {
+            "Ca-Cl Type": "Calcium Chloride type",
+            "Ca-Mg-HCO3 Type": "Ca-Mg Bicarbonate type",
+            "Na-Cl Type": "Sodium Chloride type",
+            "Na-HCO3 Type": "Sodium Bicarbonate type",
+            "Mixed Type A": "Mixed Type A",
+            "Mixed Type B": "Mixed Type B",
+            "Unknown": "Unknown"
+        };
+
+        const INITIAL_FACIES_COLORS = {
+            "Ca-Cl Type": "#fef08a",
+            "Ca-Mg-HCO3 Type": "#d8b4e2",
+            "Na-Cl Type": "#fbcfe8",
+            "Na-HCO3 Type": "#7dd3fc",
+            "Mixed Type A": "#bbf7d0",
+            "Mixed Type B": "#fca5a5",
+            "Unknown": "#8b5cf6"
+        };
+
+        const INITIAL_USSL_COLORS = {
+            "C1-S1": "#22c55e", "C2-S1": "#84cc16", "C3-S1": "#eab308", "C4-S1": "#f97316",
+            "C1-S2": "#84cc16", "C2-S2": "#eab308", "C3-S2": "#f97316", "C4-S2": "#ef4444",
+            "C1-S3": "#eab308", "C2-S3": "#f97316", "C3-S3": "#ef4444", "C4-S3": "#7f1d1d",
+            "C1-S4": "#f97316", "C2-S4": "#ef4444", "C3-S4": "#7f1d1d", "C4-S4": "#450a0a",
+            "Unknown": "#94a3b8"
+        };
+
+        const getUSSLSalinity = (ec) => {
+            if (!ec || ec < 250) return "C1";
+            if (ec < 750) return "C2";
+            if (ec < 2250) return "C3";
+            return "C4";
+        };
+
+        const getUSSLSodium = (ec, sar) => {
+            if (!ec || ec <= 0) return "S1";
+            const logEC = Math.log10(ec);
+            const s1s2 = 18.8515824 - 4.4257912 * logEC;
+            const s2s3 = 31.4031902 - 6.6827811 * logEC;
+            const s3s4 = 43.675205 - 8.8394965 * logEC;
+            if (sar < s1s2) return "S1";
+            if (sar < s2s3) return "S2";
+            if (sar < s3s4) return "S3";
+            return "S4";
+        };
+
+        const COLUMN_DEFINITIONS = [
+            { id: 'State', group: 'Location', label: 'State Name', aliases: ['state', 'st'] },
+            { id: 'District', group: 'Location', label: 'District Name', aliases: ['district', 'dist'] },
+            { id: 'Block', group: 'Location', label: 'Block / Tehsil', aliases: ['block', 'tehsil', 'taluka'] },
+            { id: 'Location', group: 'Location', label: 'Site Location Name', aliases: ['location', 'village', 'site', 'name'] },
+            { id: 'Lat', group: 'Location', label: 'Latitude', aliases: ['latitude', 'lat', 'y'] },
+            { id: 'Lng', group: 'Location', label: 'Longitude', aliases: ['longitude', 'long', 'lng', 'x'] },
+            
+            { id: 'EC', group: 'Chemistry', label: 'EC (μS/cm)', aliases: ['ec', 'electrical conductivity', 'spc', 'conductivity'] },
+            { id: 'TDS', group: 'Chemistry', label: 'TDS (mg/L)', aliases: ['tds', 'total dissolved solids'] },
+            { id: 'Ca', group: 'Chemistry', label: 'Calcium (Ca)', aliases: ['ca', 'calcium'] },
+            { id: 'Mg', group: 'Chemistry', label: 'Magnesium (Mg)', aliases: ['mg', 'magnesium'] },
+            { id: 'Na', group: 'Chemistry', label: 'Sodium (Na)', aliases: ['na', 'sodium'] },
+            { id: 'K', group: 'Chemistry', label: 'Potassium (K)', aliases: ['k', 'potassium'] },
+            { id: 'Cl', group: 'Chemistry', label: 'Chloride (Cl)', aliases: ['cl', 'chloride'] },
+            { id: 'SO4', group: 'Chemistry', label: 'Sulphate (SO4)', aliases: ['so4', 'sulphate', 'sulfate'] },
+            { id: 'HCO3', group: 'Chemistry', label: 'Bicarbonate (HCO3)', aliases: ['hco3', 'bicarbonate'] },
+            { id: 'CO3', group: 'Chemistry', label: 'Carbonate (CO3)', aliases: ['co3', 'carbonate'] },
+
+            { id: 'Source', group: 'Metadata', label: 'Source Type', aliases: ['source', 'type'] },
+            { id: 'Season', group: 'Metadata', label: 'Season / Year', aliases: ['season', 'period', 'year'] },
+        ];
+
+        const downloadChartHD = async (elementId, filename) => {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            try {
+                const canvas = await html2canvas(el, {
+                    scale: 3, 
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    useCORS: true
+                });
+                const link = document.createElement('a');
+                link.download = `${filename}_${Date.now()}.jpeg`;
+                link.href = canvas.toDataURL('image/jpeg', 1.0);
+                link.click();
+            } catch (err) {
+                console.error("HD Download failed", err);
+            }
+        };
+
+        const LabelEditor = ({ config, onChange, onClose }) => {
+            if (!config) return null;
+            return (
+                <div className="absolute z-[100] flex flex-wrap items-center gap-3 bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-xl shadow-slate-900/10 animate-fade-in" style={{top: '16px', left: '50%', transform: 'translateX(-50%)'}}>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest pl-1">Text</label>
+                        <input type="text" value={config.text} onChange={(e) => onChange({...config, text: e.target.value})} className="text-xs font-bold text-slate-700 px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white min-w-[140px]" />
+                    </div>
+                    <div className="flex flex-col gap-1 w-20">
+                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest pl-1">Size</label>
+                        <input type="number" step="0.5" value={config.size} onChange={(e) => onChange({...config, size: parseFloat(e.target.value) || 12})} className="text-xs font-bold text-slate-700 px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white" />
+                    </div>
+                    <div className="flex flex-col gap-1 w-14">
+                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest pl-1">Color</label>
+                        <div className="w-full h-[34px] rounded-xl border border-slate-200 overflow-hidden relative shadow-sm">
+                            <input type="color" value={config.color} onChange={(e) => onChange({...config, color: e.target.value})} className="absolute -inset-4 w-20 h-20 cursor-pointer" />
+                        </div>
+                    </div>
+                    <div className="flex gap-1.5 items-end pb-0.5 ml-1">
+                        <button onClick={() => onChange({...config, isBold: !config.isBold})} className={`w-[34px] h-[34px] flex items-center justify-center rounded-xl transition-all shadow-sm ${config.isBold ? 'bg-slate-800 text-white border border-slate-800' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`} title="Bold"><b className="font-serif text-sm">B</b></button>
+                        <button onClick={() => onChange({...config, isItalic: !config.isItalic})} className={`w-[34px] h-[34px] flex items-center justify-center rounded-xl transition-all shadow-sm ${config.isItalic ? 'bg-slate-800 text-white border border-slate-800' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`} title="Italic"><i className="font-serif text-sm">I</i></button>
+                    </div>
+                    <div className="h-8 w-px bg-slate-200 mx-1"></div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-rose-500 transition-colors p-1" title="Close Editor">
+                        <i className="ph ph-x-circle text-[28px]"></i>
+                    </button>
+                </div>
+            );
+        };
+
+        const PiperPlot = React.memo(({ data, faciesColors, pointColors, pointSizes, getPointKey, faciesNames, stateHeader }) => {
+            const [titleConfig, setTitleConfig] = useState({ text: "Piper Trilinear Diagram", size: 14, color: "#64748b", isBold: true, isItalic: false });
+            const [editingTitle, setEditingTitle] = useState(false);
+            
+            const SQRT3 = Math.sqrt(3);
+            const H = 100 * SQRT3 / 2;
+            
+            const tx = (x) => x + 40;
+            const ty = (y) => 230 - y;
+
+            const gridLineColor = '#e2e8f0';
+            const frameColor = '#1f2937';
+            
+            const defaultLabels = {
+                ca: { text: "Ca²⁺", x: tx(-4), y: ty(-4), align: "end", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
+                nak: { text: "Na⁺ + K⁺", x: tx(104), y: ty(-4), align: "start", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
+                mg: { text: "Mg²⁺", x: tx(50), y: ty(H+5), align: "middle", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
+                hco3: { text: "HCO₃⁻ + CO₃²⁻", x: tx(116), y: ty(-4), align: "end", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
+                cl: { text: "Cl⁻", x: tx(224), y: ty(-4), align: "start", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
+                so4: { text: "SO₄²⁻", x: tx(170), y: ty(H+5), align: "middle", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
+                diamondL: { text: "SO₄²⁻ + Cl⁻", x: tx(72), y: ty(158), align: "middle", rotate: -60, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
+                diamondR: { text: "Ca²⁺ + Mg²⁺", x: tx(148), y: ty(158), align: "middle", rotate: 60, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
+                cations: { text: "CATIONS", x: tx(50), y: ty(-28), align: "middle", rotate: 0, fontSize: 8, color: "#64748b", isBold: true, isItalic: false },
+                anions: { text: "ANIONS", x: tx(170), y: ty(-28), align: "middle", rotate: 0, fontSize: 8, color: "#64748b", isBold: true, isItalic: false },
+                meq: { text: "% meq/l", x: tx(110), y: ty(-25), align: "middle", rotate: 0, fontSize: 6, color: "#64748b", isBold: true, isItalic: false }
+            };
+            const [labels, setLabels] = useState(defaultLabels);
+            const [selectedLabel, setSelectedLabel] = useState(null);
+            
+            const svgRef = useRef(null);
+            const [draggedLabel, setDraggedLabel] = useState(null);
+            const [dragOffset, setDragOffset] = useState({x: 0, y: 0});
+
+            const handlePointerDown = (e, key) => {
+                e.stopPropagation();
+                setSelectedLabel(key);
+                setEditingTitle(false);
+                if (!svgRef.current) return;
+                const pt = svgRef.current.createSVGPoint();
+                pt.x = e.clientX;
+                pt.y = e.clientY;
+                const svgP = pt.matrixTransform(svgRef.current.getScreenCTM().inverse());
+                setDragOffset({ x: labels[key].x - svgP.x, y: labels[key].y - svgP.y });
+                setDraggedLabel(key);
+            };
+
+            const handlePointerMove = (e) => {
+                if (!draggedLabel || !svgRef.current) return;
+                e.preventDefault();
+                const pt = svgRef.current.createSVGPoint();
+                pt.x = e.clientX;
+                pt.y = e.clientY;
+                const svgP = pt.matrixTransform(svgRef.current.getScreenCTM().inverse());
+                setLabels(prev => ({ ...prev, [draggedLabel]: { ...prev[draggedLabel], x: svgP.x + dragOffset.x, y: svgP.y + dragOffset.y } }));
+            };
+
+            const handlePointerUp = () => setDraggedLabel(null);
+
+            const grids = [];
+            for (let i = 20; i < 100; i += 20) {
+                const y = (i * SQRT3) / 2;
+                const strokeProps = { stroke: gridLineColor, strokeDasharray: "2 2", strokeWidth: "0.8", fill: "none" };
+                grids.push(<line key={`c1-${i}`} x1={tx(0.5*i)} y1={ty(y)} x2={tx(100-0.5*i)} y2={ty(y)} {...strokeProps} />);
+                grids.push(<line key={`c2-${i}`} x1={tx(i)} y1={ty(0)} x2={tx(50+0.5*i)} y2={ty((100-i)*SQRT3/2)} {...strokeProps} />);
+                grids.push(<line key={`c3-${i}`} x1={tx(100-i)} y1={ty(0)} x2={tx(0.5*(100-i))} y2={ty((100-i)*SQRT3/2)} {...strokeProps} />);
+                grids.push(<line key={`a1-${i}`} x1={tx(120+0.5*i)} y1={ty(y)} x2={tx(220-0.5*i)} y2={ty(y)} {...strokeProps} />);
+                grids.push(<line key={`a2-${i}`} x1={tx(120+i)} y1={ty(0)} x2={tx(170+0.5*i)} y2={ty((100-i)*SQRT3/2)} {...strokeProps} />);
+                grids.push(<line key={`a3-${i}`} x1={tx(220-i)} y1={ty(0)} x2={tx(120+0.5*(100-i))} y2={ty((100-i)*SQRT3/2)} {...strokeProps} />);
+                grids.push(<line key={`d1-${i}`} x1={tx(110-0.5*i)} y1={ty(10*SQRT3+0.5*i*SQRT3)} x2={tx(160-0.5*i)} y2={ty(60*SQRT3+0.5*i*SQRT3)} {...strokeProps} />);
+                grids.push(<line key={`d2-${i}`} x1={tx(110+0.5*i)} y1={ty(10*SQRT3+0.5*i*SQRT3)} x2={tx(60+0.5*i)} y2={ty(60*SQRT3+0.5*i*SQRT3)} {...strokeProps} />);
+            }
+
+            const renderedPoints = useMemo(() => {
+                return data.map((d, i) => {
+                    if (d._calc.facies === "Unknown" || !d._calc.hasFacies) return null;
+
+                    const ca = d._calc.meqPerc.Ca || 0, mg = d._calc.meqPerc.Mg || 0, nak = (d._calc.meqPerc.Na || 0) + (d._calc.meqPerc.K || 0);
+                    const cl = d._calc.meqPerc.Cl || 0, so4 = d._calc.meqPerc.SO4 || 0, hco3 = (d._calc.meqPerc.HCO3 || 0) + (d._calc.meqPerc.CO3 || 0);
+
+                    if ((ca+mg+nak) === 0 || (cl+so4+hco3) === 0) return null;
+
+                    const xc = nak + 0.5 * mg, yc = (mg * SQRT3) / 2;
+                    const xa = 120 + cl + 0.5 * so4, ya = (so4 * SQRT3) / 2;
+                    const xd = 0.5 * (xa + xc) + (ya - yc) / (2 * SQRT3), yd = SQRT3 * (xd - xc) + yc;
+
+                    const key = getPointKey(d);
+                    const color = pointColors[key] || '#3b82f6';
+                    const radius = pointSizes ? (pointSizes[key] || 1.0) : 1.0;
+                    const stateStr = stateHeader ? d[stateHeader] : (d.State || d.STATE);
+                    const tip = `${d._calc.locName}\nFacies: ${d._calc.facies}` + (stateStr ? `\nState: ${stateStr}` : '');
+
+                    return (
+                        <g key={i} className="cursor-pointer">
+                            <circle cx={tx(xc)} cy={ty(yc)} r={radius} fill={color} fillOpacity="0.95" stroke="none" className="transition-all hover:opacity-100" title={tip} />
+                            <circle cx={tx(xa)} cy={ty(ya)} r={radius} fill={color} fillOpacity="0.95" stroke="none" className="transition-all hover:opacity-100" title={tip} />
+                            <circle cx={tx(xd)} cy={ty(yd)} r={radius} fill={color} fillOpacity="0.95" stroke="none" className="transition-all hover:opacity-100" title={tip} />
+                        </g>
+                    );
+                });
+            }, [data, pointColors, pointSizes, getPointKey, stateHeader]);
+
+            return (
+                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 flex flex-col items-center w-full shadow-lg transition-colors duration-300 relative group">
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
+                        <button onClick={() => downloadChartHD('piper-chart-export', 'Piper_Diagram')} className="bg-slate-100 text-slate-600 hover:bg-slate-600 hover:text-white p-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all border-b-4 border-slate-200 hover:border-slate-800 active:border-b-0 active:translate-y-1" title="Download HD JPEG">
+                            <i className="ph ph-camera text-lg"></i>
+                        </button>
+                    </div>
+                    
+                    <div className="absolute top-4 left-6 z-10 flex items-center gap-2 bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm opacity-80 hover:opacity-100 transition-opacity">
+                        <i className="ph ph-hand-grabbing"></i>
+                        <span className="text-[9px] font-bold uppercase tracking-wider">Click labels/titles to edit &middot; Drag axes to move</span>
+                    </div>
+
+                    {editingTitle && (
+                        <LabelEditor 
+                            config={titleConfig} 
+                            onChange={setTitleConfig} 
+                            onClose={() => setEditingTitle(false)} 
+                        />
+                    )}
+
+                    {selectedLabel && labels[selectedLabel] && (
+                        <div className="absolute top-16 left-6 z-20 flex flex-wrap items-center gap-3 bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-xl shadow-slate-900/10 animate-fade-in">
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest pl-1">Text Content</label>
+                                <input 
+                                    type="text" 
+                                    value={labels[selectedLabel].text} 
+                                    onChange={(e) => setLabels(p => ({...p, [selectedLabel]: {...p[selectedLabel], text: e.target.value}}))}
+                                    className="text-xs font-bold text-slate-700 px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white min-w-[120px]"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1 w-16">
+                                <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest pl-1">Angle</label>
+                                <input 
+                                    type="number" 
+                                    value={labels[selectedLabel].rotate} 
+                                    onChange={(e) => setLabels(p => ({...p, [selectedLabel]: {...p[selectedLabel], rotate: parseFloat(e.target.value) || 0}}))}
+                                    className="text-xs font-bold text-slate-700 px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1 w-16">
+                                <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest pl-1">Size</label>
+                                <input 
+                                    type="number" step="0.5"
+                                    value={labels[selectedLabel].fontSize || 6} 
+                                    onChange={(e) => setLabels(p => ({...p, [selectedLabel]: {...p[selectedLabel], fontSize: parseFloat(e.target.value) || 6}}))}
+                                    className="text-xs font-bold text-slate-700 px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1 w-14">
+                                <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest pl-1">Color</label>
+                                <div className="w-full h-[34px] rounded-xl border border-slate-200 overflow-hidden relative shadow-sm">
+                                    <input type="color" value={labels[selectedLabel].color || '#64748b'} onChange={(e) => setLabels(p => ({...p, [selectedLabel]: {...p[selectedLabel], color: e.target.value}}))} className="absolute -inset-4 w-20 h-20 cursor-pointer" />
+                                </div>
+                            </div>
+                            <div className="flex gap-1.5 items-end pb-0.5 ml-1">
+                                <button onClick={() => setLabels(p => ({...p, [selectedLabel]: {...p[selectedLabel], isBold: !p[selectedLabel].isBold}}))} className={`w-[34px] h-[34px] flex items-center justify-center rounded-xl transition-all shadow-sm ${labels[selectedLabel].isBold !== false ? 'bg-slate-800 text-white border border-slate-800' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`} title="Bold"><b className="font-serif text-sm">B</b></button>
+                                <button onClick={() => setLabels(p => ({...p, [selectedLabel]: {...p[selectedLabel], isItalic: !p[selectedLabel].isItalic}}))} className={`w-[34px] h-[34px] flex items-center justify-center rounded-xl transition-all shadow-sm ${labels[selectedLabel].isItalic ? 'bg-slate-800 text-white border border-slate-800' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`} title="Italic"><i className="font-serif text-sm">I</i></button>
+                            </div>
+                            <div className="h-8 w-px bg-slate-200 mx-1"></div>
+                            <button onClick={() => setSelectedLabel(null)} className="text-slate-400 hover:text-rose-500 transition-colors p-1" title="Close Editor">
+                                <i className="ph ph-x-circle text-[28px]"></i>
+                            </button>
+                        </div>
+                    )}
+
+                    <div id="piper-chart-export" className="flex flex-col items-center justify-center p-4 w-full bg-white rounded-2xl relative">
+                        <svg 
+                            ref={svgRef}
+                            viewBox="-20 -20 340 300" 
+                            className="w-full h-auto max-h-[480px] overflow-visible mt-6" 
+                            style={{fontFamily: "'Inter', sans-serif", touchAction: 'none'}}
+                            onPointerMove={handlePointerMove}
+                            onPointerUp={handlePointerUp}
+                            onPointerLeave={handlePointerUp}
+                            onPointerDown={() => { setSelectedLabel(null); setEditingTitle(false); }}
+                        >
+                            <text 
+                                x="150" y="-10" textAnchor="middle" 
+                                fontSize={titleConfig.size} 
+                                fill={titleConfig.color} 
+                                fontWeight={titleConfig.isBold ? "900" : "400"} 
+                                fontStyle={titleConfig.isItalic ? "italic" : "normal"}
+                                style={{ cursor: 'pointer', letterSpacing: '0.1em' }} 
+                                onClick={(e) => { e.stopPropagation(); setEditingTitle(true); setSelectedLabel(null); }}
+                            >
+                                {titleConfig.text.toUpperCase()}
+                            </text>
+                            
+                            <line x1={tx(25)} y1={ty(H/2)} x2={tx(75)} y2={ty(H/2)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+                            <line x1={tx(25)} y1={ty(H/2)} x2={tx(50)} y2={ty(0)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+                            <line x1={tx(75)} y1={ty(H/2)} x2={tx(50)} y2={ty(0)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+
+                            <line x1={tx(145)} y1={ty(H/2)} x2={tx(195)} y2={ty(H/2)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+                            <line x1={tx(145)} y1={ty(H/2)} x2={tx(170)} y2={ty(0)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+                            <line x1={tx(195)} y1={ty(H/2)} x2={tx(170)} y2={ty(0)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+
+                            <line x1={tx(85)} y1={ty(85*SQRT3)} x2={tx(135)} y2={ty(85*SQRT3)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+                            <line x1={tx(85)} y1={ty(35*SQRT3)} x2={tx(135)} y2={ty(35*SQRT3)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+                            <line x1={tx(85)} y1={ty(85*SQRT3)} x2={tx(110)} y2={ty(60*SQRT3)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+                            <line x1={tx(135)} y1={ty(85*SQRT3)} x2={tx(110)} y2={ty(60*SQRT3)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+                            <line x1={tx(85)} y1={ty(35*SQRT3)} x2={tx(110)} y2={ty(60*SQRT3)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+                            <line x1={tx(135)} y1={ty(35*SQRT3)} x2={tx(110)} y2={ty(60*SQRT3)} stroke={frameColor} strokeWidth="1.2" opacity="0.4" />
+
+                            <g>{grids}</g>
+                            
+                            <path d={`M ${tx(0)} ${ty(0)} L ${tx(100)} ${ty(0)} L ${tx(50)} ${ty(H)} Z`} stroke={frameColor} strokeWidth="1.2" fill="none" strokeLinejoin="round" />
+                            <path d={`M ${tx(120)} ${ty(0)} L ${tx(220)} ${ty(0)} L ${tx(170)} ${ty(H)} Z`} stroke={frameColor} strokeWidth="1.2" fill="none" strokeLinejoin="round" />
+                            <path d={`M ${tx(110)} ${ty(10*SQRT3)} L ${tx(160)} ${ty(60*SQRT3)} L ${tx(110)} ${ty(110*SQRT3)} L ${tx(60)} ${ty(60*SQRT3)} Z`} stroke={frameColor} strokeWidth="1.2" fill="none" strokeLinejoin="round" />
+                            
+                            {Object.entries(labels).map(([key, l]) => (
+                                <text 
+                                    key={key}
+                                    transform={`translate(${l.x}, ${l.y}) rotate(${l.rotate})`}
+                                    textAnchor={l.align} 
+                                    fontSize={l.fontSize || 6} 
+                                    fontWeight={l.isBold !== false ? "900" : "400"} 
+                                    fontStyle={l.isItalic ? "italic" : "normal"}
+                                    fill={selectedLabel === key ? '#3b82f6' : (l.color || '#64748b')}
+                                    onPointerDown={(e) => handlePointerDown(e, key)}
+                                    style={{ cursor: draggedLabel === key ? 'grabbing' : 'pointer', userSelect: 'none', touchAction: 'none' }}
+                                >
+                                    {l.text}
+                                </text>
+                            ))}
+                            {renderedPoints}
+                        </svg>
+                    </div>
+                </div>
+            );
+        });
+
+        const USSLPlot = React.memo(({ data, pointColors, pointSizes, getPointKey, stateHeader }) => {
+            const margin = { top: 50, right: 30, bottom: 50, left: 60 };
+            const width = 500;
+            const height = 400;
+
+            const [labelsConfig, setLabelsConfig] = useState({
+                title: { text: "USSL Classification Matrix", size: 14, color: "#64748b", isBold: true, isItalic: false },
+                xAxis: { text: "EC (μS/cm)", size: 12, color: "#64748b", isBold: true, isItalic: false },
+                yAxis: { text: "SAR", size: 12, color: "#64748b", isBold: true, isItalic: false }
+            });
+            const [editingKey, setEditingKey] = useState(null);
+
+            const getX = (ec) => {
+                const logMin = Math.log10(100);
+                const logMax = Math.log10(10000);
+                const logVal = Math.log10(Math.max(100, Math.min(10000, ec)));
+                return margin.left + ((logVal - logMin) / (logMax - logMin)) * (width - margin.left - margin.right);
+            };
+
+            const getY = (sar) => {
+                const maxSar = 32;
+                const val = Math.min(maxSar, Math.max(0, sar));
+                return (height - margin.bottom) - (val / maxSar) * (height - margin.bottom - margin.top);
+            };
+
+            const ecs = Array.from({length: 100}, (_, i) => 100 + i * 100);
+            const s1s2 = (ec) => 18.8515824 - 4.4257912 * Math.log10(ec);
+            const s2s3 = (ec) => 31.4031902 - 6.6827811 * Math.log10(ec);
+            const s3s4 = (ec) => 43.675205 - 8.8394965 * Math.log10(ec);
+
+            const xCentroids = [
+                { id: 'C1', val: Math.pow(10, (Math.log10(100) + Math.log10(250))/2) },
+                { id: 'C2', val: Math.pow(10, (Math.log10(250) + Math.log10(750))/2) },
+                { id: 'C3', val: Math.pow(10, (Math.log10(750) + Math.log10(2250))/2) },
+                { id: 'C4', val: Math.pow(10, (Math.log10(2250) + Math.log10(10000))/2) }
+            ];
+
+            const gridLineColor = '#e2e8f0';
+            const axisPathColor = '#cbd5e1';
+            const axisColor = '#94a3b8';
+
+            const renderedPoints = useMemo(() => {
+                return data.map((d, i) => {
+                    if (d._calc.ussl === "Unknown" || !d._calc.hasUSSL) return null;
+                    const key = getPointKey(d);
+                    const stateStr = stateHeader ? d[stateHeader] : (d.State || d.STATE);
+                    return (
+                        <circle 
+                            key={i} 
+                            cx={getX(d._calc.ecVal || 0)} 
+                            cy={getY(d._calc.sar)} 
+                            r={pointSizes ? (pointSizes[key] || 1.0) : 1.0} 
+                            fill={pointColors[key] || "#3b82f6"} 
+                            fillOpacity="0.95" 
+                            stroke="none" 
+                            className="transition-all duration-300 hover:opacity-80 cursor-pointer"
+                            title={`${d._calc.locName}\nEC: ${d._calc.ecVal}\nSAR: ${d._calc.sar.toFixed(2)}` + (stateStr ? `\nState: ${stateStr}` : '')}
+                        />
+                    );
+                });
+            }, [data, pointColors, pointSizes, getPointKey, stateHeader]);
+
+            return (
+                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 flex flex-col items-center w-full shadow-lg transition-colors duration-300 relative group">
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
+                        <button onClick={() => downloadChartHD('ussl-chart-export', 'USSL_Diagram')} className="bg-slate-100 text-slate-600 hover:bg-slate-600 hover:text-white p-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all border-b-4 border-slate-200 hover:border-slate-800 active:border-b-0 active:translate-y-1" title="Download HD JPEG">
+                            <i className="ph ph-camera text-lg"></i>
+                        </button>
+                    </div>
+
+                    {editingKey && (
+                        <LabelEditor 
+                            config={labelsConfig[editingKey]} 
+                            onChange={(newConf) => setLabelsConfig(p => ({...p, [editingKey]: newConf}))} 
+                            onClose={() => setEditingKey(null)} 
+                        />
+                    )}
+
+                    <div id="ussl-chart-export" className="flex flex-col items-center justify-center p-4 w-full bg-white rounded-2xl">
+                        <svg width={width} height={height} className="overflow-visible" style={{fontFamily: "'Inter', sans-serif"}} onClick={() => setEditingKey(null)}>
+                            <text 
+                                x={width / 2} y={25} textAnchor="middle" 
+                                fontSize={labelsConfig.title.size} fill={labelsConfig.title.color} 
+                                fontWeight={labelsConfig.title.isBold ? "900" : "400"} fontStyle={labelsConfig.title.isItalic ? "italic" : "normal"}
+                                style={{ cursor: 'pointer', letterSpacing: '0.1em' }} 
+                                onClick={(e) => { e.stopPropagation(); setEditingKey('title'); }}
+                            >
+                                {labelsConfig.title.text.toUpperCase()}
+                            </text>
+                            
+                            <text 
+                                transform={`translate(20, ${height / 2}) rotate(-90)`} textAnchor="middle" 
+                                fontSize={labelsConfig.yAxis.size} fill={labelsConfig.yAxis.color} 
+                                fontWeight={labelsConfig.yAxis.isBold ? "900" : "400"} fontStyle={labelsConfig.yAxis.isItalic ? "italic" : "normal"}
+                                style={{ cursor: 'pointer', letterSpacing: '0.1em' }} 
+                                onClick={(e) => { e.stopPropagation(); setEditingKey('yAxis'); }}
+                            >
+                                {labelsConfig.yAxis.text.toUpperCase()}
+                            </text>
+                            
+                            <text 
+                                x={width / 2} y={height - 10} textAnchor="middle" 
+                                fontSize={labelsConfig.xAxis.size} fill={labelsConfig.xAxis.color} 
+                                fontWeight={labelsConfig.xAxis.isBold ? "900" : "400"} fontStyle={labelsConfig.xAxis.isItalic ? "italic" : "normal"}
+                                style={{ cursor: 'pointer', letterSpacing: '0.1em' }} 
+                                onClick={(e) => { e.stopPropagation(); setEditingKey('xAxis'); }}
+                            >
+                                {labelsConfig.xAxis.text.toUpperCase()}
+                            </text>
+
+                            <line x1={getX(250)} y1={margin.top} x2={getX(250)} y2={height - margin.bottom} stroke={gridLineColor} strokeDasharray="4" />
+                            <line x1={getX(750)} y1={margin.top} x2={getX(750)} y2={height - margin.bottom} stroke={gridLineColor} strokeDasharray="4" />
+                            <line x1={getX(2250)} y1={margin.top} x2={getX(2250)} y2={height - margin.bottom} stroke={gridLineColor} strokeDasharray="4" />
+                            
+                            <path d={ecs.map((ec, i) => `${i === 0 ? 'M' : 'L'} ${getX(ec)} ${getY(s1s2(ec))}`).join(' ')} fill="none" stroke={axisPathColor} strokeWidth="1.5" />
+                            <path d={ecs.map((ec, i) => `${i === 0 ? 'M' : 'L'} ${getX(ec)} ${getY(s2s3(ec))}`).join(' ')} fill="none" stroke={axisPathColor} strokeWidth="1.5" />
+                            <path d={ecs.map((ec, i) => `${i === 0 ? 'M' : 'L'} ${getX(ec)} ${getY(s3s4(ec))}`).join(' ')} fill="none" stroke={axisPathColor} strokeWidth="1.5" />
+
+                            {xCentroids.map(xC => (
+                                <g key={xC.id} opacity="0.6">
+                                    <text x={getX(xC.val)} y={getY(s1s2(xC.val)/2)} textAnchor="middle" fontSize="8" fill="#64748b" fontWeight="bold">{xC.id}-S1</text>
+                                    <text x={getX(xC.val)} y={getY((s1s2(xC.val) + s2s3(xC.val))/2)} textAnchor="middle" fontSize="8" fill="#64748b" fontWeight="bold">{xC.id}-S2</text>
+                                    <text x={getX(xC.val)} y={getY((s2s3(xC.val) + s3s4(xC.val))/2)} textAnchor="middle" fontSize="8" fill="#64748b" fontWeight="bold">{xC.id}-S3</text>
+                                    <text x={getX(xC.val)} y={getY((s3s4(xC.val) + 32)/2)} textAnchor="middle" fontSize="8" fill="#64748b" fontWeight="bold">{xC.id}-S4</text>
+                                </g>
+                            ))}
+
+                            <line x1={margin.left} y1={height - margin.bottom} x2={width - margin.right} y2={height - margin.bottom} stroke={axisColor} strokeWidth="1.5" />
+                            <line x1={margin.left} y1={margin.top} x2={margin.left} y2={height - margin.bottom} stroke={axisColor} strokeWidth="1.5" />
+
+                            {[100, 250, 750, 2250, 5000, 10000].map(v => (
+                                <g key={v}>
+                                    <line x1={getX(v)} y1={height - margin.bottom} x2={getX(v)} y2={height - margin.bottom + 5} stroke={axisColor} />
+                                    <text x={getX(v)} y={height - margin.bottom + 15} textAnchor="middle" fontSize="8" fill="#64748b" fontWeight="bold">{v}</text>
+                                </g>
+                            ))}
+                            {[0, 10, 20, 30].map(v => (
+                                <g key={v}>
+                                    <line x1={margin.left - 5} y1={getY(v)} x2={margin.left} y2={getY(v)} stroke={axisColor} />
+                                    <text x={margin.left - 10} y={getY(v) + 3} textAnchor="end" fontSize="8" fill="#64748b" fontWeight="bold">{v}</text>
+                                </g>
+                            ))}
+
+                            {renderedPoints}
+                        </svg>
+                    </div>
+                </div>
+            );
+        });
+
+        const DonutChart = React.memo(({ data, colors, sizes, defaultTitle, onColorChange, onSizeChange, onNameChange }) => {
+            const [titleConfig, setTitleConfig] = useState({ text: defaultTitle, size: 12, color: "#64748b", isBold: true, isItalic: false });
+            const [editingTitle, setEditingTitle] = useState(false);
+            
+            const total = data.reduce((sum, item) => sum + item.count, 0);
+            let cumulativePercent = 0;
+            const getCoordinatesForPercent = (percent) => [Math.cos(2 * Math.PI * percent), Math.sin(2 * Math.PI * percent)];
+            
+            const innerCircleFill = '#ffffff';
+            const exportId = `donut-${titleConfig.text.replace(/[^a-z0-9]/gi, '')}`;
+
+            return (
+                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 flex flex-col items-center shadow-lg transition-colors duration-300 relative group">
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button onClick={() => downloadChartHD(exportId, titleConfig.text)} className="text-slate-400 hover:text-slate-600 p-1 bg-white/80 rounded-lg shadow-sm transition-all border-b-4 border-slate-200 hover:border-slate-500 active:border-b-0 active:translate-y-1" title="Download HD JPEG">
+                            <i className="ph ph-camera text-lg"></i>
+                        </button>
+                    </div>
+
+                    {editingTitle && (
+                        <LabelEditor 
+                            config={titleConfig} 
+                            onChange={setTitleConfig} 
+                            onClose={() => setEditingTitle(false)} 
+                        />
+                    )}
+                    
+                    <div id={exportId} className="flex flex-col items-center bg-white p-4 w-full rounded-2xl relative">
+                        <h3 
+                            className="tracking-[0.2em] mb-6 text-center cursor-pointer hover:opacity-70 transition-opacity uppercase"
+                            style={{
+                                fontSize: `${titleConfig.size}px`,
+                                color: titleConfig.color,
+                                fontWeight: titleConfig.isBold ? '900' : '400',
+                                fontStyle: titleConfig.isItalic ? 'italic' : 'normal'
+                            }}
+                            onClick={() => setEditingTitle(true)}
+                        >
+                            {titleConfig.text}
+                        </h3>
+                        <div className="relative w-40 h-40 mb-6 drop-shadow-md">
+                            <svg viewBox="-1 -1 2 2" className="w-full h-full -rotate-90">
+                                {data.map((slice, i) => {
+                                    if (slice.count === 0) return null;
+                                    const [startX, startY] = getCoordinatesForPercent(cumulativePercent);
+                                    const slicePercent = slice.count / total;
+                                    cumulativePercent += slicePercent;
+                                    
+                                    // Prevent complete circle disappearance by offsetting full slices slightly
+                                    const endPercent = slicePercent === 1 ? 0.9999 : cumulativePercent;
+                                    const [endX, endY] = getCoordinatesForPercent(endPercent);
+                                    
+                                    return <path key={i} d={`M ${startX} ${startY} A 1 1 0 ${slicePercent > 0.5 ? 1 : 0} 1 ${endX} ${endY} L 0 0`} fill={colors[slice.key] || '#334155'} stroke={innerCircleFill} strokeWidth="0.02" />;
+                                })}
+                                <circle r="0.75" fill={innerCircleFill} className="transition-colors duration-300" />
+                            </svg>
+                        </div>
+                        <div className="w-full space-y-1 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                            {data.map((slice, i) => (
+                                <div key={i} className="flex justify-between items-center text-[10px] px-3 py-2 bg-slate-50 rounded-xl mb-1.5 border border-slate-100 hover:bg-slate-100 transition-colors">
+                                    <div className="flex items-center gap-2 truncate flex-1 pr-2">
+                                        <label title="Change Point Color" className="cursor-pointer relative w-3 h-3 rounded-full border border-slate-200 shrink-0 shadow-sm overflow-hidden flex ring-offset-1 hover:ring-2 ring-blue-400 transition-all" style={{ backgroundColor: colors[slice.key] || '#334155' }}>
+                                            <input type="color" value={colors[slice.key] || '#334155'} onChange={(e) => onColorChange && onColorChange(slice.key, e.target.value)} className="opacity-0 absolute -inset-2 w-10 h-10 cursor-pointer" />
+                                        </label>
+                                        <input 
+                                            type="number" min="1" max="25" step="0.5" 
+                                            title="Change Point Size"
+                                            value={sizes ? (sizes[slice.key] || 1.0) : 1.0} 
+                                            onChange={(e) => onSizeChange && onSizeChange(slice.key, parseFloat(e.target.value))} 
+                                            className="w-10 text-[9px] py-0.5 px-0.5 bg-transparent border-b border-slate-300 focus:outline-none focus:border-slate-500 font-mono text-center shrink-0"
+                                        />
+                                        {onNameChange ? (
+                                            <input 
+                                                type="text" 
+                                                value={slice.name} 
+                                                title="Rename Category"
+                                                onChange={(e) => onNameChange(slice.key, e.target.value)}
+                                                className="flex-1 min-w-0 text-[10px] ml-1 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:outline-none font-bold text-slate-700 truncate"
+                                            />
+                                        ) : (
+                                            <span className="text-slate-700 font-bold truncate pl-1 flex-1 min-w-0">{slice.name}</span>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-3 shrink-0">
+                                        <span className="font-mono text-slate-400">n={slice.count}</span>
+                                        <span className="font-mono text-slate-600 font-black">{total ? ((slice.count/total)*100).toFixed(0) : 0}%</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        });
+
+        const GibbsPlot = React.memo(({ data, type, defaultTitle, pointColors, pointSizes, getPointKey, stateHeader }) => {
+            const margin = { top: 50, right: 30, bottom: 50, left: 60 };
+            const width = 350;
+            const height = 400;
+
+            const [labelsConfig, setLabelsConfig] = useState({
+                title: { text: defaultTitle, size: 14, color: "#64748b", isBold: true, isItalic: false },
+                xAxis: { text: type === 'cation' ? 'Na+ / (Na+ + Ca2+)' : 'Cl- / (Cl- + HCO3-)', size: 12, color: "#64748b", isBold: true, isItalic: false },
+                yAxis: { text: "TDS (mg/L)", size: 12, color: "#64748b", isBold: true, isItalic: false }
+            });
+            const [editingKey, setEditingKey] = useState(null);
+
+            const getX = (val) => margin.left + (val * (width - margin.left - margin.right));
+            const getY = (val) => {
+                const logMin = 1, logMax = 4.5; 
+                const logVal = Math.log10(Math.max(1, val));
+                const normalized = (logVal - logMin) / (logMax - logMin);
+                return (height - margin.bottom) - (normalized * (height - margin.bottom - margin.top));
+            };
+
+            const polygonFill = 'black';
+            const polygonStroke = '#00000015';
+            const axisColor = '#94a3b8';
+            
+            const exportId = `gibbs-${type}`;
+
+            const renderedPoints = useMemo(() => {
+                return data.map((d, i) => {
+                    if (!d._calc.hasGibbs) return null;
+                    
+                    const key = getPointKey(d);
+                    const stateStr = stateHeader ? d[stateHeader] : (d.State || d.STATE);
+                    const xVal = type === 'cation' ? d._calc.gibbsCation : d._calc.gibbsAnion;
+                    const yVal = d._calc.tds;
+                    
+                    if(isNaN(xVal) || isNaN(yVal) || yVal <= 0) return null;
+
+                    return (
+                        <circle 
+                            key={i} 
+                            cx={getX(xVal)} 
+                            cy={getY(yVal)} 
+                            r={pointSizes ? (pointSizes[key] || 1.0) : 1.0} 
+                            fill={pointColors[key] || "#3b82f6"} 
+                            fillOpacity="0.95" 
+                            stroke="none" 
+                            className="cursor-pointer hover:opacity-80 transition-all duration-300"
+                            title={`${d._calc.locName}\nTDS: ${yVal?.toFixed(1)}\nRatio: ${xVal.toFixed(2)}` + (stateStr ? `\nState: ${stateStr}` : '')}
+                        />
+                    );
+                });
+            }, [data, pointColors, pointSizes, getPointKey, stateHeader, type]);
+
+            return (
+                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 flex flex-col items-center shadow-lg transition-colors duration-300 relative group">
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button onClick={() => downloadChartHD(exportId, `Gibbs_${type}`)} className="text-slate-400 hover:text-slate-600 p-1 bg-white/80 rounded-lg shadow-sm border-b-4 border-slate-200 hover:border-slate-500 active:border-b-0 active:translate-y-1 transition-all" title="Download HD JPEG">
+                            <i className="ph ph-camera text-lg"></i>
+                        </button>
+                    </div>
+
+                    {editingKey && (
+                        <LabelEditor 
+                            config={labelsConfig[editingKey]} 
+                            onChange={(newConf) => setLabelsConfig(p => ({...p, [editingKey]: newConf}))} 
+                            onClose={() => setEditingKey(null)} 
+                        />
+                    )}
+
+                    <div id={exportId} className="flex flex-col items-center justify-center bg-white p-4 w-full rounded-2xl relative">
+                        <svg width={width} height={height} className="overflow-visible" style={{fontFamily: "'Inter', sans-serif"}} onClick={() => setEditingKey(null)}>
+                            <text 
+                                x={width / 2} y={25} textAnchor="middle" 
+                                fontSize={labelsConfig.title.size} fill={labelsConfig.title.color} 
+                                fontWeight={labelsConfig.title.isBold ? "900" : "400"} fontStyle={labelsConfig.title.isItalic ? "italic" : "normal"}
+                                style={{ cursor: 'pointer', letterSpacing: '0.1em' }} 
+                                onClick={(e) => { e.stopPropagation(); setEditingKey('title'); }}
+                            >
+                                {labelsConfig.title.text.toUpperCase()}
+                            </text>
+                            
+                            <text 
+                                transform={`translate(20, ${height / 2}) rotate(-90)`} textAnchor="middle" 
+                                fontSize={labelsConfig.yAxis.size} fill={labelsConfig.yAxis.color} 
+                                fontWeight={labelsConfig.yAxis.isBold ? "900" : "400"} fontStyle={labelsConfig.yAxis.isItalic ? "italic" : "normal"}
+                                style={{ cursor: 'pointer', letterSpacing: '0.1em' }} 
+                                onClick={(e) => { e.stopPropagation(); setEditingKey('yAxis'); }}
+                            >
+                                {labelsConfig.yAxis.text.toUpperCase()}
+                            </text>
+                            
+                            <text 
+                                x={width / 2} y={height - 10} textAnchor="middle" 
+                                fontSize={labelsConfig.xAxis.size} fill={labelsConfig.xAxis.color} 
+                                fontWeight={labelsConfig.xAxis.isBold ? "900" : "400"} fontStyle={labelsConfig.xAxis.isItalic ? "italic" : "normal"}
+                                style={{ cursor: 'pointer', letterSpacing: '0.1em' }} 
+                                onClick={(e) => { e.stopPropagation(); setEditingKey('xAxis'); }}
+                            >
+                                {labelsConfig.xAxis.text.toUpperCase()}
+                            </text>
+
+                            <path d={`M ${getX(0.1)} ${getY(5000)} L ${getX(0.9)} ${getY(10000)} L ${getX(0.9)} ${getY(1000)} L ${getX(0.1)} ${getY(10)} L ${getX(0.1)} ${getY(5000)}`} 
+                                  fill={polygonFill} fillOpacity={"0.02"} stroke={polygonStroke} strokeDasharray="4" strokeWidth="1.5" />
+                            
+                            <text x={getX(0.85)} y={getY(8000)} textAnchor="end" fontSize="9" fill="#64748b" fontWeight="bold" opacity="0.6">Evaporation</text>
+                            <text x={getX(0.5)} y={getY(500)} textAnchor="middle" fontSize="9" fill="#64748b" fontWeight="bold" opacity="0.6">Rock</text>
+                            <text x={getX(0.15)} y={getY(20)} textAnchor="start" fontSize="9" fill="#64748b" fontWeight="bold" opacity="0.6">Precipitation</text>
+
+                            <line x1={margin.left} y1={height - margin.bottom} x2={width - margin.right} y2={height - margin.bottom} stroke={axisColor} strokeWidth="1.5" />
+                            <line x1={margin.left} y1={margin.top} x2={margin.left} y2={height - margin.bottom} stroke={axisColor} strokeWidth="1.5" />
+
+                            {[10, 100, 1000, 10000].map(val => (
+                                <g key={val}>
+                                    <line x1={margin.left - 5} y1={getY(val)} x2={margin.left} y2={getY(val)} stroke={axisColor} />
+                                    <text x={margin.left - 10} y={getY(val) + 3} textAnchor="end" fontSize="8" fill="#64748b" fontWeight="bold">{val}</text>
+                                </g>
+                            ))}
+
+                            {[0, 0.2, 0.4, 0.6, 0.8, 1].map(val => (
+                                <g key={val}>
+                                    <line x1={getX(val)} y1={height - margin.bottom} x2={getX(val)} y2={height - margin.bottom + 5} stroke={axisColor} />
+                                    <text x={getX(val)} y={height - margin.bottom + 15} textAnchor="middle" fontSize="8" fill="#64748b" fontWeight="bold">{val}</text>
+                                </g>
+                            ))}
+
+                            {renderedPoints}
+                        </svg>
+                    </div>
+                </div>
+            );
+        });
+
+        // Theme Definitions
+        const APP_THEMES = [
+            { id: 'light', name: 'Light Base', bg: 'bg-slate-50', text: 'text-slate-900', icon: 'ph-sun', tint: 'bg-slate-100' },
+            { id: 'nature', name: 'Nature Greens', bg: 'bg-emerald-50', text: 'text-emerald-950', icon: 'ph-leaf', tint: 'bg-emerald-100' },
+            { id: 'ocean', name: 'Ocean Cyan', bg: 'bg-cyan-50', text: 'text-cyan-950', icon: 'ph-waves', tint: 'bg-cyan-100' },
+            { id: 'sunset', name: 'Sunset Warm', bg: 'bg-orange-50', text: 'text-orange-950', icon: 'ph-cloud-sun', tint: 'bg-orange-100' }
+        ];
+
+        function App() {
+            const [rawData, setRawData] = useState([]);
+            const [originalHeaders, setOriginalHeaders] = useState([]);
+            const [viewMode, setViewMode] = useState('summary');
+            const [activeThemeId, setActiveThemeId] = useState('light');
+            
+            // Mapping States
+            const [pendingData, setPendingData] = useState(null);
+            const [pendingHeaders, setPendingHeaders] = useState([]);
+            const [columnMapping, setColumnMapping] = useState({});
+            const [showMappingModal, setShowMappingModal] = useState(false);
+            
+            const [colorBy, setColorBy] = useState('facies');
+            const [matrixLevel, setMatrixLevel] = useState('state');
+            
+            const [faciesNames, setFaciesNames] = useState(INITIAL_FACIES_NAMES);
+            const [usslColors, setUsslColors] = useState(INITIAL_USSL_COLORS);
+            const [faciesColors, setFaciesColors] = useState(INITIAL_FACIES_COLORS);
+            
+            const [usslSizes, setUsslSizes] = useState(() => Object.keys(INITIAL_USSL_COLORS).reduce((acc, key) => ({...acc, [key]: 1.0}), {}));
+            const [faciesSizes, setFaciesSizes] = useState(() => Object.keys(INITIAL_FACIES_COLORS).reduce((acc, key) => ({...acc, [key]: 1.0}), {}));
+
+            const [scatterColorBy, setScatterColorBy] = useState('facies');
+            const [stateColors, setStateColors] = useState({});
+            const [stateSizes, setStateSizes] = useState({});
+
+            const mapRef = useRef(null);
+            const mapInstance = useRef(null);
+            const markersLayer = useRef(null);
+
+            const filterHierarchy = ['State', 'District', 'Block', 'Source', 'Season'];
+            
+            const stateHeader = columnMapping.State;
+            const distHeader = columnMapping.District;
+            const blockHeader = columnMapping.Block;
+
+            const [activeFilters, setActiveFilters] = useState({ State: 'All', District: 'All', Block: 'All', Source: 'All', Season: 'All' });
+
+            // Auto-switch matrix level based on filter selection
+            useEffect(() => {
+                if (activeFilters.District !== 'All') {
+                    setMatrixLevel('block');
+                } else if (activeFilters.State !== 'All') {
+                    setMatrixLevel('district');
+                } else {
+                    setMatrixLevel('state');
+                }
+            }, [activeFilters.State, activeFilters.District]);
+
+            // Apply Theme to Body
+            useEffect(() => {
+                const currentTheme = APP_THEMES.find(t => t.id === activeThemeId) || APP_THEMES[0];
+                document.body.className = `transition-colors duration-500 antialiased ${currentTheme.bg} ${currentTheme.text}`;
+            }, [activeThemeId]);
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const bstr = evt.target.result;
+                    const wb = XLSX.read(bstr, { type: 'array' });
+                    const sheet = wb.Sheets[wb.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet);
+                    if (json.length > 0) {
+                        const headers = Object.keys(json[0]);
+                        setPendingHeaders(headers);
+                        setPendingData(json);
+                        
+                        // Auto-detect mapping using strict word boundaries to avoid false positives (e.g. 'ca' matching 'Location')
+                        const initialMapping = {};
+                        COLUMN_DEFINITIONS.forEach(col => {
+                            const matchedHeader = headers.find(h => {
+                                return col.aliases.some(alias => {
+                                    try {
+                                        return new RegExp(`\\b${alias}\\b`, 'i').test(h);
+                                    } catch (err) {
+                                        return h.toLowerCase() === alias.toLowerCase();
+                                    }
+                                });
+                            });
+                            if (matchedHeader) initialMapping[col.id] = matchedHeader;
+                        });
+                        
+                        setColumnMapping(initialMapping);
+                        setShowMappingModal(true);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                e.target.value = null;
+            };
+
+            const confirmMapping = () => {
+                setOriginalHeaders(pendingHeaders);
+                setRawData(pendingData);
+                setActiveFilters({ State: 'All', District: 'All', Block: 'All', Source: 'All', Season: 'All' });
+                setShowMappingModal(false);
+                setPendingData(null);
+            };
+
+            const getOptions = (filterKey) => {
+                const keyIndex = filterHierarchy.indexOf(filterKey);
+                let filteredOptionsData = rawData;
+                for (let i = 0; i < keyIndex; i++) {
+                    const parentKey = filterHierarchy[i];
+                    const parentValue = activeFilters[parentKey];
+                    if (parentValue !== 'All') {
+                        const header = columnMapping[parentKey];
+                        if (header) {
+                            filteredOptionsData = filteredOptionsData.filter(row => String(row[header] || '') === String(parentValue));
+                        }
+                    }
+                }
+
+                const targetHeader = columnMapping[filterKey];
+                if (!targetHeader) return ['All'];
+
+                const values = Array.from(new Set(filteredOptionsData.map(row => row[targetHeader]).filter(Boolean)));
+                return ['All', ...values.sort()];
+            };
+
+            const handleFilterChange = (filterKey, newValue) => {
+                const keyIndex = filterHierarchy.indexOf(filterKey);
+                setActiveFilters(prev => {
+                    const next = { ...prev, [filterKey]: newValue };
+                    for (let i = keyIndex + 1; i < filterHierarchy.length; i++) {
+                        next[filterHierarchy[i]] = 'All';
+                    }
+                    return next;
+                });
+            };
+
+            const processedData = useMemo(() => {
+                const filtered = rawData.filter(row => {
+                    return Object.entries(activeFilters).every(([filterKey, filterValue]) => {
+                        if (filterValue === 'All') return true;
+                        const header = columnMapping[filterKey];
+                        return String(row[header] || '') === String(filterValue);
+                    });
+                });
+
+                return filtered.map((row, index) => {
+                    const getMappedNum = (id) => {
+                        const key = columnMapping[id];
+                        if (key && row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== "" && String(row[key]).trim() !== "-" && String(row[key]).trim() !== "—") {
+                            const val = parseFloat(row[key]);
+                            return isNaN(val) ? null : val;
+                        }
+                        return null;
+                    };
+
+                    const ca = getMappedNum('Ca'), 
+                          mg = getMappedNum('Mg'), 
+                          na = getMappedNum('Na'), 
+                          k = getMappedNum('K'), 
+                          cl = getMappedNum('Cl'), 
+                          so4 = getMappedNum('SO4'), 
+                          hco3 = getMappedNum('HCO3'), 
+                          co3 = getMappedNum('CO3'), 
+                          ec = getMappedNum('EC'), 
+                          tdsInput = getMappedNum('TDS'),
+                          lat = getMappedNum('Lat'),
+                          lng = getMappedNum('Lng');
+                          
+                    const locName = columnMapping.Location && row[columnMapping.Location] ? row[columnMapping.Location] : 'Unknown Site';
+                    
+                    // Safely treat missing as 0 only for math computations (actual validation relies on null checks)
+                    const safeVal = (v) => v === null ? 0 : v;
+
+                    const meq = { Ca: safeVal(ca)/EQ_WEIGHTS.Ca, Mg: safeVal(mg)/EQ_WEIGHTS.Mg, Na: safeVal(na)/EQ_WEIGHTS.Na, K: safeVal(k)/EQ_WEIGHTS.K, Cl: safeVal(cl)/EQ_WEIGHTS.Cl, SO4: safeVal(so4)/EQ_WEIGHTS.SO4, HCO3: safeVal(hco3)/EQ_WEIGHTS.HCO3, CO3: safeVal(co3)/EQ_WEIGHTS.CO3 };
+                    const catSumReal = meq.Ca + meq.Mg + meq.Na + meq.K;
+                    const anSumReal = meq.Cl + meq.SO4 + meq.HCO3 + meq.CO3;
+                    const catSum = catSumReal || 1;
+                    const anSum = anSumReal || 1;
+                    const meqPerc = { Ca: (meq.Ca/catSum)*100, Mg: (meq.Mg/catSum)*100, Na: (meq.Na/catSum)*100, K: (meq.K/catSum)*100, Cl: (meq.Cl/anSum)*100, SO4: (meq.SO4/anSum)*100, HCO3: (meq.HCO3/anSum)*100, CO3: (meq.CO3/anSum)*100 };
+                    
+                    let sar = 0;
+                    let ussl = "Unknown";
+                    let hasUSSL = false;
+                    
+                    // Sufficient data for USSL: Strictly requires EC, Na, Ca, and Mg to be available
+                    if (ec !== null && na !== null && ca !== null && mg !== null) {
+                        const denom = Math.sqrt((meq.Ca + meq.Mg) / 2);
+                        if (denom > 0) {
+                            sar = meq.Na / denom;
+                            ussl = `${getUSSLSalinity(ec)}-${getUSSLSodium(ec, sar)}`;
+                            hasUSSL = true;
+                        }
+                    }
+                    
+                    const tds = tdsInput !== null ? tdsInput : (ec !== null ? ec * 0.65 : 0);
+                    const gibbsCation = catSumReal > 0 ? (meq.Na + meq.K) / (meq.Na + meq.K + meq.Ca || 1) : NaN;
+                    const gibbsAnion = anSumReal > 0 ? meq.Cl / (meq.Cl + meq.HCO3 || 1) : NaN;
+
+                    let facies = "Unknown";
+                    // Sufficient data for Facies: Strictly requires all 6 major ions (Ca, Mg, Na, Cl, SO4, HCO3)
+                    let hasFacies = ca !== null && mg !== null && na !== null && cl !== null && so4 !== null && hco3 !== null;
+                    
+                    if (hasFacies && catSumReal > 0 && anSumReal > 0) {
+                        const c = meqPerc.Ca + meqPerc.Mg; 
+                        const a = meqPerc.Cl + meqPerc.SO4; 
+                        if (c >= 50 && a >= 50) {
+                            if (c + a >= 150) facies = "Ca-Cl Type";
+                            else facies = "Mixed Type A";
+                        } else if (c >= 50 && a < 50) {
+                            facies = "Ca-Mg-HCO3 Type";
+                        } else if (c < 50 && a >= 50) {
+                            facies = "Na-Cl Type";
+                        } else if (c < 50 && a < 50) {
+                            if (c + a >= 50) facies = "Mixed Type B";
+                            else facies = "Na-HCO3 Type";
+                        }
+                    } else {
+                        hasFacies = false;
+                    }
+
+                    // Sufficient data for Gibbs: Requires TDS and major parameters used in the ratio
+                    let hasGibbs = tds > 0 && na !== null && ca !== null && cl !== null && hco3 !== null && !isNaN(gibbsCation) && !isNaN(gibbsAnion);
+                    
+                    // The sample is considered strictly 'Complete' if it meets ALL analytical criteria
+                    const isComplete = hasUSSL && hasFacies && hasGibbs;
+
+                    return { ...row, _calc: { sl: index + 1, sar, ussl, facies, tds, ecVal: ec, locName, gibbsCation, gibbsAnion, meq, meqPerc, lat, lng, hasUSSL, hasFacies, hasGibbs, isComplete } };
+                });
+            }, [rawData, activeFilters, columnMapping]);
+
+            const validData = useMemo(() => processedData.filter(d => d._calc.isComplete), [processedData]);
+
+            useEffect(() => {
+                if (!stateHeader || validData.length === 0) return;
+                const uniqueStates = Array.from(new Set(validData.map(d => d[stateHeader] || 'Unknown')));
+                const defaultPalette = ['#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#10b981', '#ef4444', '#3b82f6', '#14b8a6', '#f97316', '#64748b'];
+                
+                setStateColors(prev => {
+                    const next = { ...prev };
+                    let changed = false;
+                    uniqueStates.forEach((s, i) => {
+                        if (!next[s]) { next[s] = defaultPalette[i % defaultPalette.length]; changed = true; }
+                    });
+                    return changed ? next : prev;
+                });
+                
+                setStateSizes(prev => {
+                    const next = { ...prev };
+                    let changed = false;
+                    uniqueStates.forEach((s) => {
+                        if (!next[s]) { next[s] = 1.0; changed = true; }
+                    });
+                    return changed ? next : prev;
+                });
+            }, [validData, stateHeader]);
+
+            const stats = useMemo(() => {
+                const uCounts = {}, fCounts = {}, sCounts = {};
+                validData.forEach(d => {
+                    uCounts[d._calc.ussl] = (uCounts[d._calc.ussl] || 0) + 1;
+                    fCounts[d._calc.facies] = (fCounts[d._calc.facies] || 0) + 1;
+                    if (stateHeader) {
+                        const sName = d[stateHeader] || 'Unknown';
+                        sCounts[sName] = (sCounts[sName] || 0) + 1;
+                    }
+                });
+                return {
+                    ussl: Object.entries(uCounts).map(([key, count]) => ({key, name: key, count})).sort((a,b)=>b.count-a.count),
+                    facies: Object.entries(fCounts).map(([key, count]) => ({key, name: faciesNames[key] || key, count})).sort((a,b)=>b.count-a.count),
+                    states: Object.entries(sCounts).map(([key, count]) => ({key, name: key, count})).sort((a,b)=>b.count-a.count)
+                };
+            }, [validData, faciesNames, stateHeader]);
+
+            const analytics = useMemo(() => {
+                const sHeader = columnMapping.State;
+                const dHeader = columnMapping.District;
+                const bHeader = columnMapping.Block;
+
+                const buildSummary = (keyHeader, dataset, isCompleteness) => {
+                    if (!keyHeader) return [];
+                    const map = {};
+                    dataset.forEach(d => {
+                        const key = d[keyHeader] ? d[keyHeader] : 'Unknown';
+                        if (!map[key]) {
+                            map[key] = { 
+                                name: key, 
+                                state: sHeader ? d[sHeader] || '-' : '-',
+                                district: dHeader ? d[dHeader] || '-' : '-',
+                                total: 0, ussl: {}, facies: {},
+                                validUSSL: 0, validFacies: 0, validGibbs: 0, complete: 0
+                            };
+                        }
+                        map[key].total++;
+                        
+                        if (isCompleteness) {
+                            if (d._calc.hasUSSL) map[key].validUSSL++;
+                            if (d._calc.hasFacies) map[key].validFacies++;
+                            if (d._calc.hasGibbs) map[key].validGibbs++;
+                            if (d._calc.isComplete) map[key].complete++;
+                        } else {
+                            map[key].ussl[d._calc.ussl] = (map[key].ussl[d._calc.ussl] || 0) + 1;
+                            map[key].facies[d._calc.facies] = (map[key].facies[d._calc.facies] || 0) + 1;
+                        }
+                    });
+
+                    return Object.values(map).sort((a, b) => b.total - a.total).map(row => {
+                        const rowData = { Name: row.name, State: row.state, District: row.district, Total: row.total };
+                        
+                        if (isCompleteness) {
+                            rowData.validUSSL_count = row.validUSSL;
+                            rowData.validUSSL_perc = row.total ? Number(((row.validUSSL / row.total) * 100).toFixed(1)) : 0;
+                            rowData.validFacies_count = row.validFacies;
+                            rowData.validFacies_perc = row.total ? Number(((row.validFacies / row.total) * 100).toFixed(1)) : 0;
+                            rowData.validGibbs_count = row.validGibbs;
+                            rowData.validGibbs_perc = row.total ? Number(((row.validGibbs / row.total) * 100).toFixed(1)) : 0;
+                            rowData.complete_count = row.complete;
+                            rowData.complete_perc = row.total ? Number(((row.complete / row.total) * 100).toFixed(1)) : 0;
+                        } else {
+                            stats.ussl.forEach(s => {
+                                const count = row.ussl[s.key] || 0;
+                                rowData[`${s.key}_count`] = count;
+                                rowData[`${s.key}_perc`] = row.total ? Number(((count / row.total) * 100).toFixed(1)) : 0;
+                            });
+                            
+                            stats.facies.forEach(s => {
+                                const count = row.facies[s.key] || 0;
+                                rowData[`${s.key}_count`] = count;
+                                rowData[`${s.key}_perc`] = row.total ? Number(((count / row.total) * 100).toFixed(1)) : 0;
+                            });
+                        }
+                        return rowData;
+                    });
+                };
+
+                return { 
+                    state: buildSummary(sHeader, validData, false), 
+                    district: buildSummary(dHeader, validData, false),
+                    block: buildSummary(bHeader, validData, false),
+                    comp_state: buildSummary(sHeader, processedData, true),
+                    comp_district: buildSummary(dHeader, processedData, true),
+                    comp_block: buildSummary(bHeader, processedData, true)
+                };
+            }, [processedData, validData, originalHeaders, stats]);
+
+            useEffect(() => {
+                if (viewMode !== 'map' || !mapRef.current) return;
+                
+                if (mapInstance.current) {
+                    mapInstance.current.remove();
+                    mapInstance.current = null;
+                }
+                
+                const map = L.map(mapRef.current, { preferCanvas: true }).setView([22.5937, 78.9629], 5);
+                mapInstance.current = map;
+                
+                const googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: 'Google Satellite' });
+                const googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: 'Google Hybrid' });
+                const googleStreet = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: 'Google Streets' });
+                const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' });
+
+                googleHybrid.addTo(map);
+                L.control.layers({ "Google Hybrid": googleHybrid, "Google Satellite": googleSat, "Google Streets": googleStreet, "OpenStreetMap": osm }).addTo(map);
+                markersLayer.current = L.layerGroup().addTo(map);
+
+                setTimeout(() => { if (mapInstance.current) mapInstance.current.invalidateSize(); }, 200);
+
+                return () => {
+                    if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; }
+                    markersLayer.current = null;
+                };
+            }, [viewMode]);
+
+            useEffect(() => {
+                if (viewMode === 'map' && mapInstance.current && markersLayer.current) {
+                    markersLayer.current.clearLayers();
+                    let bounds = [];
+                    
+                    validData.forEach(d => {
+                        const lat = d._calc.lat, lng = d._calc.lng;
+                        if (lat !== null && lng !== null) {
+                            bounds.push([lat, lng]);
+                            
+                            let fillCol = colorBy === 'ussl' ? (usslColors[d._calc.ussl] || '#334155') : colorBy === 'state' ? (stateColors[d[stateHeader] || 'Unknown'] || '#334155') : (faciesColors[d._calc.facies] || '#334155');
+                            let currentRadius = colorBy === 'ussl' ? (usslSizes[d._calc.ussl] || 1.0) : colorBy === 'state' ? (stateSizes[d[stateHeader] || 'Unknown'] || 1.0) : (faciesSizes[d._calc.facies] || 1.0);
+                            
+                            const marker = L.circleMarker([lat, lng], { radius: currentRadius, fillColor: fillCol, stroke: false, fillOpacity: 0.95 });
+                            const displayFacies = faciesNames[d._calc.facies] || d._calc.facies;
+                            const stateStr = stateHeader ? d[stateHeader] : (d.State || d.STATE);
+                            marker.bindPopup(`
+                                <div class="text-xs font-sans text-slate-800 p-1">
+                                    <div class="font-black border-b border-slate-200 pb-1 mb-2 text-sm">${d._calc.locName}</div>
+                                    <div class="space-y-1">
+                                        <div class="flex justify-between gap-4"><span class="text-slate-500">USSL:</span> <b>${d._calc.ussl}</b></div>
+                                        <div class="flex justify-between gap-4"><span class="text-slate-500">Facies:</span> <b>${displayFacies}</b></div>
+                                        ${stateStr ? `<div class="flex justify-between gap-4"><span class="text-slate-500">State:</span> <b>${stateStr}</b></div>` : ''}
+                                    </div>
+                                </div>
+                            `);
+                            marker.addTo(markersLayer.current);
+                        }
+                    });
+
+                    if (bounds.length > 0) {
+                        setTimeout(() => { if (mapInstance.current) { try { mapInstance.current.fitBounds(bounds, { padding: [30, 30], maxZoom: 12 }); } catch(e) {} } }, 300);
+                    }
+                }
+            }, [validData, viewMode, colorBy, usslColors, faciesColors, stateColors, usslSizes, faciesSizes, stateSizes, stateHeader, faciesNames]);
+
+            const exportExcel = async () => {
+                const workbook = new ExcelJS.Workbook();
+                const ws = workbook.addWorksheet('Valid Data Report');
+                
+                const ions = ['Ca', 'Mg', 'Na', 'K', 'Cl', 'SO4', 'HCO3', 'CO3'];
+                const additionalCols = [
+                    {header:'SAR', key:'sar'}, 
+                    {header:'USSL', key:'ussl'}, 
+                    {header:'Facies', key:'facies'},
+                    ...ions.map(ion => ({ header: `${ion} (meq/l)`, key: `meq_${ion}` })),
+                    ...ions.map(ion => ({ header: `${ion} (% meq)`, key: `meqPerc_${ion}` }))
+                ];
+
+                ws.columns = [{header:'SL', key:'sl'}, ...originalHeaders.map(h=>({header:h, key:h})), ...additionalCols];
+                
+                validData.forEach(item => {
+                    const rowObj = { sl: item._calc.sl };
+                    
+                    // Convert raw string data to actual numbers when possible
+                    originalHeaders.forEach(h => {
+                        const val = item[h];
+                        if (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val))) {
+                            rowObj[h] = Number(val);
+                        } else {
+                            rowObj[h] = val;
+                        }
+                    });
+
+                    rowObj.sar = Number(item._calc.sar.toFixed(2));
+                    rowObj.ussl = item._calc.ussl;
+                    rowObj.facies = faciesNames[item._calc.facies] || item._calc.facies;
+                    
+                    // Populate meq and meq% data into the row
+                    ions.forEach(ion => {
+                        rowObj[`meq_${ion}`] = item._calc.meq[ion] ? Number(item._calc.meq[ion].toFixed(4)) : 0;
+                        rowObj[`meqPerc_${ion}`] = item._calc.meqPerc[ion] ? Number(item._calc.meqPerc[ion].toFixed(2)) : 0;
+                    });
+                    
+                    ws.addRow(rowObj);
+                });
+                
+                const usslCols = stats.ussl.flatMap(s => [ { header: `${s.name} (Count)`, key: `${s.key}_count`, width: 15 }, { header: `${s.name} (%)`, key: `${s.key}_perc`, width: 10 } ]);
+                const faciesCols = stats.facies.flatMap(s => [ { header: `${s.name} (Count)`, key: `${s.key}_count`, width: 35 }, { header: `${s.name} (%)`, key: `${s.key}_perc`, width: 10 } ]);
+
+                const safeString = (val) => String(val || '');
+
+                const generateTotalRow = (data, categoryStats, level) => {
+                    const totalObj = {};
+                    if (level === 'state') totalObj.Name = 'GRAND TOTAL';
+                    else totalObj.State = 'GRAND TOTAL';
+                    
+                    const grandTotal = data.reduce((sum, row) => sum + (row.Total || 0), 0);
+                    totalObj.Total = grandTotal;
+
+                    categoryStats.forEach(s => {
+                        const countSum = data.reduce((sum, row) => sum + (row[`${s.key}_count`] || 0), 0);
+                        totalObj[`${s.key}_count`] = countSum;
+                        totalObj[`${s.key}_perc`] = grandTotal ? Number(((countSum / grandTotal) * 100).toFixed(1)) : 0;
+                    });
+                    return totalObj;
+                };
+
+                if (analytics.state && analytics.state.length > 0) {
+                    const sortedState = [...analytics.state].sort((a, b) => safeString(a.Name).localeCompare(safeString(b.Name)));
+                    const stateColsBase = [ { header: 'State Name', key: 'Name', width: 25 }, { header: 'Valid Samples', key: 'Total', width: 15 } ];
+                    
+                    const stateUsslWs = workbook.addWorksheet('State Matrix - USSL'); stateUsslWs.columns = [...stateColsBase, ...usslCols]; 
+                    sortedState.forEach(item => stateUsslWs.addRow(item));
+                    stateUsslWs.addRow(generateTotalRow(sortedState, stats.ussl, 'state'));
+                    
+                    const stateFaciesWs = workbook.addWorksheet('State Matrix - Facies'); stateFaciesWs.columns = [...stateColsBase, ...faciesCols]; 
+                    sortedState.forEach(item => stateFaciesWs.addRow(item));
+                    stateFaciesWs.addRow(generateTotalRow(sortedState, stats.facies, 'state'));
+                }
+
+                if (analytics.district && analytics.district.length > 0) {
+                    const sortedDistrict = [...analytics.district].sort((a, b) => {
+                        const cmp1 = safeString(a.State).localeCompare(safeString(b.State));
+                        return cmp1 !== 0 ? cmp1 : safeString(a.Name).localeCompare(safeString(b.Name));
+                    });
+                    const distColsBase = [ { header: 'State Name', key: 'State', width: 20 }, { header: 'District Name', key: 'Name', width: 25 }, { header: 'Valid Samples', key: 'Total', width: 15 } ];
+                    
+                    const distUsslWs = workbook.addWorksheet('District Matrix - USSL'); distUsslWs.columns = [...distColsBase, ...usslCols]; 
+                    sortedDistrict.forEach(item => distUsslWs.addRow(item));
+                    distUsslWs.addRow(generateTotalRow(sortedDistrict, stats.ussl, 'district'));
+                    
+                    const distFaciesWs = workbook.addWorksheet('District Matrix - Facies'); distFaciesWs.columns = [...distColsBase, ...faciesCols]; 
+                    sortedDistrict.forEach(item => distFaciesWs.addRow(item));
+                    distFaciesWs.addRow(generateTotalRow(sortedDistrict, stats.facies, 'district'));
+                }
+                
+                if (analytics.block && analytics.block.length > 0) {
+                    const sortedBlock = [...analytics.block].sort((a, b) => {
+                        const cmp1 = safeString(a.State).localeCompare(safeString(b.State));
+                        if (cmp1 !== 0) return cmp1;
+                        const cmp2 = safeString(a.District).localeCompare(safeString(b.District));
+                        return cmp2 !== 0 ? cmp2 : safeString(a.Name).localeCompare(safeString(b.Name));
+                    });
+                    const blockColsBase = [ { header: 'State Name', key: 'State', width: 20 }, { header: 'District Name', key: 'District', width: 20 }, { header: 'Block Name', key: 'Name', width: 25 }, { header: 'Valid Samples', key: 'Total', width: 15 } ];
+                    
+                    const blockUsslWs = workbook.addWorksheet('Block Matrix - USSL'); blockUsslWs.columns = [...blockColsBase, ...usslCols]; 
+                    sortedBlock.forEach(item => blockUsslWs.addRow(item));
+                    blockUsslWs.addRow(generateTotalRow(sortedBlock, stats.ussl, 'block'));
+                    
+                    const blockFaciesWs = workbook.addWorksheet('Block Matrix - Facies'); blockFaciesWs.columns = [...blockColsBase, ...faciesCols]; 
+                    sortedBlock.forEach(item => blockFaciesWs.addRow(item));
+                    blockFaciesWs.addRow(generateTotalRow(sortedBlock, stats.facies, 'block'));
+                }
+
+                // Apply specific formatting to all worksheets
+                workbook.worksheets.forEach(sheet => {
+                    // Auto-adjust column widths based on content
+                    sheet.columns.forEach(column => {
+                        let maxLength = 0;
+                        column.eachCell({ includeEmpty: true }, cell => {
+                            const columnLength = cell.value ? cell.value.toString().length : 10;
+                            if (columnLength > maxLength) {
+                                maxLength = columnLength;
+                            }
+                        });
+                        // Add some padding and cap the width
+                        column.width = Math.min(maxLength + 3, 60);
+                    });
+
+                    // Apply styles to rows and cells
+                    sheet.eachRow((row, rowNumber) => {
+                        const firstCellVal = row.getCell(1).value;
+                        const isTotalRow = firstCellVal === 'GRAND TOTAL';
+
+                        row.eachCell((cell) => {
+                            if (rowNumber === 1) {
+                                // Header Row Formatting
+                                cell.font = { name: 'Times New Roman', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+                                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                            } else if (isTotalRow) {
+                                // Grand Total Formatting
+                                cell.font = { name: 'Times New Roman', size: 12, bold: true };
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }; // Light gray background
+                                cell.alignment = { vertical: 'middle', wrapText: true };
+                            } else {
+                                // Data Row Formatting
+                                cell.font = { name: 'Times New Roman', size: 12 };
+                                cell.alignment = { vertical: 'middle', wrapText: true };
+                            }
+                            
+                            // Add borders for a cleaner look
+                            cell.border = {
+                                top: { style: 'thin' },
+                                left: { style: 'thin' },
+                                bottom: { style: 'thin' },
+                                right: { style: 'thin' }
+                            };
+                        });
+                    });
+                });
+
+                const buf = await workbook.xlsx.writeBuffer();
+                const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `WQ_Report_Filtered.xlsx`; link.click();
+            };
+
+            const FilterDropdown = ({ label }) => {
+                const options = getOptions(label);
+                const isAllSelected = activeFilters[label] === 'All';
+
+                return (
+                    <div className="flex flex-col gap-1.5 flex-1 min-w-[150px] animate-fade-in">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
+                            <span>{label}</span>
+                            {!isAllSelected && <span className="text-blue-500 lowercase font-normal italic">Selected</span>}
+                        </label>
+                        <select 
+                            className={`border rounded-xl px-3 py-2.5 text-[11px] font-bold transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
+                                isAllSelected 
+                                    ? 'bg-white border-slate-200 text-slate-900 shadow-sm' 
+                                    : 'bg-blue-50 border-blue-300 text-blue-700 shadow-sm'
+                            }`}
+                            value={activeFilters[label]}
+                            onChange={(e) => handleFilterChange(label, e.target.value)}
+                        >
+                            {options.map(opt => <option key={opt} value={opt} className="bg-white text-slate-900">{opt}</option>)}
+                        </select>
+                    </div>
+                );
+            };
+
+            const handleUsslColorChange = (key, newColor) => setUsslColors(prev => ({ ...prev, [key]: newColor }));
+            const handleUsslSizeChange = (key, newSize) => setUsslSizes(prev => ({ ...prev, [key]: newSize }));
+            const handleFaciesColorChange = (key, newColor) => setFaciesColors(prev => ({ ...prev, [key]: newColor }));
+            const handleFaciesSizeChange = (key, newSize) => setFaciesSizes(prev => ({ ...prev, [key]: newSize }));
+            const handleFaciesNameChange = (key, newName) => setFaciesNames(prev => ({ ...prev, [key]: newName }));
+            const handleStateColorChange = (key, newColor) => setStateColors(prev => ({ ...prev, [key]: newColor }));
+            const handleStateSizeChange = (key, newSize) => setStateSizes(prev => ({ ...prev, [key]: newSize }));
+
+            const hasCoordinates = useMemo(() => validData.some(d => d._calc.lat !== null && d._calc.lng !== null), [validData]);
+
+            const getPointKey = React.useCallback((d) => {
+                if (scatterColorBy === 'state' && stateHeader) return d[stateHeader] || 'Unknown';
+                if (scatterColorBy === 'ussl') return d._calc.ussl;
+                return d._calc.facies;
+            }, [scatterColorBy, stateHeader]);
+
+            const activeColors = scatterColorBy === 'state' ? stateColors : (scatterColorBy === 'ussl' ? usslColors : faciesColors);
+            const activeSizes = scatterColorBy === 'state' ? stateSizes : (scatterColorBy === 'ussl' ? usslSizes : faciesSizes);
+            
+            const currentThemeData = APP_THEMES.find(t => t.id === activeThemeId) || APP_THEMES[0];
+
+            return (
+                <div className="p-4 md:p-6 w-full mx-auto space-y-6 relative">
+                    
+                    {/* --- Dynamic Mapping Modal --- */}
+                    {showMappingModal && (
+                        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+                                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
+                                    <div>
+                                        <h2 className="text-lg font-black text-slate-800 tracking-tight">Map Data Columns</h2>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Align your Excel columns to the system parameters</p>
+                                    </div>
+                                    <button onClick={() => { setShowMappingModal(false); setPendingData(null); }} className="text-slate-400 hover:text-rose-500 transition-colors">
+                                        <i className="ph ph-x-circle text-[28px]"></i>
+                                    </button>
+                                </div>
+                                
+                                <div className="overflow-y-auto custom-scrollbar flex-1 p-6 bg-white">
+                                    {['Location', 'Chemistry', 'Metadata'].map(group => (
+                                        <div key={group} className="mb-8 last:mb-0">
+                                            <h3 className="text-xs font-black uppercase text-indigo-500 tracking-widest border-b border-slate-100 pb-2 mb-4">{group} Parameters</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {COLUMN_DEFINITIONS.filter(c => c.group === group).map(col => (
+                                                    <div key={col.id} className="flex flex-col gap-1.5 p-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-indigo-50/30 transition-colors group">
+                                                        <label className="text-[10px] font-bold text-slate-700">{col.label}</label>
+                                                        <select 
+                                                            value={columnMapping[col.id] || ""} 
+                                                            onChange={(e) => setColumnMapping(prev => ({...prev, [col.id]: e.target.value}))}
+                                                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+                                                        >
+                                                            <option value="">-- Unmapped / Skip --</option>
+                                                            {pendingHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                                                        </select>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                
+                                <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
+                                    <button onClick={() => { setShowMappingModal(false); setPendingData(null); }} className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                                    <button onClick={confirmMapping} className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-500/20 transition-all active:scale-95">Apply Mapping & Process Data</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {/* ----------------------------- */}
+
+                    <header className={`bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 transition-colors duration-300`}>
+                        <div className="flex flex-col gap-1 text-center md:text-left">
+                            <h1 className="text-3xl font-black italic tracking-tighter uppercase leading-none text-slate-900">यूएसएसएल आरेख (USSL Diagram)</h1>
+                            <p className="text-[10px] text-slate-500 font-bold tracking-[0.3em] uppercase">हाइड्रोकेमिकल फेसिज़ एवं कृषि उपयोगिता गुणवत्ता</p>
+                            <div className={`mt-2 py-1 px-3 ${currentThemeData.tint} border border-slate-200 rounded-lg inline-block self-center md:self-start text-[9px] font-black uppercase text-slate-700`}>Jitendra Kumar | STA (Chem) | CGWB</div>
+                        </div>
+                        <div className="flex gap-3 items-center flex-wrap justify-center">
+                            
+                            {/* Colorful Theme Switcher Dropdown replacement */}
+                            <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 gap-1 mr-2">
+                                {APP_THEMES.map(t => (
+                                    <button 
+                                        key={t.id}
+                                        onClick={() => setActiveThemeId(t.id)} 
+                                        className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm border-b-4 active:border-b-0 active:translate-y-1 ${activeThemeId === t.id ? 'bg-slate-800 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                                        title={t.name}
+                                    >
+                                        <i className={`ph ${t.icon} text-lg`}></i>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Vibrant Upload & Export Buttons */}
+                            <label className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-xl font-bold uppercase text-[10px] cursor-pointer transition-all active:translate-y-1 active:border-b-0 border-b-4 border-indigo-800 shadow-lg shadow-indigo-600/20">
+                                Import Data <input type="file" className="hidden" onChange={handleFileUpload} />
+                            </label>
+                            {processedData.length > 0 && <button onClick={exportExcel} className="bg-teal-600 hover:bg-teal-500 text-white px-5 py-3 rounded-xl font-bold uppercase text-[10px] transition-all active:translate-y-1 active:border-b-0 border-b-4 border-teal-800 shadow-lg shadow-teal-600/20">Excel Export</button>}
+                            
+                            {/* Multi-Colored Navigation Tabs */}
+                            <div className="bg-slate-100 p-1.5 rounded-2xl flex gap-1 border border-slate-200 transition-colors duration-300 flex-wrap justify-center">
+                                <button onClick={() => setViewMode('summary')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'summary' ? 'bg-emerald-500 text-white border-emerald-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-emerald-50 hover:text-emerald-600'}`}>Visuals</button>
+                                <button onClick={() => setViewMode('analytics_ussl')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'analytics_ussl' ? 'bg-blue-500 text-white border-blue-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-blue-50 hover:text-blue-600'}`}>USSL Matrix</button>
+                                <button onClick={() => setViewMode('analytics_facies')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'analytics_facies' ? 'bg-purple-500 text-white border-purple-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-purple-50 hover:text-purple-600'}`}>Facies Matrix</button>
+                                <button onClick={() => setViewMode('completeness')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'completeness' ? 'bg-orange-500 text-white border-orange-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-orange-50 hover:text-orange-600'}`}>Data Quality</button>
+                                <button onClick={() => setViewMode('table')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'table' ? 'bg-amber-500 text-white border-amber-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50 hover:text-amber-600'}`}>Table</button>
+                                <button onClick={() => setViewMode('map')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'map' ? 'bg-rose-500 text-white border-rose-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-rose-50 hover:text-rose-600'}`}>GIS Map</button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {rawData.length > 0 && (
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-lg transition-colors duration-300 w-full">
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
+                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Dynamic Cascading Filters</h4>
+                            </div>
+                            <div className="flex flex-wrap gap-4 items-end">
+                                <FilterDropdown label="State" />
+                                <FilterDropdown label="District" />
+                                <FilterDropdown label="Block" />
+                                <FilterDropdown label="Source" />
+                                <FilterDropdown label="Season" />
+                                <button 
+                                    onClick={() => setActiveFilters({State: 'All', District: 'All', Block: 'All', Source: 'All', Season: 'All'})}
+                                    className="px-4 py-3 text-[9px] font-black uppercase transition-all rounded-xl border-b-4 active:border-b-0 active:translate-y-1 bg-white border-rose-200 text-rose-500 hover:bg-rose-50"
+                                >
+                                    Clear Filters
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {processedData.length > 0 ? (
+                        viewMode === 'summary' ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-500 w-full">
+                                <div className="lg:col-span-8 flex flex-col gap-8">
+                                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 -mb-4">
+                                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2"><i className="ph ph-palette text-blue-500"></i> Scatter Color By:</span>
+                                        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 gap-1">
+                                            <button onClick={() => setScatterColorBy('facies')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${scatterColorBy === 'facies' ? 'bg-emerald-500 text-white border-emerald-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>Hydro Facies</button>
+                                            <button onClick={() => setScatterColorBy('ussl')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${scatterColorBy === 'ussl' ? 'bg-blue-500 text-white border-blue-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>USSL Class</button>
+                                            {stateHeader && <button onClick={() => setScatterColorBy('state')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${scatterColorBy === 'state' ? 'bg-fuchsia-500 text-white border-fuchsia-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>State</button>}
+                                        </div>
+                                        <div className="ml-auto text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 shadow-sm italic hidden md:block">Showing {validData.length} Valid Samples</div>
+                                    </div>
+                                    
+                                    <PiperPlot data={validData} faciesColors={faciesColors} pointColors={activeColors} pointSizes={activeSizes} getPointKey={getPointKey} faciesNames={faciesNames} stateHeader={stateHeader} />
+                                    <USSLPlot data={validData} pointColors={activeColors} pointSizes={activeSizes} getPointKey={getPointKey} stateHeader={stateHeader} />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <GibbsPlot data={validData} type="cation" defaultTitle="Gibbs: Cation Dominance" pointColors={activeColors} pointSizes={activeSizes} getPointKey={getPointKey} stateHeader={stateHeader} />
+                                        <GibbsPlot data={validData} type="anion" defaultTitle="Gibbs: Anion Dominance" pointColors={activeColors} pointSizes={activeSizes} getPointKey={getPointKey} stateHeader={stateHeader} />
+                                    </div>
+                                </div>
+                                <div className="lg:col-span-4 flex flex-col gap-8">
+                                    <DonutChart data={stats.facies} colors={faciesColors} sizes={faciesSizes} onColorChange={handleFaciesColorChange} onSizeChange={handleFaciesSizeChange} onNameChange={handleFaciesNameChange} defaultTitle="Hydrochemical Facies" />
+                                    <DonutChart data={stats.ussl} colors={usslColors} sizes={usslSizes} onColorChange={handleUsslColorChange} onSizeChange={handleUsslSizeChange} defaultTitle="USSL Classes" />
+                                    {stateHeader && stats.states && stats.states.length > 0 && (
+                                        <DonutChart data={stats.states} colors={stateColors} sizes={stateSizes} onColorChange={handleStateColorChange} onSizeChange={handleStateSizeChange} defaultTitle="State Distribution" />
+                                    )}
+                                </div>
+                            </div>
+                        ) : viewMode === 'completeness' ? (
+                            <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-xl animate-fade-in transition-colors duration-300 flex flex-col h-[750px] w-full">
+                                <div className="flex flex-col shrink-0">
+                                    <div className="flex justify-between items-center p-4 bg-slate-50 border-b border-slate-200">
+                                        <div className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                            <i className="ph ph-check-circle text-orange-500"></i> Data Completeness & Quality Matrix
+                                        </div>
+                                        <div className="flex bg-slate-200 rounded-2xl p-1 gap-1 border border-slate-300 shadow-inner">
+                                            <button onClick={() => setMatrixLevel('state')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${matrixLevel === 'state' ? `bg-white text-orange-600 border-slate-300 shadow-sm` : 'text-slate-500 border-transparent hover:text-slate-700'}`}>State Wise</button>
+                                            <button onClick={() => setMatrixLevel('district')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${matrixLevel === 'district' ? `bg-white text-orange-600 border-slate-300 shadow-sm` : 'text-slate-500 border-transparent hover:text-slate-700'}`}>District Wise</button>
+                                            <button onClick={() => setMatrixLevel('block')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${matrixLevel === 'block' ? `bg-white text-orange-600 border-slate-300 shadow-sm` : 'text-slate-500 border-transparent hover:text-slate-700'}`}>Block Wise</button>
+                                        </div>
+                                    </div>
+                                    <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest opacity-70">Analysis Context:</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-500 shadow-sm">All India</span>
+                                            {activeFilters.State !== 'All' && <><i className="ph ph-caret-right text-[10px] text-slate-300"></i><span className="px-2 py-1 bg-blue-500 text-white rounded-lg text-[10px] font-bold shadow-sm">{activeFilters.State}</span></>}
+                                            {activeFilters.District !== 'All' && <><i className="ph ph-caret-right text-[10px] text-slate-300"></i><span className="px-2 py-1 bg-indigo-500 text-white rounded-lg text-[10px] font-bold shadow-sm">{activeFilters.District}</span></>}
+                                            {activeFilters.Block !== 'All' && <><i className="ph ph-caret-right text-[10px] text-slate-300"></i><span className="px-2 py-1 bg-emerald-500 text-white rounded-lg text-[10px] font-bold shadow-sm">{activeFilters.Block}</span></>}
+                                        </div>
+                                        <div className="ml-auto text-[10px] font-bold text-slate-400 italic">Analyzed {processedData.length} total raw samples</div>
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1 p-0">
+                                    <table className="w-full text-left text-[10px] border-collapse min-w-max">
+                                        <thead className="bg-slate-900 text-white font-black uppercase tracking-widest sticky top-0 z-20">
+                                            <tr>
+                                                {matrixLevel === 'district' || matrixLevel === 'block' ? (
+                                                    <th rowSpan="2" className="p-3 border-r border-slate-700 bg-slate-900 z-30 shadow-md">State Name</th>
+                                                ) : null}
+                                                {matrixLevel === 'block' ? (
+                                                    <th rowSpan="2" className="p-3 border-r border-slate-700 bg-slate-900 z-30 shadow-md">District Name</th>
+                                                ) : null}
+                                                <th rowSpan="2" className="p-3 border-r border-slate-700 sticky left-0 bg-slate-900 z-30 shadow-md">
+                                                    {matrixLevel.charAt(0).toUpperCase() + matrixLevel.slice(1)} Name
+                                                </th>
+                                                <th rowSpan="2" className="p-3 border-r border-slate-700 text-center bg-slate-800">Total Samples</th>
+                                                <th colSpan="2" className="p-2 border-r border-slate-700 text-center bg-blue-900">Valid for USSL</th>
+                                                <th colSpan="2" className="p-2 border-r border-slate-700 text-center bg-purple-900">Valid for Facies</th>
+                                                <th colSpan="2" className="p-2 border-r border-slate-700 text-center bg-emerald-900">Valid for Gibbs</th>
+                                                <th colSpan="2" className="p-2 text-center bg-orange-900">Fully Complete Data</th>
+                                            </tr>
+                                            <tr>
+                                                <th className="p-2 border-r border-t border-slate-700 text-center bg-blue-950">Count (n)</th>
+                                                <th className="p-2 border-r border-t border-slate-700 text-center bg-blue-950 text-blue-300">Percent (%)</th>
+                                                <th className="p-2 border-r border-t border-slate-700 text-center bg-purple-950">Count (n)</th>
+                                                <th className="p-2 border-r border-t border-slate-700 text-center bg-purple-950 text-purple-300">Percent (%)</th>
+                                                <th className="p-2 border-r border-t border-slate-700 text-center bg-emerald-950">Count (n)</th>
+                                                <th className="p-2 border-r border-t border-slate-700 text-center bg-emerald-950 text-emerald-300">Percent (%)</th>
+                                                <th className="p-2 border-r border-t border-slate-700 text-center bg-orange-950">Count (n)</th>
+                                                <th className="p-2 border-t border-slate-700 text-center bg-orange-950 text-orange-300">Percent (%)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {analytics['comp_' + matrixLevel] && analytics['comp_' + matrixLevel].length > 0 ? (
+                                                <React.Fragment>
+                                                    {analytics['comp_' + matrixLevel].map((row, i) => (
+                                                        <tr key={i} className="hover:bg-slate-50 transition-colors group">
+                                                            {matrixLevel === 'district' || matrixLevel === 'block' ? (
+                                                                <td className="p-3 font-medium text-slate-500 border-r border-slate-100 bg-slate-50/50">{row.State}</td>
+                                                            ) : null}
+                                                            {matrixLevel === 'block' ? (
+                                                                <td className="p-3 font-medium text-slate-500 border-r border-slate-100 bg-slate-50/50">{row.District}</td>
+                                                            ) : null}
+                                                            <td className="p-3 font-bold text-slate-900 border-r border-slate-100 sticky left-0 bg-white group-hover:bg-slate-50 z-10 whitespace-nowrap shadow-[2px_0_5px_rgba(0,0,0,0.05)]">{row.Name}</td>
+                                                            <td className="p-3 font-black text-center text-slate-700 border-r border-slate-100 bg-slate-100/50">{row.Total}</td>
+                                                            
+                                                            <td className="p-3 text-center border-r border-slate-100 text-slate-600 font-medium">{row.validUSSL_count}</td>
+                                                            <td className="p-3 text-center border-r border-slate-100 font-bold text-slate-500 bg-slate-50/50">{row.validUSSL_perc}%</td>
+                                                            
+                                                            <td className="p-3 text-center border-r border-slate-100 text-slate-600 font-medium">{row.validFacies_count}</td>
+                                                            <td className="p-3 text-center border-r border-slate-100 font-bold text-slate-500 bg-slate-50/50">{row.validFacies_perc}%</td>
+                                                            
+                                                            <td className="p-3 text-center border-r border-slate-100 text-slate-600 font-medium">{row.validGibbs_count}</td>
+                                                            <td className="p-3 text-center border-r border-slate-100 font-bold text-slate-500 bg-slate-50/50">{row.validGibbs_perc}%</td>
+                                                            
+                                                            <td className="p-3 text-center border-r border-slate-100 text-orange-600 font-black">{row.complete_count}</td>
+                                                            <td className="p-3 text-center font-black text-orange-500 bg-orange-50/30">{row.complete_perc}%</td>
+                                                        </tr>
+                                                    ))}
+                                                    
+                                                    {/* Grand Total Row */}
+                                                    <tr className="bg-slate-200/80 font-black text-slate-900 border-t-2 border-slate-300">
+                                                        <td colSpan={matrixLevel === 'block' ? 3 : matrixLevel === 'district' ? 2 : 1} className="p-3 text-right sticky left-0 bg-slate-200 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)] uppercase tracking-widest">
+                                                            Grand Total
+                                                        </td>
+                                                        <td className="p-3 text-center text-slate-800 bg-slate-300/50">
+                                                            {analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.Total, 0)}
+                                                        </td>
+                                                        
+                                                        <td className="p-3 text-center border-r border-slate-300 text-slate-800">{analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.validUSSL_count, 0)}</td>
+                                                        <td className="p-3 text-center border-r border-slate-300 text-slate-600 bg-slate-100/50">
+                                                            {analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.Total, 0) ? ((analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.validUSSL_count, 0) / analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.Total, 0)) * 100).toFixed(1) : 0}%
+                                                        </td>
+                                                        
+                                                        <td className="p-3 text-center border-r border-slate-300 text-slate-800">{analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.validFacies_count, 0)}</td>
+                                                        <td className="p-3 text-center border-r border-slate-300 text-slate-600 bg-slate-100/50">
+                                                            {analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.Total, 0) ? ((analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.validFacies_count, 0) / analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.Total, 0)) * 100).toFixed(1) : 0}%
+                                                        </td>
+                                                        
+                                                        <td className="p-3 text-center border-r border-slate-300 text-slate-800">{analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.validGibbs_count, 0)}</td>
+                                                        <td className="p-3 text-center border-r border-slate-300 text-slate-600 bg-slate-100/50">
+                                                            {analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.Total, 0) ? ((analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.validGibbs_count, 0) / analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.Total, 0)) * 100).toFixed(1) : 0}%
+                                                        </td>
+                                                        
+                                                        <td className="p-3 text-center border-r border-slate-300 text-orange-700 bg-orange-100/80">{analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.complete_count, 0)}</td>
+                                                        <td className="p-3 text-center text-orange-600 bg-orange-200/80">
+                                                            {analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.Total, 0) ? ((analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.complete_count, 0) / analytics['comp_' + matrixLevel].reduce((sum, row) => sum + row.Total, 0)) * 100).toFixed(1) : 0}%
+                                                        </td>
+                                                    </tr>
+                                                </React.Fragment>
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="100" className="p-12 text-center text-slate-400 italic">No {matrixLevel}-level data available for the current selection.</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ) : viewMode === 'analytics_ussl' || viewMode === 'analytics_facies' ? (
+                            <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-xl animate-fade-in transition-colors duration-300 flex flex-col h-[750px] w-full">
+                                <div className="flex flex-col shrink-0">
+                                    <div className="flex justify-between items-center p-4 bg-slate-50 border-b border-slate-200">
+                                        <div className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                            <i className={`ph ph-table ${viewMode === 'analytics_ussl' ? 'text-blue-500' : 'text-purple-500'}`}></i> {viewMode === 'analytics_ussl' ? 'USSL Classification' : 'Hydrochemical Facies'} Analytics Matrix
+                                        </div>
+                                        <div className="flex bg-slate-200 rounded-2xl p-1 gap-1 border border-slate-300 shadow-inner">
+                                            <button onClick={() => setMatrixLevel('state')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${matrixLevel === 'state' ? `bg-white ${viewMode === 'analytics_ussl' ? 'text-blue-600' : 'text-purple-600'} border-slate-300 shadow-sm` : 'text-slate-500 border-transparent hover:text-slate-700'}`}>State Wise</button>
+                                            <button onClick={() => setMatrixLevel('district')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${matrixLevel === 'district' ? `bg-white ${viewMode === 'analytics_ussl' ? 'text-blue-600' : 'text-purple-600'} border-slate-300 shadow-sm` : 'text-slate-500 border-transparent hover:text-slate-700'}`}>District Wise</button>
+                                            <button onClick={() => setMatrixLevel('block')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${matrixLevel === 'block' ? `bg-white ${viewMode === 'analytics_ussl' ? 'text-blue-600' : 'text-purple-600'} border-slate-300 shadow-sm` : 'text-slate-500 border-transparent hover:text-slate-700'}`}>Block Wise</button>
+                                        </div>
+                                    </div>
+                                    {/* Breadcrumb Analysis Context */}
+                                    <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest opacity-70">Analysis Context:</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-500 shadow-sm">All India</span>
+                                            {activeFilters.State !== 'All' && <><i className="ph ph-caret-right text-[10px] text-slate-300"></i><span className="px-2 py-1 bg-blue-500 text-white rounded-lg text-[10px] font-bold shadow-sm">{activeFilters.State}</span></>}
+                                            {activeFilters.District !== 'All' && <><i className="ph ph-caret-right text-[10px] text-slate-300"></i><span className="px-2 py-1 bg-indigo-500 text-white rounded-lg text-[10px] font-bold shadow-sm">{activeFilters.District}</span></>}
+                                            {activeFilters.Block !== 'All' && <><i className="ph ph-caret-right text-[10px] text-slate-300"></i><span className="px-2 py-1 bg-emerald-500 text-white rounded-lg text-[10px] font-bold shadow-sm">{activeFilters.Block}</span></>}
+                                        </div>
+                                        <div className="ml-auto text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 shadow-sm italic hidden md:block">Showing {validData.length} Valid Samples</div>
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1 p-0">
+                                    <table className="w-full text-left text-[10px] border-collapse min-w-max">
+                                        <thead className="bg-slate-900 text-white font-black uppercase tracking-widest sticky top-0 z-20">
+                                            <tr>
+                                                {matrixLevel === 'district' || matrixLevel === 'block' ? (
+                                                    <th rowSpan="2" className="p-3 border-r border-slate-700 bg-slate-900 z-30 shadow-md">State Name</th>
+                                                ) : null}
+                                                {matrixLevel === 'block' ? (
+                                                    <th rowSpan="2" className="p-3 border-r border-slate-700 bg-slate-900 z-30 shadow-md">District Name</th>
+                                                ) : null}
+                                                <th rowSpan="2" className="p-3 border-r border-slate-700 sticky left-0 bg-slate-900 z-30 shadow-md">
+                                                    {matrixLevel.charAt(0).toUpperCase() + matrixLevel.slice(1)} Name
+                                                </th>
+                                                <th rowSpan="2" className="p-3 border-r border-slate-700 text-center bg-slate-800">Valid Samples</th>
+                                                {viewMode === 'analytics_ussl' && stats.ussl.length > 0 && <th colSpan={stats.ussl.length * 2} className="p-2 border-r border-slate-700 text-center bg-blue-900">USSL Classification Breakup</th>}
+                                                {viewMode === 'analytics_facies' && stats.facies.length > 0 && <th colSpan={stats.facies.length * 2} className="p-2 text-center bg-purple-900">Hydrochemical Facies Breakup</th>}
+                                            </tr>
+                                            <tr>
+                                                {viewMode === 'analytics_ussl' && stats.ussl.map(s => (
+                                                    <React.Fragment key={s.key}>
+                                                        <th className="p-2 border-r border-t border-slate-700 text-center bg-blue-950" title={s.name}>{s.name} (n)</th>
+                                                        <th className="p-2 border-r border-t border-slate-700 text-center bg-blue-950 text-blue-300" title={s.name}>{s.name} (%)</th>
+                                                    </React.Fragment>
+                                                ))}
+                                                {viewMode === 'analytics_facies' && stats.facies.map(s => (
+                                                    <React.Fragment key={s.key}>
+                                                        <th className="p-2 border-r border-t border-slate-700 text-center bg-purple-950 truncate max-w-[100px]" title={s.name}>{s.name} (n)</th>
+                                                        <th className="p-2 border-r border-t border-slate-700 text-center bg-purple-950 text-purple-300" title={s.name}>{s.name} (%)</th>
+                                                    </React.Fragment>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {analytics[matrixLevel] && analytics[matrixLevel].length > 0 ? (
+                                                <React.Fragment>
+                                                    {analytics[matrixLevel].map((row, i) => (
+                                                        <tr key={i} className="hover:bg-slate-50 transition-colors group">
+                                                            {matrixLevel === 'district' || matrixLevel === 'block' ? (
+                                                                <td className="p-3 font-medium text-slate-500 border-r border-slate-100 bg-slate-50/50">{row.State}</td>
+                                                            ) : null}
+                                                            {matrixLevel === 'block' ? (
+                                                                <td className="p-3 font-medium text-slate-500 border-r border-slate-100 bg-slate-50/50">{row.District}</td>
+                                                            ) : null}
+                                                            <td className="p-3 font-bold text-slate-900 border-r border-slate-100 sticky left-0 bg-white group-hover:bg-slate-50 z-10 whitespace-nowrap shadow-[2px_0_5px_rgba(0,0,0,0.05)]">{row.Name}</td>
+                                                            <td className="p-3 font-black text-center text-blue-600 border-r border-slate-100 bg-blue-50/50">{row.Total}</td>
+                                                        
+                                                            {viewMode === 'analytics_ussl' && stats.ussl.map(s => (
+                                                                <React.Fragment key={s.key}>
+                                                                    <td className="p-3 text-center border-r border-slate-100 text-slate-600 font-medium">{row[`${s.key}_count`] || '-'}</td>
+                                                                    <td className="p-3 text-center border-r border-slate-100 font-bold text-slate-500 bg-slate-50/50">{row[`${s.key}_perc`] > 0 ? `${row[`${s.key}_perc`]}%` : '-'}</td>
+                                                                </React.Fragment>
+                                                            ))}
+
+                                                            {viewMode === 'analytics_facies' && stats.facies.map(s => (
+                                                                <React.Fragment key={s.key}>
+                                                                    <td className="p-3 text-center border-r border-slate-100 text-slate-600 font-medium">{row[`${s.key}_count`] || '-'}</td>
+                                                                    <td className="p-3 text-center border-r border-slate-100 font-bold text-slate-500 bg-slate-50/50">{row[`${s.key}_perc`] > 0 ? `${row[`${s.key}_perc`]}%` : '-'}</td>
+                                                                </React.Fragment>
+                                                            ))}
+                                                        </tr>
+                                                    ))}
+                                                    
+                                                    {/* Grand Total Row Calculation */}
+                                                    <tr className="bg-slate-200/80 font-black text-slate-900 border-t-2 border-slate-300">
+                                                        <td colSpan={matrixLevel === 'block' ? 3 : matrixLevel === 'district' ? 2 : 1} className="p-3 text-right sticky left-0 bg-slate-200 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)] uppercase tracking-widest">
+                                                            Grand Total
+                                                        </td>
+                                                        <td className="p-3 text-center text-blue-700 bg-blue-100/50">
+                                                            {analytics[matrixLevel].reduce((sum, row) => sum + row.Total, 0)}
+                                                        </td>
+                                                        
+                                                        {viewMode === 'analytics_ussl' && stats.ussl.map(s => {
+                                                            const catCount = analytics[matrixLevel].reduce((sum, row) => sum + (row[`${s.key}_count`] || 0), 0);
+                                                            const grandTotal = analytics[matrixLevel].reduce((sum, row) => sum + row.Total, 0);
+                                                            const catPerc = grandTotal ? ((catCount / grandTotal) * 100).toFixed(1) : 0;
+                                                            return (
+                                                                <React.Fragment key={s.key}>
+                                                                    <td className="p-3 text-center border-r border-slate-300 text-slate-800">{catCount || '-'}</td>
+                                                                    <td className="p-3 text-center border-r border-slate-300 text-slate-600 bg-slate-100/50">{catPerc > 0 ? `${catPerc}%` : '-'}</td>
+                                                                </React.Fragment>
+                                                            );
+                                                        })}
+
+                                                        {viewMode === 'analytics_facies' && stats.facies.map(s => {
+                                                            const catCount = analytics[matrixLevel].reduce((sum, row) => sum + (row[`${s.key}_count`] || 0), 0);
+                                                            const grandTotal = analytics[matrixLevel].reduce((sum, row) => sum + row.Total, 0);
+                                                            const catPerc = grandTotal ? ((catCount / grandTotal) * 100).toFixed(1) : 0;
+                                                            return (
+                                                                <React.Fragment key={s.key}>
+                                                                    <td className="p-3 text-center border-r border-slate-300 text-slate-800">{catCount || '-'}</td>
+                                                                    <td className="p-3 text-center border-r border-slate-300 text-slate-600 bg-slate-100/50">{catPerc > 0 ? `${catPerc}%` : '-'}</td>
+                                                                </React.Fragment>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                </React.Fragment>
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="100" className="p-12 text-center text-slate-400 italic">No {matrixLevel}-level data available for the current selection.</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ) : viewMode === 'table' ? (
+                            <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-xl animate-fade-in transition-colors duration-300 w-full h-[750px] flex flex-col">
+                                <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+                                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                        <i className="ph ph-list-numbers text-amber-500"></i> Valid Data Table
+                                    </div>
+                                    <div className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 shadow-sm">
+                                        {validData.length} Rows (Fully Complete Data Only)
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1">
+                                    <table className="w-full text-left text-[11px] whitespace-nowrap">
+                                        <thead className="bg-slate-50 text-slate-600 font-black uppercase tracking-widest border-b border-slate-200 transition-colors duration-300 sticky top-0 z-10 shadow-sm">
+                                            <tr>
+                                                <th className="p-4">SL</th>
+                                                <th className="p-4">State</th>
+                                                <th className="p-4">District</th>
+                                                <th className="p-4">Block</th>
+                                                <th className="p-4">Location</th>
+                                                <th className="p-4">EC</th>
+                                                <th className="p-4">SAR</th>
+                                                <th className="p-4">USSL</th>
+                                                <th className="p-4">Facies</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 transition-colors duration-300">
+                                            {validData.map((d, i) => (
+                                                <tr key={i} className="hover:bg-slate-50 transition-colors group">
+                                                    <td className="p-4 text-slate-500 font-mono">{d._calc.sl}</td>
+                                                    <td className="p-4 text-slate-600 font-medium">{stateHeader ? d[stateHeader] : '-'}</td>
+                                                    <td className="p-4 text-slate-600 font-medium">{distHeader ? d[distHeader] : '-'}</td>
+                                                    <td className="p-4 text-slate-600 font-medium">{blockHeader ? d[blockHeader] : '-'}</td>
+                                                    <td className="p-4">
+                                                        <div className="font-bold text-slate-900">{d._calc.locName}</div>
+                                                    </td>
+                                                    <td className="p-4 font-mono text-slate-700 group-hover:text-blue-600 transition-colors">{d._calc.ecVal || '-'}</td>
+                                                    <td className="p-4 font-mono text-amber-600 font-bold">{d._calc.sar.toFixed(2)}</td>
+                                                    <td className="p-4">
+                                                        <span className="px-2 py-1 rounded-md text-[10px] font-black" style={{backgroundColor: usslColors[d._calc.ussl]+'20', color: usslColors[d._calc.ussl]}}>
+                                                            {d._calc.ussl}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className="px-2 py-1 rounded text-[9px] font-black" style={{backgroundColor: faciesColors[d._calc.facies]+'20', color: faciesColors[d._calc.facies]}}>
+                                                            {faciesNames[d._calc.facies] || d._calc.facies}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-xl animate-fade-in transition-colors duration-300 flex flex-col p-4 gap-4 h-[750px] w-full">
+                                <div className="flex flex-col md:flex-row md:justify-between items-center bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100 gap-4">
+                                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                        <i className="ph ph-map-pin text-rose-500"></i> Geospatial Distribution
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-4">
+                                        <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                                            <i className="ph ph-info text-rose-500"></i>
+                                            <span className="text-[9px] font-bold text-slate-500">Plotting {validData.length} Valid Samples.</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[10px] font-black uppercase text-slate-400">Color Map By:</span>
+                                            <div className="flex bg-slate-200 rounded-2xl p-1 gap-1 border border-slate-300 shadow-inner">
+                                                <button onClick={() => setColorBy('facies')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${colorBy === 'facies' ? 'bg-emerald-500 text-white border-emerald-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>Hydro Facies</button>
+                                                <button onClick={() => setColorBy('ussl')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${colorBy === 'ussl' ? 'bg-blue-500 text-white border-blue-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>USSL Class</button>
+                                                {stateHeader && <button onClick={() => setColorBy('state')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${colorBy === 'state' ? 'bg-fuchsia-500 text-white border-fuchsia-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>State</button>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex-1 relative rounded-[1.5rem] overflow-hidden shadow-inner border-4 border-slate-100" style={{ minHeight: '400px' }}>
+                                    <div ref={mapRef} className="absolute inset-0 z-10 bg-slate-200" style={{ width: '100%', height: '100%' }}></div>
+                                    
+                                    {!hasCoordinates && (
+                                        <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+                                            <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center max-w-sm border border-slate-200">
+                                                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-3xl mb-4">
+                                                    <i className="ph ph-map-pin-line"></i>
+                                                </div>
+                                                <h3 className="font-black text-slate-800 text-lg mb-2">No Valid Coordinates Found</h3>
+                                                <p className="text-xs text-slate-500 leading-relaxed">
+                                                    We couldn't detect "Latitude" or "Longitude" columns in your active dataset, or the selected filter combination does not contain any locations with geographic data.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="absolute bottom-6 right-6 z-[500] bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-200 max-h-[250px] overflow-y-auto custom-scrollbar min-w-[180px]">
+                                        <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-3 border-b border-slate-100 pb-2 sticky top-0 bg-white/95 backdrop-blur-md">Interactive Legend</h4>
+                                        <div className="space-y-2 text-[10px] font-bold text-slate-700">
+                                            {(colorBy === 'state' && stats.states ? stats.states : colorBy === 'ussl' ? stats.ussl : stats.facies).filter(s => s.count > 0).map(s => {
+                                                const currentColor = (colorBy === 'state' ? stateColors[s.key] : colorBy === 'ussl' ? usslColors[s.key] : faciesColors[s.key]) || '#334155';
+                                                const currentSize = (colorBy === 'state' ? stateSizes[s.key] : colorBy === 'ussl' ? usslSizes[s.key] : faciesSizes[s.key]) || 1.0;
+                                                return (
+                                                    <div key={s.key} className="flex items-center justify-between gap-3 group">
+                                                        <div className="flex items-center gap-2">
+                                                            <label title="Click to change color" className="cursor-pointer relative w-3 h-3 rounded-full border border-slate-200 shrink-0 shadow-sm overflow-hidden flex ring-offset-1 hover:ring-2 ring-blue-400 transition-all" style={{ backgroundColor: currentColor }}>
+                                                                <input 
+                                                                    type="color" 
+                                                                    value={currentColor}
+                                                                    onChange={(e) => colorBy === 'state' ? handleStateColorChange(s.key, e.target.value) : colorBy === 'ussl' ? handleUsslColorChange(s.key, e.target.value) : handleFaciesColorChange(s.key, e.target.value)}
+                                                                    className="opacity-0 absolute -inset-2 w-10 h-10 cursor-pointer"
+                                                                />
+                                                            </label>
+                                                            <input 
+                                                                type="number" min="1" max="25" step="0.5" 
+                                                                title="Change Point Size"
+                                                                value={currentSize} 
+                                                                onChange={(e) => colorBy === 'state' ? handleStateSizeChange(s.key, parseFloat(e.target.value)) : colorBy === 'ussl' ? handleUsslSizeChange(s.key, parseFloat(e.target.value)) : handleFaciesSizeChange(s.key, parseFloat(e.target.value))} 
+                                                                className="w-10 text-[9px] py-0.5 px-0.5 bg-transparent border-b border-slate-300 focus:outline-none focus:border-blue-500 font-mono text-center shrink-0"
+                                                            />
+                                                            
+                                                            {colorBy === 'facies' ? (
+                                                                <input 
+                                                                    type="text" 
+                                                                    value={s.name} 
+                                                                    title="Rename Facies Category"
+                                                                    onChange={(e) => handleFaciesNameChange(s.key, e.target.value)}
+                                                                    className="flex-1 w-24 min-w-0 text-[10px] ml-1 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none text-slate-700 truncate"
+                                                                />
+                                                            ) : (
+                                                                <span className="truncate" title={s.name}>{s.name}</span>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-[9px] text-slate-400 font-mono shrink-0">n={s.count}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    ) : (
+                        <div className="py-32 text-center border-2 border-dashed border-slate-300 rounded-[3rem] bg-white/50 w-full">
+                            <p className="text-slate-500 font-black uppercase tracking-widest text-xs italic animate-pulse">
+                                {rawData.length > 0 ? "No data matches current filter criteria" : "Waiting for data upload to generate analytics"}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

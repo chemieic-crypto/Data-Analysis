@@ -3,57 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GROUND WATER QUALITY COMBINATION ANALYSIS</title>
+    <title>Ground Water Quality Combination Analysis</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Upgraded to xlsx-js-style for Excel formatting support -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
             background: #f8fafc; 
             margin: 0; 
             overflow: hidden;
-            display: flex;
-            height: 100vh;
         }
         
         #map-container {
-            flex: 1;
             position: relative;
             z-index: 1;
         }
         
-        #map { height: 100%; width: 100%; cursor: crosshair; }
-
-        .analysis-panel {
-            width: 480px;
-            height: 100vh;
-            background: white;
-            z-index: 10;
-            box-shadow: -10px 0 30px rgba(0,0,0,0.05);
-            display: flex;
-            flex-direction: column;
-            border-left: 1px solid #e2e8f0;
+        #map { 
+            height: 100%; 
+            width: 100%; 
+            cursor: crosshair; 
         }
 
-        .filter-sidebar {
-            width: 300px;
-            height: 100vh;
-            background: #0f172a;
-            color: white;
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            z-index: 20;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
 
         .map-theme-control {
             position: absolute;
@@ -87,15 +70,15 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.6);
+            background: rgba(15, 23, 42, 0.7);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            z-index: 9999;
             backdrop-filter: blur(4px);
         }
 
-        /* Leaflet Popup Styling */
+        /* Leaflet Popup Custom Styling */
         .leaflet-popup-content-wrapper {
             border-radius: 16px;
             padding: 0;
@@ -106,13 +89,17 @@
             margin: 0;
             width: 280px !important;
         }
+        .leaflet-container a.leaflet-popup-close-button {
+            padding: 8px 8px 0 0;
+            color: #64748b;
+        }
     </style>
 </head>
-<body>
+<body class="flex flex-col lg:flex-row h-screen w-full">
 
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal-overlay">
-        <div class="bg-white rounded-3xl p-8 w-[650px] max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+        <div class="bg-white rounded-3xl p-6 lg:p-8 w-11/12 max-w-[650px] max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h2 class="text-xl font-black text-slate-800">Threshold Settings</h2>
@@ -124,7 +111,7 @@
             </div>
             
             <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4" id="thresholdSettings">
-                <!-- Settings injected here -->
+                <!-- Settings injected here dynamically -->
             </div>
 
             <div class="mt-8 pt-6 border-t border-slate-100 flex gap-3">
@@ -134,27 +121,63 @@
         </div>
     </div>
 
+    <!-- Mapping Modal -->
+    <div id="mappingModal" class="modal-overlay">
+        <div class="bg-white rounded-3xl p-6 lg:p-8 w-11/12 max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-black text-slate-800">Map Data Columns</h2>
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Match your Excel columns to system requirements</p>
+                </div>
+                <button onclick="toggleModal('mappingModal')" class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            
+            <div class="bg-blue-50 text-blue-700 p-3 rounded-xl mb-4 text-[10px] font-bold border border-blue-100 flex gap-2 items-center">
+                <i data-lucide="info" class="w-4 h-4"></i>
+                Please review the auto-mapped columns. Ensure Latitude and Longitude are mapped to visualize data on the map.
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-6" id="mappingContainer">
+                <div>
+                    <h3 class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Location & Metadata</h3>
+                    <div id="mapping-meta-container" class="space-y-2"></div>
+                </div>
+                <div>
+                    <h3 class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Water Quality Parameters</h3>
+                    <div id="mapping-param-container" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-5 border-t border-slate-100 flex gap-3">
+                <button onclick="toggleModal('mappingModal')" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-colors">Cancel</button>
+                <button onclick="applyMapping()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">Confirm & Process Data</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Left: Filter Sidebar -->
-    <aside class="filter-sidebar">
-        <div class="flex items-center gap-3 border-b border-slate-700 pb-6 mb-6">
-            <div class="p-2 bg-indigo-500 rounded-xl shadow-lg shadow-indigo-500/30">
-                <i data-lucide="map-pin" class="w-6 h-6 text-white"></i>
+    <aside class="w-full lg:w-[320px] h-[40vh] lg:h-full bg-slate-900 text-white p-5 flex flex-col z-20 shadow-xl overflow-y-auto custom-scrollbar dark-scrollbar lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-slate-800">
+        <div class="flex items-center gap-3 border-b border-slate-700 pb-5 mb-5">
+            <div class="p-2.5 bg-indigo-500 rounded-xl shadow-lg shadow-indigo-500/30">
+                <i data-lucide="map-pin" class="w-5 h-5 text-white"></i>
             </div>
             <div>
-                <h1 class="text-sm text-blue-400 font-black propercase tracking-tight">Combination Analysis</h1>
-                <p class="text-[10px] text-yellow-400 font-bold uppercase tracking-widest">GWQ Data Reflection</p>
+                <h1 class="text-sm text-blue-400 font-black tracking-tight">संयोजन विश्लेषण</h1>
+                <p class="text-[10px] text-yellow-400 font-bold uppercase tracking-widest">Groundwater Quality</p>
             </div>
         </div>
 
-        <div class="space-y-6 flex-1 overflow-y-auto custom-scrollbar pr-2">
+        <div class="space-y-6 flex-1 pr-1">
             <div>
                 <label class="text-[10px] font-black text-pink-500 uppercase tracking-widest block mb-3">1. Source Data</label>
                 <div class="flex gap-2">
-                    <label class="flex-1 cursor-pointer bg-green-600 hover:bg-indigo-50 text-white px-4 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all">
+                    <label class="flex-1 cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/50">
                         <i data-lucide="upload-cloud" class="w-4 h-4"></i> Upload Excel
                         <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls">
                     </label>
-                    <button onclick="toggleModal('settingsModal')" class="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl transition-all" title="Threshold Settings">
+                    <button onclick="toggleModal('settingsModal')" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl transition-all shadow-md" title="Threshold Settings">
                         <i data-lucide="sliders-horizontal" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -163,126 +186,185 @@
             <div class="space-y-4 pt-4 border-t border-slate-700">
                 <label class="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">2. Geographic & Temporal</label>
                 <div id="filterList" class="space-y-3">
-                    <div class="text-[10px] text-slate-500 font-medium italic">Upload file to unlock filters...</div>
+                    <div class="text-[10px] text-slate-500 font-medium italic bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">Upload file to unlock filters...</div>
                 </div>
             </div>
 
             <div class="space-y-4 pt-4 border-t border-slate-700">
                 <div class="flex items-center justify-between mb-2">
                     <label class="text-[10px] font-black text-emerald-400 uppercase tracking-widest block">3. Parameter Isolation</label>
-                    <button id="toggleAllBtn" onclick="selectAllParams()" class="text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-wider bg-yellow-800 px-2 py-1 rounded transition-colors">Select All</button>
+                    <button id="toggleAllBtn" onclick="selectAllParams()" class="text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-wider bg-slate-800 px-2 py-1 rounded transition-colors">Select All</button>
                 </div>
-                <div id="paramFilterList" class="grid grid-cols-4 gap-1.5">
-                    <!-- Parameters will be injected here -->
+                <div id="paramFilterList" class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-4 gap-1.5">
+                    <!-- Parameters injected here -->
                 </div>
                 <p class="text-[9px] text-slate-500 italic mt-2 leading-tight">Selection defines which parameters are included in compliance checks.</p>
             </div>
         </div>
 
-        <div class="mt-auto pt-4">
-            <button onclick="resetFilters()" class="w-full bg-slate-800 text-slate-400 py-2 rounded-lg font-bold text-[10px] uppercase tracking-wider hover:text-white transition-colors">
+        <div class="mt-6 pt-4">
+            <button onclick="resetFilters()" class="w-full bg-slate-800 text-slate-400 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-slate-700 hover:text-white transition-all shadow-md">
                 Reset All Filters
             </button>
         </div>
     </aside>
 
     <!-- Center: Map -->
-    <main id="map-container">
-        <div class="map-theme-control">
+    <main id="map-container" class="flex-1 h-[40vh] lg:h-full relative min-h-[300px]">
+        <div class="map-theme-control hidden sm:flex">
             <button onclick="changeTheme('light')" id="btn-light" class="theme-btn active">Light</button>
-            <button onclick="changeTheme('satellite')" id="btn-satellite" class="theme-btn">Google Earth</button>
+            <button onclick="changeTheme('satellite')" id="btn-satellite" class="theme-btn">Satellite</button>
             <button onclick="changeTheme('terrain')" id="btn-terrain" class="theme-btn">Terrain</button>
         </div>
         
         <div id="map"></div>
         
-        <div id="legend" class="absolute bottom-6 left-6 z-[1000] bg-white/95 backdrop-blur p-4 rounded-2xl shadow-2xl border border-slate-200 w-48">
+        <div id="legend" class="absolute bottom-6 left-6 z-[1000] bg-white/95 backdrop-blur p-4 rounded-2xl shadow-xl border border-slate-200 w-52 pointer-events-none hidden sm:block">
             <h4 class="text-[10px] font-black text-slate-800 uppercase mb-3 flex items-center gap-2">
-                <i data-lucide="layers" class="w-3 h-3"></i> Contamination Status
+                <i data-lucide="layers" class="w-3 h-3 text-indigo-500"></i> Contamination Status
             </h4>
-            <div class="space-y-2">
+            <div class="space-y-2.5">
                 <div class="flex items-center gap-3 text-[10px] font-bold text-slate-600">
-                    <div class="w-3 h-3 rounded-full bg-emerald-500 shadow-sm"></div> Uncontaminated
+                    <div class="w-3 h-3 rounded-full bg-emerald-500 shadow-sm border border-emerald-600"></div> Uncontaminated
                 </div>
                 <div class="flex items-center gap-3 text-[10px] font-bold text-slate-600">
-                    <div class="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div> Single Element Contamination
+                    <div class="w-3 h-3 rounded-full bg-amber-500 shadow-sm border border-amber-600"></div> Single Element Exceedance
                 </div>
                 <div class="flex items-center gap-3 text-[10px] font-bold text-slate-600">
-                    <div class="w-3 h-3 rounded-full bg-rose-500 shadow-sm"></div> Multi Element Contamination
+                    <div class="w-3 h-3 rounded-full bg-rose-500 shadow-sm border border-rose-600"></div> Multi Element Exceedance
                 </div>
             </div>
         </div>
     </main>
 
     <!-- Right: GUI Dashboard -->
-    <aside class="analysis-panel">
-        <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+    <aside class="w-full lg:w-[420px] xl:w-[480px] h-[50vh] lg:h-full bg-white flex flex-col z-10 shadow-[-10px_0_30px_rgba(0,0,0,0.05)] border-t lg:border-t-0 lg:border-l border-slate-200 lg:flex-shrink-0">
+        <div class="p-5 lg:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div>
                 <h2 class="text-lg font-black text-slate-800 tracking-tight">Analytics GUI</h2>
                 <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider" id="currentSelection">Filtered View</p>
             </div>
             <div class="flex flex-col items-end gap-2">
                 <div id="sampleCount" class="text-[10px] font-black bg-white shadow-sm border border-slate-200 text-indigo-600 px-3 py-1.5 rounded-full uppercase">0 Samples</div>
-                <button id="exportBtn" onclick="exportToExcel()" class="text-[9px] font-black bg-emerald-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-emerald-700 transition-colors shadow-sm">
+                <button id="exportBtn" onclick="exportToExcel()" class="text-[9px] font-black bg-indigo-50 text-indigo-700 border border-indigo-100 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-indigo-100 transition-colors">
                     <i data-lucide="download" class="w-3 h-3"></i> Export Excel
                 </button>
             </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+        <!-- Tab Controls -->
+        <div class="flex space-x-2 p-3 bg-slate-50/80 border-b border-slate-100">
+            <button id="tab-btn-dashboard" class="flex-1 py-2 text-xs font-bold bg-white text-indigo-600 rounded-lg shadow-sm border border-slate-200 transition-all" onclick="switchTab('dashboard')">
+                Dashboard
+            </button>
+            <button id="tab-btn-state" class="flex-1 py-2 text-xs font-bold text-slate-500 hover:bg-white hover:text-slate-800 rounded-lg border border-transparent hover:border-slate-200 transition-all" onclick="switchTab('state')">
+                State Analysis
+            </button>
+        </div>
+
+        <!-- Tab 1: Dashboard -->
+        <div id="tab-content-dashboard" class="flex-1 overflow-y-auto custom-scrollbar p-5 lg:p-6 space-y-6 lg:space-y-8 bg-white block">
             
             <!-- Parameter Usage Information Area -->
-            <div id="paramInfoArea" class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 shadow-sm">
+            <div id="paramInfoArea" class="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 shadow-sm">
                 <div class="flex items-center gap-2 mb-2">
                     <i data-lucide="flask-conical" class="w-4 h-4 text-indigo-600"></i>
                     <h3 class="text-[10px] font-black text-indigo-900 uppercase tracking-widest">Active Analysis Parameters</h3>
                 </div>
-                <div class="flex items-baseline gap-2 mb-2">
+                <div class="flex items-baseline gap-2 mb-3">
                     <span id="activeParamCount" class="text-2xl font-black text-indigo-600">0</span>
                     <span class="text-[10px] font-bold text-indigo-400 uppercase">Parameters Monitored</span>
                 </div>
-                <div id="activeParamNames" class="flex flex-wrap gap-1 text-[9px] font-bold text-indigo-700 uppercase tracking-tighter leading-tight">
+                <div id="activeParamNames" class="flex flex-wrap gap-1.5 text-[9px] font-bold text-indigo-700 uppercase tracking-tighter leading-tight">
                     No parameters selected for analysis.
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-6">
-                <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col items-center relative overflow-hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
+                <!-- Status Donut -->
+                <div class="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col items-center relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                    <span class="text-[10px] font-black text-orange-800 uppercase tracking-widest mb-6 text-center">Contamination Summary</span>
-                    <div class="w-44 h-44 relative">
+                    <span class="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-4 text-center">Contamination Summary</span>
+                    <div class="w-32 h-32 lg:w-44 lg:h-44 relative">
                         <canvas id="donutStatus"></canvas>
                     </div>
-                    <div id="donutStatusLegend" class="mt-4 flex flex-wrap justify-center gap-4 text-[10px] font-bold text-slate-600"></div>
+                    <div id="donutStatusLegend" class="mt-4 flex flex-wrap justify-center gap-3 text-[10px] font-bold text-slate-600"></div>
                 </div>
 
-                <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col items-center relative overflow-hidden">
+                <!-- Exceedance Donut -->
+                <div class="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col items-center relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center">Exceedance Density</span>
-                    <div class="w-44 h-44 relative">
+                    <span class="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-4 text-center">Exceedance Density</span>
+                    <div class="w-32 h-32 lg:w-44 lg:h-44 relative">
                         <canvas id="donutExceed"></canvas>
                     </div>
-                    <div id="donutExceedLegend" class="mt-4 flex flex-wrap justify-center gap-4 text-[10px] font-bold text-slate-600"></div>
+                    <div id="donutExceedLegend" class="mt-4 flex flex-wrap justify-center gap-3 text-[10px] font-bold text-slate-600"></div>
                 </div>
             </div>
 
-            <div id="statsGrid" class="grid grid-cols-2 gap-4"></div>
+            <div id="statsGrid" class="grid grid-cols-2 gap-3 lg:gap-4">
+                <!-- Stats injected here -->
+            </div>
 
             <div class="bg-slate-900 rounded-2xl p-4 overflow-hidden shadow-xl">
-                <div class="flex justify-between items-center mb-4 px-2">
+                <div class="flex justify-between items-center mb-4 px-1">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Station Log</h3>
                     <i data-lucide="activity" class="w-3 h-3 text-emerald-400"></i>
                 </div>
-                <div class="max-h-[300px] overflow-y-auto custom-scrollbar">
+                <div class="max-h-[250px] lg:max-h-[300px] overflow-y-auto custom-scrollbar dark-scrollbar">
                     <table class="w-full text-[10px]">
-                        <thead class="sticky top-0 bg-slate-900 text-slate-500 uppercase font-black">
+                        <thead class="sticky top-0 bg-slate-900 text-slate-500 uppercase font-black z-10 shadow-sm">
                             <tr>
-                                <th class="p-2 text-left">Location Name</th>
-                                <th class="p-2 text-center">Exceedance Details</th>
-                                <th class="p-2 text-right">Count</th>
+                                <th class="p-2 text-left bg-slate-900">Location Name</th>
+                                <th class="p-2 text-center bg-slate-900">Details</th>
+                                <th class="p-2 text-right bg-slate-900">Count</th>
                             </tr>
                         </thead>
-                        <tbody id="locationTable" class="text-slate-300 divide-y divide-slate-800"></tbody>
+                        <tbody id="locationTable" class="text-slate-300 divide-y divide-slate-800/50">
+                            <tr>
+                                <td colspan="3" class="p-4 text-center text-slate-600 italic">Upload data to view logs</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: State Analysis -->
+        <div id="tab-content-state" class="hidden flex-1 overflow-y-auto custom-scrollbar p-5 lg:p-6 bg-white flex flex-col space-y-4">
+            <div class="flex items-center justify-between mb-2">
+                <div>
+                    <h3 class="text-sm font-black text-slate-800">Affected Parameters by State</h3>
+                    <p class="text-[9px] text-slate-500 font-medium mt-1">Filtering active parameters exceeding the global density threshold.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 shadow-sm">
+                        <label class="text-[9px] font-black text-indigo-500 uppercase tracking-widest whitespace-nowrap">Threshold %</label>
+                        <input type="number" id="globalStateThreshold" value="10" min="0" max="100" class="w-12 bg-white border border-slate-200 rounded px-1 text-xs font-black text-slate-700 outline-none text-right focus:ring-2 focus:ring-indigo-500 transition-all" onchange="updateStateAnalysis()">
+                    </div>
+                    <button onclick="exportStateAnalysisToExcel()" class="text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-emerald-100 transition-colors shadow-sm">
+                        <i data-lucide="download" class="w-3 h-3"></i> Export Data
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 rounded-2xl p-4 overflow-hidden shadow-xl flex-1 flex flex-col min-h-[400px]">
+                <div class="flex-1 overflow-y-auto custom-scrollbar dark-scrollbar">
+                    <table class="w-full text-[10px]">
+                        <thead class="sticky top-0 bg-slate-900 text-slate-500 uppercase font-black z-10 shadow-sm">
+                            <tr>
+                                <th class="p-2 text-center bg-slate-900 w-10">Sl. No.</th>
+                                <th class="p-2 text-left bg-slate-900 w-24">State</th>
+                                <th class="p-2 text-center bg-slate-900 w-24">Total Samples</th>
+                                <th class="p-2 text-center bg-slate-900 w-24">Affected Count</th>
+                                <th class="p-2 text-left bg-slate-900">Affected Parameters (> Threshold)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stateAnalysisTable" class="text-slate-300 divide-y divide-slate-800/50">
+                            <tr>
+                                <td colspan="5" class="p-4 text-center text-slate-600 italic">Upload data to view analysis</td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -290,50 +372,103 @@
     </aside>
 
     <script>
-        // PARAMETER CONFIGURATION
+        // PARAMETER CONFIGURATION - Thresholds & Defaults
         let PARAM_CONFIG = {
-            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH Level' },
-            'EC': { b1: 750, b2: 3000, unit: 'µS/cm', name: 'Electrical Conductivity' },
-            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride' },
-            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate' },
-            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate' },
-            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride' },
-            'TH': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Hardness' },
-            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium' },
-            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium' },
-            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium' },
-            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese' },
-            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron' },
-            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel' },
-            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper' },
-            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc' },
-            'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic' },
-            'Se': { b1: 10, b2: 10, unit: 'ppb', name: 'Selenium' },
-            'Cd': { b1: 3, b2: 3, unit: 'ppb', name: 'Cadmium' },
-            'Hg': { b1: 1, b2: 1, unit: 'ppb', name: 'Mercury' },
-            'Pb': { b1: 10, b2: 10, unit: 'ppb', name: 'Lead' },
-            'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium' }
+            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH Level', keywords: ['ph', 'ph level', 'hydrogen'] },
+            'TDS': { b1: 500, b2: 2000, unit: 'mg/l', name: 'Total Dissolved Solids', keywords: ['tds', 'total dissolved solids'] },
+            'Turbidity': { b1: 1, b2: 5, unit: 'NTU', name: 'Turbidity', keywords: ['turbidity'] },
+            'Alkalinity': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Alkalinity', keywords: ['alkalinity', 'total alkalinity'] },
+            'TH': { b1: 200, b2: 600, unit: 'mg/l as CaCO3', name: 'Total Hardness', keywords: ['th', 'total hardness', 'hardness'] },
+            'EC': { b1: 750, b2: 3000, unit: 'µS/cm at 25°C', name: 'Electrical Conductivity', keywords: ['ec', 'cond', 'conductivity', 'electrical conductivity'] },
+            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride', keywords: ['cl', 'chloride'] },
+            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate', keywords: ['no3', 'nitrate'] },
+            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride', keywords: ['f', 'fluoride'] },
+            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron', keywords: ['fe', 'iron', 'total iron'] },
+            'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic', keywords: ['as', 'arsenic'] },
+            'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium', keywords: ['u', 'uranium'] },
+            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc', keywords: ['zn', 'zinc'] },
+            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper', keywords: ['cu', 'copper'] },
+            'Pb': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Lead', keywords: ['Pb', 'lead'] },
+            'Cd': { b1: 0.003, b2: 0.003, unit: 'mg/L', name: 'Cadmium', keywords: ['cd', 'cadmium'] },
+            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium', keywords: ['cr', 'chromium'] },
+            'Hg': { b1: 0.001, b2: 0.001, unit: 'mg/L', name: 'Mercury', keywords: ['hg', 'mercury'] },
+            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel', keywords: ['ni', 'nickel'] },
+            'Se': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Selenium', keywords: ['se', 'selenium'] },
+            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium', keywords: ['ca', 'calcium'] },
+            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium', keywords: ['mg', 'magnesium'] },
+            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate', keywords: ['so4', 'sulphate', 'sulfate'] },
+            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese', keywords: ['Mn', 'Manganese'] },
+            'Al': { b1: 0.03, b2: 0.2, unit: 'mg/l', name: 'Aluminium', keywords: ['Al', 'Aluminium'] },
+            'Ba': { b1: 0.7, b2: 0.7, unit: 'mg/l', name: 'Barium', keywords: ['Ba', 'Barium'] },
+            'B': { b1: 0.5, b2: 2.4, unit: 'mg/l', name: 'Boron', keywords: ['B', 'Boron'] },
         };
 
         const THEMES = {
             light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-            satellite: 'http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}', 
+            satellite: 'https://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}', 
             terrain: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
         };
 
         let map, rawData = [], filters = { geo: {}, params: {} }, charts = {};
         let wellsLayer = null, baseLayer = null, currentFilteredData = [];
+        let uploadedHeaders = [];
+        let columnMap = {};
+
+        const metaFields = [
+            { id: 'latitude', label: 'Latitude (Y)', keywords: ['lat', 'latitude', 'y'] },
+            { id: 'longitude', label: 'Longitude (X)', keywords: ['lon', 'long', 'lng', 'longitude', 'x'] },
+            { id: 'State', label: 'State Name', keywords: ['state'] },
+            { id: 'District', label: 'District Name', keywords: ['district', 'dist'] },
+            { id: 'Block', label: 'Block/Tehsil', keywords: ['block', 'tehsil', 'mandal', 'taluka'] },
+            { id: 'Location', label: 'Location/Village', keywords: ['location', 'village', 'site', 'station', 'name'] },
+            { id: 'Season', label: 'Season/Period', keywords: ['season', 'period', 'year', 'date'] },
+            { id: 'Source', label: 'Water Source Type', keywords: ['source', 'type'] }
+        ];
 
         window.onload = () => {
             lucide.createIcons();
             initMap();
             initThresholdUI();
             setupParamFilters();
+            
+            // Handle window resize for map
+            window.addEventListener('resize', () => {
+                if(map) map.invalidateSize();
+            });
         };
 
         function toggleModal(id) {
             const m = document.getElementById(id);
             m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function switchTab(tabId) {
+            const dbContent = document.getElementById('tab-content-dashboard');
+            const stateContent = document.getElementById('tab-content-state');
+            const dbBtn = document.getElementById('tab-btn-dashboard');
+            const stateBtn = document.getElementById('tab-btn-state');
+
+            const inactiveBtnClass = "flex-1 py-2 text-xs font-bold text-slate-500 hover:bg-white hover:text-slate-800 rounded-lg border border-transparent hover:border-slate-200 transition-all";
+            const activeBtnClass = "flex-1 py-2 text-xs font-bold bg-white text-indigo-600 rounded-lg shadow-sm border border-slate-200 transition-all";
+
+            if (tabId === 'dashboard') {
+                dbContent.classList.remove('hidden');
+                dbContent.classList.add('block');
+                stateContent.classList.remove('flex');
+                stateContent.classList.add('hidden');
+                
+                dbBtn.className = activeBtnClass;
+                stateBtn.className = inactiveBtnClass;
+            } else {
+                dbContent.classList.remove('block');
+                dbContent.classList.add('hidden');
+                stateContent.classList.remove('hidden');
+                stateContent.classList.add('flex');
+                
+                dbBtn.className = inactiveBtnClass;
+                stateBtn.className = activeBtnClass;
+                updateStateAnalysis();
+            }
         }
 
         function initThresholdUI() {
@@ -343,23 +478,23 @@
                 return `
                 <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
                     <div class="flex justify-between items-center mb-4">
-                        <span class="font-black text-slate-800 text-sm flex items-center gap-2">
+                        <span class="font-black text-slate-800 text-sm flex items-center gap-3">
                             <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px]">${p}</span>
                             ${conf.name}
                         </span>
                         <div class="flex items-center gap-2">
-                            <span class="text-[8px] font-bold text-slate-400 uppercase">Unit</span>
-                            <input type="text" id="unit-${p}" value="${conf.unit}" class="w-20 bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-700 outline-none focus:ring-1 focus:ring-indigo-500">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase">Unit</span>
+                            <input type="text" id="unit-${p}" value="${conf.unit}" class="w-24 bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1">
-                            <label class="text-[8px] uppercase font-bold text-slate-500">${p === 'pH' ? 'Min Acceptable' : 'Acceptable Limit'}</label>
-                            <input type="number" step="0.0001" id="set-${p}-b1" value="${conf.b1}" ${p !== 'pH' ? 'disabled' : ''} class="w-full ${p !== 'pH' ? 'bg-slate-100 text-slate-400' : 'bg-white'} border border-slate-200 rounded-lg p-2 text-xs font-bold outline-none">
+                        <div class="space-y-1.5">
+                            <label class="text-[9px] uppercase font-bold text-slate-500">${p === 'pH' ? 'Min Acceptable' : 'Acceptable Limit'}</label>
+                            <input type="number" step="0.0001" id="set-${p}-b1" value="${conf.b1}" ${p !== 'pH' ? 'disabled' : ''} class="w-full ${p !== 'pH' ? 'bg-slate-100 text-slate-400' : 'bg-white'} border border-slate-200 rounded-lg p-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
-                        <div class="space-y-1">
-                            <label class="text-[8px] uppercase font-bold text-slate-500">${p === 'pH' ? 'Max Acceptable' : 'Permissible Limit'}</label>
-                            <input type="number" step="0.0001" id="set-${p}-b2" value="${conf.b2}" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold outline-none">
+                        <div class="space-y-1.5">
+                            <label class="text-[9px] uppercase font-bold text-slate-500">${p === 'pH' ? 'Max Acceptable' : 'Permissible Limit'}</label>
+                            <input type="number" step="0.0001" id="set-${p}-b2" value="${conf.b2}" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
                     </div>
                 </div>
@@ -388,9 +523,71 @@
 
         function changeTheme(themeKey) {
             map.removeLayer(baseLayer);
-            baseLayer = L.tileLayer(THEMES[themeKey], { attribution: 'Tiles © Google/Esri/OSM' }).addTo(map);
+            baseLayer = L.tileLayer(THEMES[themeKey], { attribution: 'Tiles © Google/Esri/OSM/Carto' }).addTo(map);
             document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`btn-${themeKey}`).classList.add('active');
+        }
+
+        function openMappingModal() {
+            const metaContainer = document.getElementById('mapping-meta-container');
+            const paramContainer = document.getElementById('mapping-param-container');
+            
+            metaContainer.innerHTML = metaFields.map(f => buildMappingRow(f.id, f.label, f.keywords, 'map-meta-')).join('');
+            
+            paramContainer.innerHTML = Object.keys(PARAM_CONFIG).map(p => {
+                const conf = PARAM_CONFIG[p];
+                return buildMappingRow(p, `${conf.name} (${p})`, conf.keywords || [p], 'map-param-');
+            }).join('');
+
+            toggleModal('mappingModal');
+        }
+
+        function buildMappingRow(fieldId, fieldLabel, keywords, prefix) {
+            let bestMatch = "";
+            let exactMatch = uploadedHeaders.find(h => h.toLowerCase() === fieldId.toLowerCase());
+            
+            if (exactMatch) {
+                bestMatch = exactMatch;
+            } else {
+                for (let h of uploadedHeaders) {
+                    if (keywords.some(k => h.toLowerCase().includes(k.toLowerCase()))) {
+                        bestMatch = h;
+                        break;
+                    }
+                }
+            }
+
+            let options = `<option value="">-- Ignore / Not Present --</option>`;
+            uploadedHeaders.forEach(h => {
+                options += `<option value="${h}" ${h === bestMatch ? 'selected' : ''}>${h}</option>`;
+            });
+
+            return `
+                <div class="flex justify-between items-center p-2.5 bg-slate-50 hover:bg-slate-100 transition-colors rounded-xl border border-slate-200">
+                    <span class="font-bold text-slate-700 text-[10px] uppercase tracking-wider w-1/2 pl-2">${fieldLabel}</span>
+                    <select id="${prefix}${fieldId}" class="w-1/2 bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm">
+                        ${options}
+                    </select>
+                </div>
+            `;
+        }
+
+        function applyMapping() {
+            columnMap = {};
+            metaFields.forEach(f => {
+                const val = document.getElementById(`map-meta-${f.id}`).value;
+                if (val) columnMap[f.id] = val;
+            });
+            Object.keys(PARAM_CONFIG).forEach(p => {
+                const val = document.getElementById(`map-param-${p}`).value;
+                if (val) columnMap[p] = val;
+            });
+
+            toggleModal('mappingModal');
+            filters = { geo: {}, params: {} };
+            setupGeoFilters();
+            setupParamFilters();
+            processAnalysis();
         }
 
         document.getElementById('fileInput').onchange = (e) => {
@@ -398,48 +595,53 @@
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (evt) => {
-                const wb = XLSX.read(evt.target.result, { type: 'binary' });
-                rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                filters = { geo: {}, params: {} };
-                setupGeoFilters();
-                setupParamFilters();
-                processAnalysis();
+                try {
+                    const wb = XLSX.read(evt.target.result, { type: 'binary' });
+                    rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+                    if (rawData.length === 0) {
+                        alert('Uploaded Excel file is empty.');
+                        return;
+                    }
+                    uploadedHeaders = Object.keys(rawData[0]);
+                    openMappingModal();
+                } catch(err) {
+                    alert('Error parsing Excel file. Ensure it is a valid format.');
+                    console.error(err);
+                }
             };
             reader.readAsBinaryString(file);
         };
-
-        function findDataKey(obj, target) {
-            if (!obj) return null;
-            const keys = Object.keys(obj);
-            const exact = keys.find(k => k === target);
-            if(exact) return exact;
-            return keys.find(k => k.toLowerCase().trim() === target.toLowerCase().trim());
-        }
 
         function setupGeoFilters() {
             const container = document.getElementById('filterList');
             container.innerHTML = '';
             const targetKeys = ['State', 'District', 'Block', 'Location', 'Season', 'Source'];
-            
+            let filtersAdded = false;
+
             targetKeys.forEach(key => {
-                const actualKey = findDataKey(rawData[0], key);
+                const actualKey = columnMap[key];
                 if(!actualKey) return;
                 
                 const vals = [...new Set(rawData.map(d => String(d[actualKey] || '').trim()))]
                     .filter(v => v !== '' && v !== 'undefined' && v !== 'null').sort();
 
                 if(vals.length === 0) return;
+                filtersAdded = true;
 
                 const wrap = document.createElement('div');
                 wrap.innerHTML = `
-                    <label class="text-[9px] font-bold text-slate-500 uppercase tracking-tighter ml-1 mb-1 block">${key}</label>
-                    <select id="select-geo-${key}" onchange="updateGeoFilter('${key}', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter ml-1 mb-1.5 block">${key}</label>
+                    <select id="select-geo-${key}" onchange="updateGeoFilter('${key}', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500 appearance-none shadow-sm cursor-pointer">
                         <option value="">All ${key}s</option>
                         ${vals.map(v => `<option value="${v}">${v}</option>`).join('')}
                     </select>
                 `;
                 container.appendChild(wrap);
             });
+
+            if(!filtersAdded && rawData.length > 0) {
+                container.innerHTML = '<div class="text-[10px] text-slate-500 italic p-2">No standard geographic columns found.</div>';
+            }
         }
 
         function setupParamFilters() {
@@ -447,22 +649,25 @@
             container.innerHTML = '';
             
             Object.keys(PARAM_CONFIG).forEach(p => {
-                const existsInFile = rawData.length > 0 && !!findDataKey(rawData[0], p);
+                const existsInFile = rawData.length > 0 && !!columnMap[p];
                 const btn = document.createElement('button');
                 btn.id = `btn-param-${p}`;
                 const isActive = !!filters.params[p];
                 
-                btn.className = `px-1 py-1.5 rounded-lg border text-[9px] font-black transition-all text-center ${isActive ? 'bg-emerald-500 text-white border-emerald-500 shadow-md scale-105' : 'border-slate-700 text-slate-400 hover:border-slate-500'} ${!existsInFile && rawData.length > 0 ? 'opacity-40 grayscale pointer-events-none' : ''}`;
+                btn.className = `px-1 py-1.5 rounded-lg border text-[9px] font-black transition-all text-center 
+                                ${isActive ? 'bg-emerald-500 text-white border-emerald-500 shadow-md scale-105 z-10' 
+                                : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500 hover:bg-slate-800'} 
+                                ${!existsInFile && rawData.length > 0 ? 'opacity-30 grayscale pointer-events-none' : ''}`;
                 
                 btn.innerText = p;
-                btn.title = existsInFile ? PARAM_CONFIG[p].name : `${PARAM_CONFIG[p].name} (Missing in File)`;
+                btn.title = existsInFile ? PARAM_CONFIG[p].name : `${PARAM_CONFIG[p].name} (Missing in Data)`;
                 btn.onclick = () => toggleParamFilter(p);
                 container.appendChild(btn);
             });
         }
 
         function selectAllParams() {
-            const availableParams = Object.keys(PARAM_CONFIG).filter(p => !!findDataKey(rawData[0], p));
+            const availableParams = Object.keys(PARAM_CONFIG).filter(p => !!columnMap[p]);
             const currentlyActiveCount = Object.keys(filters.params).length;
             const btn = document.getElementById('toggleAllBtn');
 
@@ -507,7 +712,8 @@
             const geoData = rawData.filter(d => {
                 return Object.entries(filters.geo).every(([key, val]) => {
                     if(!val) return true;
-                    const actualKey = findDataKey(d, key);
+                    const actualKey = columnMap[key];
+                    if(!actualKey) return true;
                     return String(d[actualKey] || '').trim() === val;
                 });
             });
@@ -526,11 +732,11 @@
             if (isolationActive) {
                 activeKeys = Object.keys(filters.params);
             } else {
-                activeKeys = Object.keys(PARAM_CONFIG).filter(p => !!findDataKey(rawData[0], p));
+                activeKeys = Object.keys(PARAM_CONFIG).filter(p => !!columnMap[p]);
             }
 
             document.getElementById('activeParamCount').innerText = activeKeys.length;
-            const nameList = activeKeys.map(k => `<span class="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md border border-indigo-200">#${k}</span>`).join(' ');
+            const nameList = activeKeys.map(k => `<span class="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200">#${k}</span>`).join(' ');
             document.getElementById('activeParamNames').innerHTML = activeKeys.length > 0 ? nameList : "No active parameters for compliance check.";
         }
 
@@ -541,7 +747,7 @@
             const activeSet = isolationActive ? Object.keys(filters.params) : Object.keys(PARAM_CONFIG);
             
             activeSet.forEach(p => {
-                const ak = findDataKey(loc, p);
+                const ak = columnMap[p];
                 if(!ak) return;
                 
                 const val = parseFloat(loc[ak]);
@@ -568,37 +774,120 @@
             const multi = results.filter(r => r.failCount > 1);
 
             renderDonut('donutStatus', ['Uncontaminated', 'Contaminated'], [uncontaminated.length, contaminated.length], ['#10b981', '#f43f5e'], total);
-            renderDonut('donutExceed', ['Single Element Contamination', 'Multi Element Contamination'], [single.length, multi.length], ['#f59e0b', '#7c3aed'], total);
+            renderDonut('donutExceed', ['Single Element Exceed.', 'Multi Element Exceed.'], [single.length, multi.length], ['#f59e0b', '#8b5cf6'], total);
 
             document.getElementById('statsGrid').innerHTML = `
                 ${statCard('Uncontaminated', uncontaminated.length, total, 'emerald')}
                 ${statCard('Contaminated', contaminated.length, total, 'rose')}
-                ${statCard('Multi Element Contamination', multi.length, total, 'violet')}
-                ${statCard('Single Element Contamination', single.length, total, 'amber')}
+                ${statCard('Multi Element Exceed.', multi.length, total, 'violet')}
+                ${statCard('Single Element Exceed.', single.length, total, 'amber')}
             `;
 
+            updateStateAnalysis();
+
+            if(results.length === 0) {
+                 document.getElementById('locationTable').innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-600 italic">No locations match filters</td></tr>`;
+                 return;
+            }
+
             document.getElementById('locationTable').innerHTML = results.slice(0, 100).map(r => {
-                const locName = r.Station || r.Location || r.Village || r.SITE_NAME || 'Unknown Well';
+                const locName = columnMap['Location'] ? (r[columnMap['Location']] || 'Unknown Well') : 'Unknown Well';
                 return `
                 <tr class="hover:bg-slate-800/50 transition-colors">
-                    <td class="p-3 font-bold text-slate-200 truncate max-w-[140px]">${locName}</td>
-                    <td class="p-3 text-center text-[9px]">
-                        ${r.failCount === 0 ? '<span class="text-emerald-400 font-bold uppercase">Uncontaminated</span>' : `<span class="text-rose-400 font-bold">${r.failedParams.map(p => p.name).join(', ')}</span>`}
+                    <td class="p-3 font-bold text-slate-200 truncate max-w-[120px]" title="${locName}">${locName}</td>
+                    <td class="p-3 text-center text-[9px] leading-tight">
+                        ${r.failCount === 0 
+                            ? '<span class="text-emerald-400 font-bold uppercase tracking-wider">Pass</span>' 
+                            : `<span class="text-rose-400 font-bold bg-rose-900/30 px-2 py-0.5 rounded">${r.failedParams.map(p => p.name).join(', ')}</span>`}
                     </td>
-                    <td class="p-3 text-right font-black text-slate-500">${r.failCount}</td>
+                    <td class="p-3 text-right font-black ${r.failCount > 0 ? 'text-rose-400' : 'text-emerald-400'}">${r.failCount}</td>
                 </tr>`;
             }).join('');
-            lucide.createIcons();
+        }
+
+        function updateStateAnalysis() {
+            const tableBody = document.getElementById('stateAnalysisTable');
+            if (!tableBody) return;
+
+            if (currentFilteredData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-600 italic">No data available for analysis</td></tr>';
+                return;
+            }
+
+            const globalThreshold = parseFloat(document.getElementById('globalStateThreshold').value) || 0;
+
+            // 1. Group data by State
+            const stateData = {};
+            currentFilteredData.forEach(r => {
+                const stateKey = columnMap['State'];
+                const stateName = stateKey ? (r[stateKey] || 'Unknown') : 'Unknown';
+                
+                if (!stateData[stateName]) {
+                    stateData[stateName] = { totalSamples: 0, paramFails: {} };
+                }
+                stateData[stateName].totalSamples++;
+
+                // Track fails for this specific row. (r.failedParams only contains actively selected parameters)
+                r.failedParams.forEach(fp => {
+                    if (!stateData[stateName].paramFails[fp.name]) {
+                        stateData[stateName].paramFails[fp.name] = 0;
+                    }
+                    stateData[stateName].paramFails[fp.name]++;
+                });
+            });
+
+            // 2. Calculate percentages, filter by threshold, sort decreasing, and generate HTML
+            let html = '';
+            let slNo = 1;
+            
+            Object.keys(stateData).sort().forEach(stateName => {
+                const data = stateData[stateName];
+                const affectedParamsHTML = [];
+                
+                // Map, calculate, filter, and sort decreasing by percentage
+                const paramStats = Object.entries(data.paramFails)
+                    .map(([paramName, failCount]) => ({
+                        name: paramName,
+                        percentage: (failCount / data.totalSamples) * 100
+                    }))
+                    .filter(param => param.percentage > globalThreshold)
+                    .sort((a, b) => b.percentage - a.percentage);
+
+                paramStats.forEach(param => {
+                    affectedParamsHTML.push(`
+                        <span class="bg-rose-900/40 text-rose-300 px-2 py-1 rounded border border-rose-800/50 inline-flex items-center gap-1.5 shadow-sm" title="Threshold: >${globalThreshold}%">
+                            <span class="font-black">${param.name}</span> 
+                            <span class="text-[8px] bg-rose-950/50 px-1 rounded">${param.percentage.toFixed(1)}%</span>
+                        </span>
+                    `);
+                });
+
+                html += `
+                    <tr class="hover:bg-slate-800/50 transition-colors">
+                        <td class="p-3 font-black text-slate-500 text-center">${slNo++}</td>
+                        <td class="p-3 font-bold text-slate-200 align-top">${stateName}</td>
+                        <td class="p-3 font-black text-indigo-400 text-center align-top">${data.totalSamples}</td>
+                        <td class="p-3 font-black ${paramStats.length > 0 ? 'text-rose-400' : 'text-emerald-500'} text-center align-top">${paramStats.length}</td>
+                        <td class="p-3 leading-relaxed">
+                            <div class="flex flex-wrap gap-1.5">
+                                ${affectedParamsHTML.length > 0 ? affectedParamsHTML.join('') : '<span class="text-[10px] font-bold text-emerald-500 bg-emerald-900/20 px-2 py-1 rounded border border-emerald-800/30">None</span>'}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableBody.innerHTML = html;
         }
 
         function statCard(label, count, total, color) {
             const perc = total > 0 ? ((count/total)*100).toFixed(1) : 0;
             return `
-                <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
-                    <div class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">${label}</div>
-                    <div class="flex items-baseline justify-between">
-                        <span class="text-xl font-black text-slate-800">${count}</span>
-                        <span class="text-[10px] font-bold text-${color}-500">${perc} %</span>
+                <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div class="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest leading-tight">${label}</div>
+                    <div class="flex items-end justify-between">
+                        <span class="text-2xl font-black text-slate-800 leading-none">${count}</span>
+                        <span class="text-[10px] font-bold text-${color}-500 bg-${color}-50 px-1.5 py-0.5 rounded border border-${color}-100">${perc}%</span>
                     </div>
                 </div>`;
         }
@@ -607,44 +896,64 @@
             if(charts[id]) charts[id].destroy();
             const canvas = document.getElementById(id);
             if(!canvas) return;
+            
+            // Check if all data is 0
+            const isEmpty = data.every(v => v === 0);
+            
             charts[id] = new Chart(canvas.getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     labels: labels,
-                    datasets: [{ data: data, backgroundColor: colors, borderWidth: 0 }]
+                    datasets: [{ 
+                        data: isEmpty ? [1] : data, 
+                        backgroundColor: isEmpty ? ['#e2e8f0'] : colors, 
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
                 },
-                options: { cutout: '80%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                options: { 
+                    cutout: '75%', 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { enabled: !isEmpty }
+                    },
+                    animation: { duration: 800 }
+                }
             });
             
             document.getElementById(id + 'Legend').innerHTML = labels.map((l, i) => {
                 const perc = total > 0 ? ((data[i]/total)*100).toFixed(1) : 0;
                 return `
                 <div class="flex items-center gap-1.5 whitespace-nowrap">
-                    <div class="w-2 h-2 rounded-full" style="background:${colors[i]}"></div>
-                    <span class="font-bold">${l}</span>: ${data[i]} (${perc}%)
+                    <div class="w-2.5 h-2.5 rounded-full shadow-sm" style="background:${colors[i]}"></div>
+                    <span class="font-bold text-slate-700">${l}</span> <span class="text-slate-400">(${perc}%)</span>
                 </div>`}).join('');
         }
 
         function getPopupContent(r) {
-            const locName = r.Station || r.Location || r.Village || r.SITE_NAME || 'Unknown Well';
-            const state = r[findDataKey(r, 'State')] || 'N/A';
-            const district = r[findDataKey(r, 'District')] || 'N/A';
-            const block = r[findDataKey(r, 'Block')] || 'N/A';
-            const source = r[findDataKey(r, 'Source')] || 'N/A';
-            const season = r[findDataKey(r, 'Season')] || 'N/A';
+            const locName = columnMap['Location'] ? (r[columnMap['Location']] || 'Unknown Well') : 'Unknown Well';
+            const state = columnMap['State'] ? (r[columnMap['State']] || 'N/A') : 'N/A';
+            const district = columnMap['District'] ? (r[columnMap['District']] || 'N/A') : 'N/A';
+            const block = columnMap['Block'] ? (r[columnMap['Block']] || 'N/A') : 'N/A';
+            const source = columnMap['Source'] ? (r[columnMap['Source']] || 'N/A') : 'N/A';
+            const season = columnMap['Season'] ? (r[columnMap['Season']] || 'N/A') : 'N/A';
 
             let failHtml = '';
             if (r.failCount > 0) {
                 failHtml = `
-                <div class="mt-3 pt-3 border-t border-slate-100">
-                    <p class="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-2">Exceedance Alerts (${r.failCount})</p>
-                    <div class="space-y-1.5">
+                <div class="mt-4 pt-3 border-t border-slate-100">
+                    <p class="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-2.5 flex items-center gap-1">
+                        <i data-lucide="alert-triangle" class="w-3 h-3"></i> Exceedance Alerts (${r.failCount})
+                    </p>
+                    <div class="space-y-1.5 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
                         ${r.failedParams.map(p => `
-                            <div class="flex justify-between items-center bg-rose-50 p-2 rounded-lg border border-rose-100">
+                            <div class="flex justify-between items-center bg-rose-50 p-2 rounded-xl border border-rose-100">
                                 <span class="text-[10px] font-black text-rose-900">${p.name}</span>
-                                <div class="text-right">
-                                    <div class="text-[10px] font-bold text-rose-700">${p.val} <span class="text-[8px] opacity-70">${p.unit}</span></div>
-                                    <div class="text-[8px] font-bold text-rose-400">Limit: ${p.limit}</div>
+                                <div class="text-right flex items-baseline gap-2">
+                                    <div class="text-xs font-black text-rose-700">${p.val} <span class="text-[8px] font-bold opacity-70">${p.unit}</span></div>
+                                    <div class="text-[8px] font-bold text-rose-400 bg-white px-1 py-0.5 rounded shadow-sm border border-rose-100">Max: ${p.limit}</div>
                                 </div>
                             </div>
                         `).join('')}
@@ -652,33 +961,33 @@
                 </div>`;
             } else {
                 failHtml = `
-                <div class="mt-3 pt-3 border-t border-slate-100">
-                    <div class="flex items-center gap-2 bg-emerald-50 text-emerald-700 p-2 rounded-lg border border-emerald-100">
-                        <i data-lucide="check-circle" class="w-3 h-3"></i>
-                        <span class="text-[10px] font-black uppercase tracking-wider">Uncontaminated</span>
+                <div class="mt-4 pt-3 border-t border-slate-100">
+                    <div class="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 p-3 rounded-xl border border-emerald-100 shadow-sm">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-black uppercase tracking-widest">Uncontaminated</span>
                     </div>
                 </div>`;
             }
 
             return `
-            <div class="p-4 bg-white">
-                <div class="mb-3">
-                    <h3 class="text-sm font-black text-slate-800 leading-tight">${locName}</h3>
-                    <p class="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mt-1">${district}, ${state}</p>
+            <div class="p-5 bg-white">
+                <div class="mb-4 pr-4">
+                    <h3 class="text-base font-black text-slate-800 leading-tight">${locName}</h3>
+                    <p class="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-1.5">${district !== 'N/A' ? district + ', ' : ''}${state}</p>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px]">
+                <div class="grid grid-cols-2 gap-x-4 gap-y-3 text-[10px] bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <div>
-                        <p class="text-slate-400 font-bold uppercase text-[8px]">Block</p>
-                        <p class="text-slate-700 font-bold">${block}</p>
+                        <p class="text-slate-400 font-bold uppercase tracking-wider text-[8px] mb-0.5">Block</p>
+                        <p class="text-slate-700 font-bold truncate" title="${block}">${block}</p>
                     </div>
                     <div>
-                        <p class="text-slate-400 font-bold uppercase text-[8px]">Source</p>
-                        <p class="text-slate-700 font-bold">${source}</p>
+                        <p class="text-slate-400 font-bold uppercase tracking-wider text-[8px] mb-0.5">Source</p>
+                        <p class="text-slate-700 font-bold truncate" title="${source}">${source}</p>
                     </div>
                     <div class="col-span-2">
-                        <p class="text-slate-400 font-bold uppercase text-[8px]">Season</p>
-                        <p class="text-slate-700 font-bold">${season}</p>
+                        <p class="text-slate-400 font-bold uppercase tracking-wider text-[8px] mb-0.5">Season</p>
+                        <p class="text-slate-700 font-bold truncate" title="${season}">${season}</p>
                     </div>
                 </div>
 
@@ -690,17 +999,22 @@
             wellsLayer.clearLayers();
             const bounds = [];
             results.forEach(r => {
-                const lat = parseFloat(r[findDataKey(r, 'latitude')] || r.lat);
-                const lon = parseFloat(r[findDataKey(r, 'longitude')] || r.long || r.lng);
+                const latKey = columnMap['latitude'];
+                const lonKey = columnMap['longitude'];
+                if(!latKey || !lonKey) return;
+
+                const lat = parseFloat(r[latKey]);
+                const lon = parseFloat(r[lonKey]);
                 if(isNaN(lat) || isNaN(lon)) return;
 
-                const color = r.failCount === 0 ? '#10b981' : (r.failCount === 1 ? '#f59e0b' : '#ef4444');
+                const color = r.failCount === 0 ? '#10b981' : (r.failCount === 1 ? '#f59e0b' : '#e11d48');
                 const marker = L.circleMarker([lat, lon], { 
-                    radius: 8, 
+                    radius: 7, 
                     fillColor: color, 
-                    color: '#fff', 
-                    weight: 2, 
-                    fillOpacity: 0.9 
+                    color: '#ffffff', 
+                    weight: 1.5, 
+                    fillOpacity: 0.95,
+                    opacity: 1
                 }).addTo(wellsLayer);
 
                 marker.bindPopup(getPopupContent(r));
@@ -712,22 +1026,129 @@
 
                 bounds.push([lat, lon]);
             });
-            if(bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+            if(bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
+            }
+        }
+
+        function applyExcelStyles(ws) {
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            const colWidths = [];
+
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellRef = XLSX.utils.encode_cell({c: C, r: R});
+                    if (!ws[cellRef]) continue;
+
+                    let cellVal = ws[cellRef].v ? ws[cellRef].v.toString() : "";
+                    
+                    // Estimate auto-column width
+                    colWidths[C] = Math.max(colWidths[C] || 12, Math.min(cellVal.length + 4, 50));
+
+                    // Base Style (Times New Roman, Size 12)
+                    let style = {
+                        font: { name: "Times New Roman", sz: 12 },
+                        alignment: { wrapText: true, vertical: 'center' }
+                    };
+
+                    if (R === 0) {
+                        // Header Style (Black fill, White Bold text)
+                        style.font.bold = true;
+                        style.font.color = { rgb: "FFFFFF" };
+                        style.fill = { fgColor: { rgb: "000000" } };
+                        style.alignment.horizontal = 'center';
+                    } else {
+                        // Body style
+                        style.alignment.horizontal = 'left';
+                    }
+
+                    ws[cellRef].s = style;
+                }
+            }
+
+            ws['!cols'] = colWidths.map(w => ({ wch: w }));
         }
 
         function exportToExcel() {
             if (currentFilteredData.length === 0) return;
             const exportData = currentFilteredData.map(row => {
-                const clean = { ...row }; delete clean.failedParams; delete clean.failCount;
+                const clean = { ...row }; 
+                delete clean.failedParams; 
+                delete clean.failCount;
                 clean['Compliance Status'] = row.failCount === 0 ? 'Uncontaminated' : 'Contaminated';
                 clean['Total Exceedances'] = row.failCount;
-                clean['Exceeded Parameters'] = row.failedParams.map(p => `${p.name}: ${p.val}`).join(', ');
+                clean['Exceeded Parameters'] = row.failCount > 0 ? row.failedParams.map(p => `${p.name}: ${p.val}`).join(', ') : 'None';
                 return clean;
             });
             const ws = XLSX.utils.json_to_sheet(exportData);
+            applyExcelStyles(ws);
+
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "GW Analysis");
-            XLSX.writeFile(wb, `GW_Report.xlsx`);
+            XLSX.writeFile(wb, `GW_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        function exportStateAnalysisToExcel() {
+            if (currentFilteredData.length === 0) {
+                alert("No data available to export.");
+                return;
+            }
+
+            const globalThreshold = parseFloat(document.getElementById('globalStateThreshold').value) || 0;
+            const stateData = {};
+
+            currentFilteredData.forEach(r => {
+                const stateKey = columnMap['State'];
+                const stateName = stateKey ? (r[stateKey] || 'Unknown') : 'Unknown';
+                
+                if (!stateData[stateName]) {
+                    stateData[stateName] = { totalSamples: 0, paramFails: {} };
+                }
+                stateData[stateName].totalSamples++;
+
+                r.failedParams.forEach(fp => {
+                    if (!stateData[stateName].paramFails[fp.name]) {
+                        stateData[stateName].paramFails[fp.name] = 0;
+                    }
+                    stateData[stateName].paramFails[fp.name]++;
+                });
+            });
+
+            const exportData = [];
+            let slNo = 1;
+
+            Object.keys(stateData).sort().forEach(stateName => {
+                const data = stateData[stateName];
+                const affectedParamsOutput = [];
+                
+                // Map, calculate, filter, and sort decreasing by percentage for export
+                const paramStats = Object.entries(data.paramFails)
+                    .map(([paramName, failCount]) => ({
+                        name: paramName,
+                        percentage: (failCount / data.totalSamples) * 100
+                    }))
+                    .filter(param => param.percentage > globalThreshold)
+                    .sort((a, b) => b.percentage - a.percentage);
+
+                paramStats.forEach(param => {
+                    affectedParamsOutput.push(`${param.name} (${param.percentage.toFixed(1)}%)`);
+                });
+
+                exportData.push({
+                    'Sl. No.': slNo++,
+                    'State': stateName,
+                    'Total Samples': data.totalSamples,
+                    'No. of Affected Parameters': paramStats.length,
+                    'Affected Parameters (> Threshold)': affectedParamsOutput.length > 0 ? affectedParamsOutput.join(', ') : 'None'
+                });
+            });
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            applyExcelStyles(ws);
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "State Analysis");
+            XLSX.writeFile(wb, `State_Analysis_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
     </script>
 </body>

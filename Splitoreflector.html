@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,75 +12,182 @@
     <!-- Leaflet Maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Shapefile parsing (shpjs) and Spatial Math (Turf.js) -->
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
         
         :root {
-            --primary-bg: radial-gradient(circle at top left, #f0f9ff 0%, #e0f2fe 100%);
-            --accent-color: #0ea5e9;
-            --accent-hover: #0284c7;
-            --glass-bg: rgba(255, 255, 255, 0.7);
+            --primary-bg: #f8fafc;
+            --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.2) 100%);
+            --parrot: #84cc16; /* Lime-500 equivalent */
         }
 
         /* Themes */
-        body.theme-ocean {
-            --primary-bg: radial-gradient(circle at top left, #f0f9ff 0%, #e0f2fe 100%);
-            --accent-color: #0ea5e9;
-            --accent-hover: #0284c7;
-        }
-        body.theme-emerald {
-            --primary-bg: radial-gradient(circle at top left, #f0fdf4 0%, #dcfce7 100%);
-            --accent-color: #10b981;
-            --accent-hover: #059669;
-        }
+        body.theme-ocean { --primary-bg: radial-gradient(circle at top left, #e0f2fe 0%, #bae6fd 100%); }
+        body.theme-emerald { --primary-bg: radial-gradient(circle at top left, #dcfce7 0%, #86efac 100%); }
         body.theme-midnight {
             --primary-bg: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
-            --accent-color: #6366f1;
-            --accent-hover: #4f46e5;
-            --glass-bg: rgba(30, 41, 59, 0.8);
+            --glass-bg: linear-gradient(135deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.4) 100%);
             color: #f1f5f9;
         }
-        body.theme-midnight .glass { background: var(--glass-bg); border-color: rgba(255,255,255,0.1); }
+        body.theme-midnight .glass { border-color: rgba(255,255,255,0.1); box-shadow: 0 8px 32px 0 rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.05); }
         body.theme-midnight .text-slate-800, body.theme-midnight .text-slate-700 { color: #f1f5f9; }
         body.theme-midnight .text-slate-500 { color: #94a3b8; }
+        body.theme-midnight .text-slate-600 { color: #cbd5e1; }
         body.theme-midnight #previewTable thead { background: #1e293b; }
+        body.theme-midnight #previewTable tr:hover { background: rgba(255,255,255,0.05); }
 
-        body { font-family: 'Inter', sans-serif; background: var(--primary-bg); min-height: 100vh; transition: all 0.4s ease; }
-        .glass { background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        body { font-family: 'Inter', sans-serif; background: var(--primary-bg); min-height: 100vh; transition: all 0.4s ease; padding-top: 2rem; }
+        
+        /* Vibrant Top Strip */
+        .color-strip {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 8px; z-index: 200;
+            background: linear-gradient(to right, #ef4444, #f97316, #facc15, #84cc16, #3b82f6, #ec4899);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .glass { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1), inset 0 1px 2px rgba(255,255,255,0.8);
+        }
+
+        /* Glossy Buttons */
+        .glossy-btn {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 20px -4px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255, 255, 255, 0.4);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .glossy-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 50%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 100%);
+            border-radius: inherit;
+            pointer-events: none;
+        }
+        .glossy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px -4px rgba(0,0,0,0.3), inset 0 2px 5px rgba(255, 255, 255, 0.6);
+            filter: brightness(1.05);
+        }
+        .glossy-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+        }
+
+        /* Glossy Inputs */
+        .glossy-input {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05), 0 2px 5px rgba(0,0,0,0.02);
+            transition: all 0.3s ease;
+        }
+        .glossy-input:focus {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: #3b82f6;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05), 0 0 0 4px rgba(59, 130, 246, 0.2);
+        }
+        body.theme-midnight .glossy-input {
+            background: rgba(15, 23, 42, 0.5);
+            border-color: rgba(255,255,255,0.2);
+            color: white;
+        }
+        body.theme-midnight .glossy-input:focus {
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        /* Dark Theme Elements Adjustments */
+        body.theme-midnight .modal-panel {
+            background-color: rgba(15, 23, 42, 0.95) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        body.theme-midnight .modal-header {
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        body.theme-midnight .modal-footer {
+            background-color: rgba(15, 23, 42, 0.8) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        body.theme-midnight .glass-panel {
+            background-color: rgba(30, 41, 59, 0.5) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        body.theme-midnight .hover-glass:hover {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+        }
+        body.theme-midnight .text-slate-400 { color: #94a3b8; }
+        body.theme-midnight select option {
+            background-color: #1e293b;
+            color: #f1f5f9;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .tab-active { border-bottom: 2px solid var(--accent-color); color: var(--accent-color); }
-        .modal-overlay { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); }
-        #map { height: 600px; width: 100%; border-radius: 1.5rem; z-index: 10; }
-        .bg-accent { background-color: var(--accent-color); }
-        .text-accent { color: var(--accent-color); }
+        
+        .tab-active { border-bottom: 4px solid var(--parrot); color: var(--parrot); }
+        .modal-overlay { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); }
+        #map { height: 600px; width: 100%; z-index: 10; }
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { opacity: 1; }
+
+        /* Fullscreen Map Mode - 100% Overlay */
+        .fullscreen-wrapper {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999;
+            background: var(--primary-bg);
+            padding: 1.5rem !important;
+            box-sizing: border-box;
+            border-radius: 0 !important;
+            border: none !important;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .fullscreen-wrapper #map {
+            flex-grow: 1 !important;
+            height: 100% !important;
+            border-radius: 1.5rem !important;
+            min-height: 0 !important;
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8 theme-ocean">
+    <div class="color-strip"></div>
 
-    <div class="max-w-7xl mx-auto">
+    <div class="w-full px-2 sm:px-6 mx-auto">
         <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-2">
-                    <i data-lucide="droplets" class="text-accent"></i>
-                    Splito-Reflector
+                <h1 class="text-4xl font-black text-slate-800 flex items-center gap-3 tracking-tight">
+                    <i data-lucide="droplets" class="text-lime-500 drop-shadow-md w-10 h-10"></i>
+                    स्प्लिटो-रिफ्लेक्टर 
                 </h1>
-                <div class="flex items-center gap-2 mt-1">
-                    <p class="text-slate-500 text-sm"></p>
-                    <span class="text-slate-300">|</span>
-                    <p class="text-slate-500 text-sm font-medium italic">Jitendra Kumar </p>
+                <div class="flex items-center gap-2 mt-2">
+                    <p class="text-slate-500 text-sm font-medium italic">डिज़ाइन एवं विकास: जितेन्द्र कुमार </p>
                 </div>
             </div>
             
-            <div class="flex items-center gap-4">
-                <div class="flex bg-white/50 p-1 rounded-xl border border-white/20 shadow-sm">
-                    <button onclick="setTheme('ocean')" class="w-8 h-8 rounded-lg bg-sky-400 border-2 border-white shadow-sm" title="Ocean Breeze"></button>
-                    <button onclick="setTheme('emerald')" class="w-8 h-8 rounded-lg bg-emerald-400 border-2 border-white shadow-sm mx-1" title="Emerald Green"></button>
-                    <button onclick="setTheme('midnight')" class="w-8 h-8 rounded-lg bg-slate-800 border-2 border-white shadow-sm" title="Midnight Slate"></button>
+            <div class="flex items-center gap-6">
+                <div class="glass-panel flex bg-white/40 p-2 rounded-2xl border border-white/60 shadow-lg backdrop-blur-md">
+                    <button onclick="setTheme('ocean')" class="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-300 to-sky-500 border border-white/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),0_4px_8px_rgba(0,0,0,0.1)] hover:scale-110 transition-transform" title="Ocean Breeze"></button>
+                    <button onclick="setTheme('emerald')" class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-300 to-emerald-500 border border-white/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),0_4px_8px_rgba(0,0,0,0.1)] mx-2 hover:scale-110 transition-transform" title="Emerald Green"></button>
+                    <button onclick="setTheme('midnight')" class="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-600 to-slate-900 border border-white/30 shadow-[inset_0_2px_4px_rgba(255,255,255,0.2),0_4px_8px_rgba(0,0,0,0.3)] hover:scale-110 transition-transform" title="Midnight Slate"></button>
                 </div>
 
-                <label class="cursor-pointer bg-accent hover:opacity-90 text-white px-6 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2">
+                <!-- Glossy Blue Button -->
+                <label class="glossy-btn cursor-pointer bg-gradient-to-br from-blue-400 to-blue-600 text-white px-8 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 text-lg">
                     <i data-lucide="upload-cloud"></i>
                     Import Data
                     <input type="file" id="fileInput" class="hidden" accept=".csv, .xlsx, .xls">
@@ -91,154 +197,298 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <aside class="lg:col-span-3 space-y-6">
-                <div class="glass rounded-3xl p-6 shadow-sm">
-                    <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                        <i data-lucide="filter" class="w-5 h-5"></i>
-                        Filters
+                
+                <!-- Spatial Bounds Block -->
+                <div class="glass rounded-3xl p-6 shadow-md border-t-4 border-t-indigo-400">
+                    <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="map" class="w-6 h-6 text-indigo-600"></i>
+                        Spatial Boundaries
                     </h2>
-                    <div id="filterContainer" class="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar text-sm">
-                        <div class="text-center py-10 text-slate-400 italic">Import a file...</div>
+                    <label class="w-full glossy-btn cursor-pointer bg-gradient-to-br from-indigo-400 to-indigo-600 text-white p-3.5 rounded-2xl font-bold flex items-center justify-between text-sm tracking-wide mb-3">
+                        <span>Load Shapefile (ZIP)</span>
+                        <i data-lucide="folder-up" class="w-5 h-5 opacity-90"></i>
+                        <input type="file" id="shapefileInput" class="hidden" accept=".zip,.geojson,.json" multiple>
+                    </label>
+                    <p class="text-[11px] text-slate-500 font-medium italic leading-relaxed">
+                        Upload State/District/Aquifer shapefiles. Toggle visibility below, click any region to filter data, or tag it to your dataset.
+                    </p>
+                    
+                    <div class="glass-panel mt-3 flex items-center gap-4 bg-white/50 p-3 rounded-xl border border-slate-200 shadow-sm">
+                        <label class="flex items-center gap-2 text-[11px] font-black text-slate-500 uppercase tracking-widest cursor-pointer" title="Shape Outline Color">
+                            Color
+                            <input type="color" id="shpColor" value="#4f46e5" onchange="updateShapefileStyles()" class="w-6 h-6 rounded cursor-pointer border-0 p-0 bg-transparent">
+                        </label>
+                        <div class="w-px h-5 bg-slate-300"></div>
+                        <div class="flex items-center gap-2 flex-1">
+                            <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest">Weight <span id="shpWeightVal" class="text-indigo-600">2</span></label>
+                            <input type="range" id="shpWeight" min="1" max="10" value="2" oninput="updateShapefileStyles()" class="w-full accent-indigo-500 cursor-pointer">
+                        </div>
                     </div>
-                    <button id="resetFilters" onclick="resetAllFilters()" class="w-full mt-6 text-xs text-slate-500 hover:text-accent hidden">Reset Filters</button>
+
+                    <div id="shapefileListContainer" class="mt-4 space-y-2 empty:hidden max-h-32 overflow-y-auto custom-scrollbar">
+                        <!-- Loaded shapefiles will appear here -->
+                    </div>
+
+                    <button id="clearSelectionBtn" onclick="clearSpatialSelection()" class="w-full mt-4 bg-slate-100 border border-slate-200 text-xs text-red-500 font-bold py-2 rounded-xl hidden hover:bg-red-50 transition-colors shadow-sm">
+                        Clear Region Selections
+                    </button>
                 </div>
 
-                <div class="glass rounded-3xl p-6 shadow-sm">
-                    <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                        <i data-lucide="settings" class="w-5 h-5"></i>
-                        Tools
+                <div class="glass rounded-3xl p-6 shadow-md border-t-4 border-t-lime-400">
+                    <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="filter" class="w-6 h-6 text-lime-600"></i>
+                        Filters
                     </h2>
-                    <div class="space-y-3">
-                        <button onclick="runUnion()" class="w-full bg-white/50 border border-slate-200 text-slate-700 p-3 rounded-xl hover:bg-white transition-all flex items-center justify-between group text-sm">
+                    <div id="filterContainer" class="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar text-sm font-medium">
+                        <div class="text-center py-10 text-slate-400 italic">Import a file to start filtering...</div>
+                    </div>
+                    <button id="resetFilters" onclick="resetAllFilters()" class="w-full mt-6 text-xs text-slate-500 hover:text-red-500 font-bold hidden transition-colors">Reset Attribute Filters</button>
+                </div>
+
+                <div class="glass rounded-3xl p-6 shadow-md">
+                    <h2 class="text-xl font-bold text-slate-800 mb-5 flex items-center gap-2">
+                        <i data-lucide="settings" class="w-6 h-6 text-slate-600"></i>
+                        Power Tools
+                    </h2>
+                    <div class="space-y-4">
+                        <!-- Glossy Pink Button -->
+                        <button onclick="runUnion()" class="w-full glossy-btn bg-gradient-to-br from-pink-400 to-pink-600 text-white p-4 rounded-2xl font-bold flex items-center justify-between text-base tracking-wide">
                             <span>Union Export</span>
-                            <i data-lucide="combine" class="w-4 h-4 text-slate-400"></i>
+                            <i data-lucide="combine" class="w-5 h-5 opacity-90"></i>
                         </button>
-                        <button onclick="openSplitModal()" class="w-full bg-white/50 border border-slate-200 text-slate-700 p-3 rounded-xl hover:bg-white transition-all flex items-center justify-between group text-sm">
+
+                        <!-- Glossy Orange Button -->
+                        <button onclick="openSplitModal()" class="w-full glossy-btn bg-gradient-to-br from-orange-400 to-orange-600 text-white p-4 rounded-2xl font-bold flex items-center justify-between text-base tracking-wide">
                             <span>Split to ZIP Folder</span>
-                            <i data-lucide="folder-archive" class="w-4 h-4 text-slate-400"></i>
+                            <i data-lucide="folder-archive" class="w-5 h-5 opacity-90"></i>
                         </button>
-                        <button onclick="runAnalysis()" class="w-full bg-accent text-white p-3 rounded-xl hover:opacity-90 transition-all font-semibold flex items-center justify-between text-sm">
+
+                        <!-- Glossy Red Button -->
+                        <button onclick="runAnalysis()" class="w-full glossy-btn bg-gradient-to-br from-red-400 to-red-600 text-white p-4 rounded-2xl font-bold flex items-center justify-between text-base tracking-wide">
                             <span>BIS Excel Report</span>
-                            <i data-lucide="file-bar-chart" class="w-4 h-4"></i>
+                            <i data-lucide="file-bar-chart" class="w-5 h-5 opacity-90"></i>
                         </button>
                     </div>
                 </div>
             </aside>
 
             <main class="lg:col-span-9 space-y-4">
-                <div class="flex gap-8 border-b border-slate-200 mb-2">
-                    <button id="tabData" onclick="switchTab('data')" class="pb-2 font-medium tab-active">Table Preview</button>
-                    <button id="tabMap" onclick="switchTab('map')" class="pb-2 font-medium text-slate-500 hover:text-accent">Spatial Map</button>
-                    <button id="tabAI" onclick="switchTab('ai')" class="pb-2 font-medium text-slate-500 
-hover:text-accent">Reserved</button>
-                </div>
-
-                <div id="dataContent" class="glass rounded-3xl p-6 shadow-sm min-h-[600px] flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold text-slate-700">Dataset Overview</h3>
-                        <span id="rowCount" class="text-xs bg-sky-100 px-3 py-1 rounded-full text-accent font-bold">0 Rows</span>
+                <div id="mapContent" class="space-y-4">
+                    <div class="flex justify-between items-center px-2 mb-2">
+                        <h2 class="text-2xl font-black text-slate-800 tracking-wide flex items-center gap-2">
+                            Spatial Map
+                            <span id="spatialBadge" class="hidden text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">Shape Filter Active</span>
+                        </h2>
+                        <div class="flex items-center gap-3">
+                            <!-- Yellow Badge relocated here -->
+                            <span id="rowCount" class="text-sm bg-yellow-400 px-4 py-1.5 rounded-full text-slate-800 font-black shadow-sm border border-yellow-500">0 Rows</span>
+                            <button onclick="toggleMapFullscreen()" class="glossy-btn bg-white/60 p-2 rounded-xl text-slate-700 hover:text-blue-600 shadow-sm border border-slate-200" title="Toggle Fullscreen">
+                                <i data-lucide="maximize" id="fullscreenIcon" class="w-5 h-5"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex-1 overflow-auto custom-scrollbar border border-slate-100 rounded-xl">
-                        <table class="w-full text-xs text-left text-slate-600" id="previewTable">
-                            <thead class="bg-slate-50 sticky top-0">
-                                <tr id="tableHeader"></tr>
-                            </thead>
-                            <tbody id="tableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div id="mapContent" class="hidden space-y-4">
-                    <div class="glass rounded-3xl p-6 shadow-sm">
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-                            <div class="space-y-1">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Parameter</label>
-                                <select id="mapParamSelect" onchange="handleParamChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"></select>
+                    
+                    <div class="glass rounded-3xl p-6 shadow-md space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                            <div class="space-y-2">
+                                <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest">Select Parameter</label>
+                                <select id="mapParamSelect" onchange="handleParamChange()" class="w-full glossy-input rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-blue-500"></select>
                             </div>
-                            <div class="space-y-1">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acceptable Limit</label>
+                            <div class="space-y-2">
+                                <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest">Acceptable Limit</label>
                                 <div class="relative">
-                                    <input type="number" id="limitB1" onchange="updateCustomLimit('b1', this.value)" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm">
-                                    <span id="unitB1" class="absolute right-3 top-2 text-[10px] text-slate-400 pointer-events-none"></span>
+                                    <input type="number" id="limitB1" onchange="updateCustomLimit('b1', this.value)" class="w-full glossy-input rounded-xl px-4 py-3 text-sm font-bold">
+                                    <span id="unitB1" class="absolute right-4 top-3.5 text-[11px] font-bold text-slate-400 pointer-events-none"></span>
                                 </div>
                             </div>
-                            <div class="space-y-1">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Permissible Limit</label>
+                            <div class="space-y-2">
+                                <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest">Permissible Limit</label>
                                 <div class="relative">
-                                    <input type="number" id="limitB2" onchange="updateCustomLimit('b2', this.value)" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm">
-                                    <span id="unitB2" class="absolute right-3 top-2 text-[10px] text-slate-400 pointer-events-none"></span>
+                                    <input type="number" id="limitB2" onchange="updateCustomLimit('b2', this.value)" class="w-full glossy-input rounded-xl px-4 py-3 text-sm font-bold">
+                                    <span id="unitB2" class="absolute right-4 top-3.5 text-[11px] font-bold text-slate-400 pointer-events-none"></span>
                                 </div>
                             </div>
-                            <div class="flex gap-4 justify-between pb-2">
-                                <span class="flex items-center gap-1 text-[10px] font-bold text-emerald-600"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Within Acceptable Limit</span>
-                                <span class="flex items-center gap-1 text-[10px] font-bold text-orange-600"><span class="w-2 h-2 rounded-full bg-orange-500"></span> MARGINAL</span>
-                                <span class="flex items-center gap-1 text-[10px] font-bold text-red-600"><span class="w-2 h-2 rounded-full bg-red-600"></span> Above Permissible Limit</span>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-slate-200/60 flex flex-wrap gap-4 items-center justify-between">
+                            <div class="flex flex-wrap gap-4 items-center">
+                                <span class="text-[11px] font-black text-slate-500 uppercase tracking-widest hidden sm:inline-block">Marker Display:</span>
+                                <label class="glass-panel flex items-center gap-1.5 text-xs font-black cursor-pointer text-slate-700 glossy-input px-3 py-2 rounded-xl hover:brightness-105 transition-colors" title="Toggle Acceptable Points">
+                                    <input type="checkbox" id="showAcc" checked onchange="updateMarkerStyles()" class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-500 cursor-pointer">
+                                    <input type="color" id="colorAcc" value="#10b981" onchange="updateMarkerStyles()" class="w-5 h-5 rounded cursor-pointer border-0 p-0 bg-transparent"> ACCEPTABLE
+                                </label>
+                                <label class="glass-panel flex items-center gap-1.5 text-xs font-black cursor-pointer text-slate-700 glossy-input px-3 py-2 rounded-xl hover:brightness-105 transition-colors" title="Toggle Marginal Points">
+                                    <input type="checkbox" id="showMar" checked onchange="updateMarkerStyles()" class="w-4 h-4 text-orange-500 rounded focus:ring-orange-500 cursor-pointer">
+                                    <input type="color" id="colorMar" value="#f97316" onchange="updateMarkerStyles()" class="w-5 h-5 rounded cursor-pointer border-0 p-0 bg-transparent"> MARGINAL
+                                </label>
+                                <label class="glass-panel flex items-center gap-1.5 text-xs font-black cursor-pointer text-slate-700 glossy-input px-3 py-2 rounded-xl hover:brightness-105 transition-colors" title="Toggle Above Points">
+                                    <input type="checkbox" id="showAbo" checked onchange="updateMarkerStyles()" class="w-4 h-4 text-red-500 rounded focus:ring-red-500 cursor-pointer">
+                                    <input type="color" id="colorAbo" value="#ef4444" onchange="updateMarkerStyles()" class="w-5 h-5 rounded cursor-pointer border-0 p-0 bg-transparent"> ABOVE
+                                </label>
+                            </div>
+                            
+                            <div class="glass-panel flex flex-wrap items-center gap-5 glossy-input px-4 py-2 rounded-xl">
+                                <div class="flex items-center gap-3">
+                                    <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest">Size <span id="markerSizeVal" class="text-blue-600">7</span></label>
+                                    <input type="range" id="markerSize" min="2" max="25" value="7" oninput="updateMarkerStyles()" class="w-20 md:w-28 accent-blue-500 cursor-pointer">
+                                </div>
+                                <div class="w-px h-5 bg-slate-300"></div>
+                                <label class="flex items-center gap-2 text-xs font-black text-slate-700 uppercase cursor-pointer hover:text-blue-600 transition-colors">
+                                    <input type="checkbox" id="toggleMarkers" checked onchange="toggleMarkersVisibility()" class="w-4 h-4 text-blue-500 rounded focus:ring-blue-500 cursor-pointer">
+                                    Show Points
+                                </label>
                             </div>
                         </div>
                     </div>
-                    <div id="map" class="shadow-xl border-4 border-white"></div>
-                </div>
-
-                <div id="aiContent" class="hidden glass rounded-3xl p-6 shadow-sm min-h-[600px] flex flex-col">
-                    <div id="aiChat" class="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 custom-scrollbar text-sm"></div>
-                    <div class="flex gap-2 relative">
-                        <input type="text" id="aiInput" placeholder="Ask about compliance trends..." class="w-full bg-white border border-slate-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent">
-                        <button id="sendAiBtn" class="absolute right-2 top-2 bottom-2 bg-accent text-white px-4 rounded-xl">Send</button>
-                    </div>
+                    <div id="map" class="shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] border-[6px] border-white/60 backdrop-blur-md rounded-[2rem]"></div>
                 </div>
             </main>
         </div>
     </div>
 
+    <!-- Modals -->
     <div id="splitModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
-            <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
-                <i data-lucide="folder-archive" class="text-accent"></i> Split into ZIP Folder
+        <div class="modal-panel bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full max-w-md p-8 border border-white">
+            <h3 class="text-2xl font-black text-slate-800 mb-2 flex items-center gap-3">
+                <div class="bg-orange-100 p-2 rounded-xl shadow-inner"><i data-lucide="folder-archive" class="text-orange-500 w-6 h-6"></i></div>
+                Split to ZIP
             </h3>
-            <p class="text-slate-500 text-sm mb-6">Create a ZIP folder containing individual Excel files for each unique value in the column.</p>
-            <div class="mb-6">
-                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Select Column to Split By</label>
-                <select id="splitColSelect" class="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:outline-none"></select>
+            <p class="text-slate-500 text-sm font-medium mb-8">Group your dataset into individual Excel files based on a specific column and download them instantly as a ZIP.</p>
+            
+            <div class="mb-8">
+                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Select Column to Split By</label>
+                <select id="splitColSelect" class="w-full glossy-input p-4 rounded-2xl focus:outline-none focus:border-lime-500 font-bold text-slate-700"></select>
             </div>
-            <div class="flex gap-3">
-                <button onclick="closeSplitModal()" class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-all">Cancel</button>
-                <button onclick="confirmSplitToZip()" class="flex-1 px-4 py-3 rounded-xl bg-accent text-white font-medium hover:opacity-90 transition-all shadow-lg">Generate ZIP</button>
+            
+            <div class="flex gap-4">
+                <button onclick="closeSplitModal()" class="flex-1 glossy-btn bg-gradient-to-br from-slate-200 to-slate-300 text-slate-600 px-4 py-3.5 rounded-xl font-bold transition-all shadow-md">Cancel</button>
+                <button onclick="confirmSplitToZip()" class="flex-[2] glossy-btn bg-gradient-to-br from-lime-400 to-lime-600 text-white px-4 py-3.5 rounded-xl font-bold transition-all shadow-md">Generate ZIP</button>
             </div>
         </div>
     </div>
 
-    <div id="toast" class="fixed bottom-8 right-8 bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl translate-y-20 transition-all duration-300 z-50">
+    <!-- Spatial Join (Tagging) Modal -->
+    <div id="spatialJoinModal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-4 modal-overlay">
+        <div class="modal-panel bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full max-w-md p-8 border border-white">
+            <h3 class="text-2xl font-black text-slate-800 mb-2 flex items-center gap-3">
+                <div class="bg-indigo-100 p-2 rounded-xl shadow-inner"><i data-lucide="tags" class="text-indigo-500 w-6 h-6"></i></div>
+                Tag Dataset
+            </h3>
+            <p class="text-slate-500 text-sm font-medium mb-6">Extract an attribute from the Shapefile polygons and append it to your points as a new filterable and exportable column.</p>
+            
+            <div class="space-y-4 mb-8">
+                <div>
+                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Select Shapefile Attribute</label>
+                    <select id="sjPropertySelect" onchange="document.getElementById('sjColName').value = this.value" class="w-full glossy-input p-3 rounded-xl focus:outline-none focus:border-indigo-500 font-bold text-slate-700"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">New Column Name</label>
+                    <input type="text" id="sjColName" class="w-full glossy-input p-3 rounded-xl focus:outline-none focus:border-indigo-500 font-bold text-slate-700" placeholder="e.g., Aquifer Type">
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <button onclick="closeSpatialJoinModal()" class="flex-1 glossy-btn bg-gradient-to-br from-slate-200 to-slate-300 text-slate-600 px-4 py-3 rounded-xl font-bold transition-all shadow-md">Cancel</button>
+                <button id="applyTagBtn" onclick="executeSpatialJoin()" class="flex-[2] glossy-btn bg-gradient-to-br from-indigo-500 to-indigo-700 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-md flex justify-center items-center gap-2">
+                    <i data-lucide="tag" class="w-4 h-4"></i> Apply Tag
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Column Mapping Modal -->
+    <div id="mappingModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4 modal-overlay">
+        <div class="modal-panel bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full max-w-5xl max-h-[90vh] flex flex-col border border-white">
+            <div class="modal-header p-6 border-b border-slate-200">
+                <h3 class="text-2xl font-black text-slate-800 flex items-center gap-3">
+                    <div class="bg-blue-100 p-2 rounded-xl shadow-inner"><i data-lucide="table-properties" class="text-blue-500 w-6 h-6"></i></div>
+                    Map Data Columns
+                </h3>
+                <p class="text-slate-500 text-sm font-medium mt-2">Match your Excel columns to the required system fields. We've auto-selected the best matches for you.</p>
+            </div>
+            
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="layout-list" class="w-4 h-4"></i> Core Metadata</h4>
+                        <div id="coreMappingContainer" class="space-y-3"></div>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="test-tubes" class="w-4 h-4"></i> WQ Parameters</h4>
+                        <div id="paramMappingContainer" class="space-y-3"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer p-6 border-t border-slate-200 flex gap-4 bg-slate-50/50 rounded-b-[2rem]">
+                <button onclick="closeMappingModal()" class="flex-1 glossy-btn bg-gradient-to-br from-slate-200 to-slate-300 text-slate-600 px-4 py-3.5 rounded-xl font-bold transition-all shadow-md">Cancel Import</button>
+                <button onclick="confirmMapping()" class="flex-[2] glossy-btn bg-gradient-to-br from-blue-500 to-blue-700 text-white px-4 py-3.5 rounded-xl font-bold transition-all shadow-md">Apply Mapping & Import Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-8 right-8 bg-slate-900 text-white px-8 py-4 rounded-2xl shadow-2xl translate-y-24 transition-all duration-300 z-[150] font-bold border-l-4 border-lime-500 flex items-center gap-3">
+        <i data-lucide="check-circle" class="text-lime-500 w-5 h-5"></i>
         <span id="toastMsg">Done!</span>
     </div>
 
     <script>
         let rawData = [];
         let filteredData = [];
-        let filters = {};
+        let tempRawData = []; // Temporary hold for mapping
+        let filters = {}; // Attribute filters
+        let dynamicFilterCols = []; // Track extra columns added from shapefiles
+        
+        // Spatial State
         let map;
         let markersGroup;
+        let loadedShapefiles = {}; 
+        let selectedSpatialFeatures = new Set();
+        let selectedSpatialLayers = new Set();
+        let shpCounter = 0;
+        let currentJoinLayerId = null;
+
+        // Configuration for interactive markers
+        let markerSettings = {
+            size: 7,
+            visible: true,
+            colorAcc: '#10b981',
+            colorMar: '#f97316',
+            colorAbo: '#ef4444',
+            showAcc: true,
+            showMar: true,
+            showAbo: true
+        };
 
         const LIMITS = {
-            'EC': { b1: 750, b2: 3000, unit: 'µS/cm', name: 'Electrical Conductivity' },
-            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate' },
-            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride' },
-            'TH': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Hardness' },
-            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride' },
-            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium' },
-            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium' },
-            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate' },
-            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron' },
-            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese' },
-            'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic' },
-            'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium' },
-            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc' },
-            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper' },
-            'Pb': { b1: 10, b2: 10, unit: 'ppb', name: 'Lead' },
-            'Cd': { b1: 3, b2: 3, unit: 'ppb', name: 'Cadmium' },
-            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium' },
-            'Hg': { b1: 1, b2: 1, unit: 'ppb', name: 'Mercury' },
-            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel' },
-            'Se': { b1: 10, b2: 10, unit: 'ppb', name: 'Selenium' },
-            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH Level' }
+            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH Level', keywords: ['ph', 'ph level', 'hydrogen', 'phvalue'] },
+            'TDS': { b1: 500, b2: 2000, unit: 'mg/l', name: 'Total Dissolved Solids', keywords: ['tds', 'total dissolved solids', 'dissolved solids'] },
+            'Turbidity': { b1: 1, b2: 5, unit: 'NTU', name: 'Turbidity', keywords: ['turbidity', 'turb'] },
+            'Alkalinity': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Alkalinity', keywords: ['alkalinity', 'total alkalinity', 'alk'] },
+            'TH': { b1: 200, b2: 600, unit: 'mg/l as CaCO3', name: 'Total Hardness', keywords: ['th', 'total hardness', 'hardness'] },
+            'EC': { b1: 750, b2: 3000, unit: 'µS/cm at 25°C', name: 'Electrical Conductivity', keywords: ['ec', 'cond', 'conductivity', 'electrical conductivity', 'specific conductance'] },
+            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride', keywords: ['cl', 'chloride'] },
+            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate', keywords: ['no3', 'nitrate'] },
+            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride', keywords: ['f', 'fluoride'] },
+            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron', keywords: ['fe', 'iron', 'total iron'] },
+            'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic', keywords: ['as', 'arsenic'] },
+            'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium', keywords: ['u', 'uranium'] },
+            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc', keywords: ['zn', 'zinc'] },
+            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper', keywords: ['cu', 'copper'] },
+            'Pb': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Lead', keywords: ['pb', 'lead'] },
+            'Cd': { b1: 0.003, b2: 0.003, unit: 'mg/L', name: 'Cadmium', keywords: ['cd', 'cadmium'] },
+            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium', keywords: ['cr', 'chromium'] },
+            'Hg': { b1: 0.001, b2: 0.001, unit: 'mg/L', name: 'Mercury', keywords: ['hg', 'mercury'] },
+            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel', keywords: ['ni', 'nickel'] },
+            'Se': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Selenium', keywords: ['se', 'selenium'] },
+            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium', keywords: ['ca', 'calcium'] },
+            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium', keywords: ['mg', 'magnesium'] },
+            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate', keywords: ['so4', 'sulphate', 'sulfate'] },
+            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese', keywords: ['mn', 'manganese'] },
+            'Al': { b1: 0.03, b2: 0.2, unit: 'mg/l', name: 'Alluminium', keywords: ['al', 'alluminium', 'aluminum'] },
+            'Ba': { b1: 0.7, b2: 0.7, unit: 'mg/l', name: 'Barium', keywords: ['ba', 'barium'] },
+            'B': { b1: 0.5, b2: 2.4, unit: 'mg/l', name: 'Boran', keywords: ['b', 'boran', 'boron'] },
         };
 
         window.onload = () => {
@@ -246,6 +496,7 @@ hover:text-accent">Reserved</button>
             initMap();
             populateMapSelect();
             handleParamChange();
+            setTimeout(() => { map.invalidateSize(); }, 200);
         };
 
         function setTheme(theme) { document.body.className = `p-4 md:p-8 theme-${theme}`; }
@@ -273,42 +524,58 @@ hover:text-accent">Reserved</button>
             renderMapMarkers();
         }
 
+        function updateMarkerStyles() {
+            markerSettings.colorAcc = document.getElementById('colorAcc').value;
+            markerSettings.colorMar = document.getElementById('colorMar').value;
+            markerSettings.colorAbo = document.getElementById('colorAbo').value;
+            markerSettings.size = parseInt(document.getElementById('markerSize').value);
+            markerSettings.showAcc = document.getElementById('showAcc').checked;
+            markerSettings.showMar = document.getElementById('showMar').checked;
+            markerSettings.showAbo = document.getElementById('showAbo').checked;
+            document.getElementById('markerSizeVal').innerText = markerSettings.size;
+            renderMapMarkers();
+        }
+
+        function toggleMarkersVisibility() {
+            markerSettings.visible = document.getElementById('toggleMarkers').checked;
+            if (markerSettings.visible) {
+                renderMapMarkers();
+            } else {
+                markersGroup.clearLayers();
+            }
+        }
+
         function initMap() {
             map = L.map('map').setView([20.5937, 78.9629], 5);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+            
+            // Define Map Layers
+            const googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: '© Google'
+            });
+
+            const googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+                maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: '© Google'
+            });
+
+            const googleTerrain = L.tileLayer('http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+                maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: '© Google'
+            });
+
+            // Set default layer to Google Satellite
+            googleSat.addTo(map);
+
+            // Add Layer Control
+            const baseMaps = {
+                "Google Satellite": googleSat,
+                "Google Hybrid": googleHybrid,
+                "Google Terrain": googleTerrain
+            };
+            L.control.layers(baseMaps).addTo(map);
+
             markersGroup = L.layerGroup().addTo(map);
         }
 
-        function switchTab(tab) {
-            document.getElementById('dataContent').classList.toggle('hidden', tab !== 'data');
-            document.getElementById('mapContent').classList.toggle('hidden', tab !== 'map');
-            document.getElementById('aiContent').classList.toggle('hidden', tab !== 'ai');
-            document.getElementById('tabData').className = `pb-2 font-medium transition-all ${tab === 'data' ? 'tab-active' : 'text-slate-500'}`;
-            document.getElementById('tabMap').className = `pb-2 font-medium transition-all ${tab === 'map' ? 'tab-active' : 'text-slate-500'}`;
-            document.getElementById('tabAI').className = `pb-2 font-medium transition-all ${tab === 'ai' ? 'tab-active' : 'text-slate-500'}`;
-            if (tab === 'map') setTimeout(() => { map.invalidateSize(); renderMapMarkers(); }, 200);
-        }
-
-        function renderMapMarkers() {
-            markersGroup.clearLayers();
-            if (!filteredData.length) return;
-            const param = document.getElementById('mapParamSelect').value;
-            const lim = LIMITS[param];
-            const bounds = [];
-            filteredData.forEach(r => {
-                const lat = parseFloat(r.Latitude || r.Lat);
-                const lng = parseFloat(r.Longitude || r.Long || r.Lng);
-                const val = parseFloat(r[param]);
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    let color = (val <= lim.b1) ? "#10b981" : (val <= lim.b2) ? "#f97316" : "#ef4444";
-                    const marker = L.circleMarker([lat, lng], { radius: 6, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8 });
-                    marker.bindPopup(`<div class="text-xs"><b>${r.Source || 'Point'}</b><br>${param}: ${val || 'N/A'} ${lim.unit}</div>`);
-                    markersGroup.addLayer(marker);
-                    bounds.push([lat, lng]);
-                }
-            });
-            if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
-        }
+        // --- Data Import & MAPPING ---
 
         document.getElementById('fileInput').addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -317,70 +584,606 @@ hover:text-accent">Reserved</button>
             reader.onload = (evt) => {
                 const bstr = evt.target.result;
                 const wb = XLSX.read(bstr, { type: 'binary' });
-                rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" })
+                
+                // Get headers correctly from row 1
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const headerRow = XLSX.utils.sheet_to_json(ws, { header: 1 })[0] || [];
+                const excelHeaders = headerRow.map(h => String(h).trim());
+
+                tempRawData = XLSX.utils.sheet_to_json(ws, { defval: "" })
                     .map(row => {
                         const r = {};
                         Object.keys(row).forEach(k => r[k.trim()] = String(row[k]).trim());
                         return r;
                     });
-                filteredData = [...rawData];
-                setupFilters();
-                updatePreview();
-                showToast("File Imported Successfully");
+                
+                buildMappingUI(excelHeaders);
+                document.getElementById('mappingModal').classList.remove('hidden');
+                
+                // Reset file input so same file can be re-imported if needed
+                document.getElementById('fileInput').value = '';
             };
             reader.readAsBinaryString(file);
         });
 
+        function closeMappingModal() {
+            document.getElementById('mappingModal').classList.add('hidden');
+        }
+
+        function guessHeader(standardName, headers) {
+            const clean = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const sn = clean(standardName);
+            
+            // 1. Exact or Clean Match
+            for (let h of headers) {
+                if (clean(h) === sn) return h;
+            }
+            
+            // 2. Keyword matching for parameters
+            if (LIMITS[standardName]) {
+                for (let kw of LIMITS[standardName].keywords) {
+                    const cleanKw = clean(kw);
+                    for (let h of headers) {
+                        if (clean(h) === cleanKw) return h;
+                    }
+                }
+            }
+            
+            // 3. Core Metadata Aliases
+            const aliases = {
+                'Latitude': ['lat', 'y', 'latitude', 'latitudes'],
+                'Longitude': ['long', 'lng', 'lon', 'x', 'longitude', 'longitudes'],
+                'State': ['state', 'statename', 'st', 'state name'],
+                'District': ['district', 'dist', 'districtname', 'distname', 'district name'],
+                'Block': ['block', 'mandal', 'tehsil', 'taluka', 'blockname', 'block name'],
+                'Season': ['season', 'period', 'year', 'collection date'],
+                'Source': ['source', 'sourcetype', 'type', 'site', 'location']
+            };
+
+            if (aliases[standardName]) {
+                for (let alias of aliases[standardName]) {
+                    const cleanAlias = clean(alias);
+                    for (let h of headers) {
+                        if (clean(h) === cleanAlias || clean(h).includes(cleanAlias)) return h;
+                    }
+                }
+            }
+            return "";
+        }
+
+        function buildMappingUI(headers) {
+            const coreFields = ['State', 'District', 'Block', 'Season', 'Source', 'Latitude', 'Longitude'];
+            const paramFields = Object.keys(LIMITS);
+            
+            const createRow = (stdKey, displayName) => {
+                const bestMatch = guessHeader(stdKey, headers);
+                const options = headers.map(h => `<option value="${h}" ${h === bestMatch ? 'selected' : ''}>${h}</option>`).join('');
+                return `
+                    <div class="glass-panel flex items-center justify-between bg-white/50 p-2.5 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors">
+                        <span class="text-xs font-bold text-slate-700 w-[40%] truncate" title="${displayName}">${displayName}</span>
+                        <i data-lucide="arrow-right-left" class="w-4 h-4 text-slate-300 mx-2"></i>
+                        <select data-standard="${stdKey}" class="mapping-select w-[55%] glossy-input px-2 py-1.5 text-xs font-bold text-slate-700 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer">
+                            <option value="">-- Ignore Field --</option>
+                            ${options}
+                        </select>
+                    </div>
+                `;
+            };
+
+            document.getElementById('coreMappingContainer').innerHTML = coreFields.map(f => createRow(f, f)).join('');
+            document.getElementById('paramMappingContainer').innerHTML = paramFields.map(f => createRow(f, `${LIMITS[f].name} (${f})`)).join('');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function confirmMapping() {
+            const mapData = {};
+            document.querySelectorAll('.mapping-select').forEach(sel => {
+                if (sel.value) mapData[sel.dataset.standard] = sel.value;
+            });
+
+            rawData = tempRawData.map(row => {
+                const newRow = { ...row }; // Keep all original unmapped data as well
+                Object.keys(mapData).forEach(stdKey => {
+                    const excelKey = mapData[stdKey];
+                    // Create standard key matching the application's required names
+                    newRow[stdKey] = row[excelKey] !== undefined ? String(row[excelKey]).trim() : "";
+                });
+                return newRow;
+            });
+
+            filteredData = [...rawData];
+            setupFilters();
+            applyAllFilters();
+            closeMappingModal();
+            showToast("File Imported & Mapped Successfully");
+        }
+
+        // --- Filtering Logic ---
+
         function setupFilters() {
-            const cols = ["District", "Block", "Season", "Source"];
+            // Include dynamic columns from shapefiles alongside standard core columns
+            const cols = ["State", "District", "Block", "Season", "Source", ...dynamicFilterCols];
             const container = document.getElementById('filterContainer');
             container.innerHTML = '';
+            
+            let hasFilters = false;
+
             cols.forEach(col => {
                 const vals = [...new Set(rawData.map(r => r[col]))].filter(v => v && v !== "undefined").sort();
                 if (!vals.length) return;
+                hasFilters = true;
+
+                // Special coloring for dynamic attributes
+                const isDynamic = dynamicFilterCols.includes(col);
+                const labelColor = isDynamic ? "text-indigo-400" : "text-slate-400";
+                const badge = isDynamic ? `<span class="bg-indigo-100 text-indigo-600 text-[9px] px-1.5 py-0.5 rounded-full ml-2 font-black border border-indigo-200"><i data-lucide="tag" class="w-2.5 h-2.5 inline mr-0.5"></i>TAGGED</span>` : "";
+
                 const div = document.createElement('div');
-                div.innerHTML = `<label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">${col}</label>
-                    <div class="grid grid-cols-1 gap-1 max-h-24 overflow-y-auto custom-scrollbar p-1">
-                        ${vals.map(v => `<label class="flex items-center gap-2 p-1 rounded hover:bg-white cursor-pointer"><input type="checkbox" onchange="updateFilters('${col}', '${v}', this.checked)" class="filter-check w-3 h-3 rounded"> ${v}</label>`).join('')}
+                div.innerHTML = `<label class="flex items-center text-[11px] font-black ${labelColor} uppercase tracking-widest mb-2">${col} ${badge}</label>
+                    <div class="grid grid-cols-1 gap-1.5 max-h-32 overflow-y-auto custom-scrollbar p-1">
+                        ${vals.map(v => `<label class="hover-glass flex items-center gap-3 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"><input type="checkbox" onchange="updateAttributeFilters('${col}', '${v}', this.checked)" class="filter-check w-4 h-4 rounded text-blue-500 focus:ring-blue-500" ${filters[col] && filters[col].has(v) ? 'checked' : ''}> <span class="text-slate-700">${v}</span></label>`).join('')}
                     </div>`;
                 container.appendChild(div);
             });
-            document.getElementById('resetFilters').classList.remove('hidden');
+            
+            if (hasFilters) {
+                document.getElementById('resetFilters').classList.remove('hidden');
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
         }
 
-        function updateFilters(col, val, checked) {
+        function updateAttributeFilters(col, val, checked) {
             if (!filters[col]) filters[col] = new Set();
             if (checked) filters[col].add(val); else filters[col].delete(val);
             if (!filters[col].size) delete filters[col];
-            filteredData = rawData.filter(r => Object.entries(filters).every(([c, s]) => s.has(r[c])));
-            updatePreview();
-            if (document.getElementById('mapContent').className.indexOf('hidden') === -1) renderMapMarkers();
+            applyAllFilters();
         }
 
         function resetAllFilters() {
             document.querySelectorAll('.filter-check').forEach(c => c.checked = false);
             filters = {};
-            filteredData = [...rawData];
-            updatePreview();
+            applyAllFilters();
         }
 
-        function updatePreview() {
-            const head = document.getElementById('tableHeader');
-            const body = document.getElementById('tableBody');
-            const count = document.getElementById('rowCount');
-            if (!filteredData.length) {
-                body.innerHTML = '<tr><td colspan="10" class="py-20 text-center text-slate-300 italic">No data matched...</td></tr>';
-                count.innerText = "0 Rows";
-                return;
+        // --- Shapefile Integration & Spatial Join ---
+
+        const shpInput = document.getElementById('shapefileInput');
+        shpInput.addEventListener('change', async (e) => {
+            const files = e.target.files;
+            if (!files.length) return;
+            showToast("Parsing Shapefile(s)...");
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                reader.onload = async (evt) => {
+                    try {
+                        let geojson;
+                        if (file.name.toLowerCase().endsWith('.zip')) {
+                            geojson = await shp(evt.target.result);
+                        } else {
+                            geojson = JSON.parse(evt.target.result);
+                        }
+                        
+                        // If shapefile array, use first or merge. Assume single object here.
+                        if (Array.isArray(geojson)) geojson = geojson[0];
+
+                        const layerId = 'shp_' + (++shpCounter);
+                        
+                        const currentColor = document.getElementById('shpColor').value;
+                        const currentWeight = parseInt(document.getElementById('shpWeight').value);
+
+                        const defaultStyle = {
+                            color: currentColor,
+                            weight: currentWeight,
+                            opacity: 0.6,
+                            fillOpacity: 0.1,
+                            fillColor: currentColor
+                        };
+
+                        const highlightStyle = {
+                            color: '#ec4899', // pink-500 highlight
+                            weight: 4,
+                            opacity: 1,
+                            fillOpacity: 0.25,
+                            fillColor: '#ec4899'
+                        };
+
+                        const layer = L.geoJSON(geojson, {
+                            style: defaultStyle,
+                            onEachFeature: (feature, layer) => {
+                                layer.on('click', () => {
+                                    // Toggle logic
+                                    if (selectedSpatialFeatures.has(feature)) {
+                                        selectedSpatialFeatures.delete(feature);
+                                        selectedSpatialLayers.delete(layer);
+                                        layer.setStyle(defaultStyle);
+                                        showToast("Region removed from filter.");
+                                    } else {
+                                        selectedSpatialFeatures.add(feature);
+                                        selectedSpatialLayers.add(layer);
+                                        layer.setStyle(highlightStyle);
+                                        showToast("Region added to filter.");
+                                    }
+                                    
+                                    if (selectedSpatialFeatures.size > 0) {
+                                        document.getElementById('spatialBadge').classList.remove('hidden');
+                                        document.getElementById('clearSelectionBtn').classList.remove('hidden');
+                                    } else {
+                                        document.getElementById('spatialBadge').classList.add('hidden');
+                                        document.getElementById('clearSelectionBtn').classList.add('hidden');
+                                    }
+                                    applyAllFilters();
+                                });
+                            }
+                        }).addTo(map);
+
+                        loadedShapefiles[layerId] = { id: layerId, name: file.name, layer: layer, defaultStyle: defaultStyle };
+                        map.fitBounds(layer.getBounds());
+                        renderShapefileList();
+                        showToast(`Shapefile "${file.name}" loaded!`);
+
+                    } catch (err) {
+                        console.error("Shapefile Error: ", err);
+                        showToast(`Error processing ${file.name}. Ensure valid ZIP.`);
+                    }
+                };
+
+                if (file.name.toLowerCase().endsWith('.zip')) {
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    reader.readAsText(file); // For geojson
+                }
             }
-            const cols = Object.keys(filteredData[0]);
-            head.innerHTML = cols.map(c => `<th class="px-4 py-3 whitespace-nowrap bg-slate-50 border-b border-slate-200">${c}</th>`).join('');
-            body.innerHTML = filteredData.slice(0, 100).map(r => `
-                <tr class="hover:bg-sky-50 transition-colors border-b border-slate-100">
-                    ${cols.map(c => `<td class="px-4 py-2 border-r border-slate-50 last:border-r-0">${r[c]}</td>`).join('')}
-                </tr>`).join('');
-            count.innerText = `${filteredData.length} Total Rows`;
+            shpInput.value = ''; 
+        });
+
+        function renderShapefileList() {
+            const container = document.getElementById('shapefileListContainer');
+            container.innerHTML = '';
+            
+            Object.values(loadedShapefiles).forEach(shpData => {
+                const isVisible = map.hasLayer(shpData.layer);
+                const div = document.createElement('div');
+                div.className = "glass-panel flex items-center justify-between text-xs p-2 bg-white/50 border border-slate-200 rounded-lg shadow-sm group";
+                div.innerHTML = `
+                    <label class="flex items-center gap-2 cursor-pointer flex-1 overflow-hidden" title="${shpData.name}">
+                        <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="toggleShapefileLayer('${shpData.id}', this.checked)" class="w-3.5 h-3.5 text-indigo-500 rounded focus:ring-indigo-500 cursor-pointer">
+                        <span class="truncate font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">${shpData.name}</span>
+                    </label>
+                    <div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <button onclick="openSpatialJoinModal('${shpData.id}')" class="text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded p-1.5 transition-colors" title="Tag dataset with attribute from this shapefile">
+                            <i data-lucide="tags" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteShapefile('${shpData.id}')" class="text-slate-400 hover:text-red-500 hover:bg-red-50 rounded p-1.5 transition-colors" title="Delete Shapefile">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
+
+        // --- Spatial Tagging Integration ---
+        function openSpatialJoinModal(id) {
+            if (!rawData.length) return showToast("Please import your Excel data first!");
+            
+            currentJoinLayerId = id;
+            const shpData = loadedShapefiles[id];
+            let props = [];
+            
+            // Search for properties in the shapefile features
+            shpData.layer.eachLayer(l => {
+                if (props.length === 0 && l.feature && l.feature.properties) {
+                    props = Object.keys(l.feature.properties);
+                }
+            });
+
+            if (props.length === 0) return showToast("No attributes found in this shapefile.");
+
+            const sel = document.getElementById('sjPropertySelect');
+            sel.innerHTML = props.map(p => `<option value="${p}">${p}</option>`).join('');
+            document.getElementById('sjColName').value = props[0];
+
+            document.getElementById('spatialJoinModal').classList.remove('hidden');
+        }
+
+        function closeSpatialJoinModal() {
+            document.getElementById('spatialJoinModal').classList.add('hidden');
+            currentJoinLayerId = null;
+        }
+
+        function executeSpatialJoin() {
+            const prop = document.getElementById('sjPropertySelect').value;
+            const colNameInput = document.getElementById('sjColName').value.trim();
+            const colName = colNameInput || prop; // Fallback to property name if empty
+
+            if (!prop || !currentJoinLayerId) return;
+
+            const shpData = loadedShapefiles[currentJoinLayerId];
+            
+            // Set Loading UI
+            const btn = document.getElementById('applyTagBtn');
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing 0%`;
+            btn.disabled = true;
+
+            showToast("Extracting shapefile attributes... Please wait.");
+
+            // Flatten features and pre-calculate bounding boxes for MASSIVE speedup
+            const features = [];
+            shpData.layer.eachLayer(l => {
+                if (l.feature && l.feature.geometry) {
+                    if (l.feature.geometry.type === 'Polygon' || l.feature.geometry.type === 'MultiPolygon') {
+                        features.push({
+                            feature: l.feature,
+                            bbox: turf.bbox(l.feature) // Pre-calculate BBox: [minX, minY, maxX, maxY]
+                        });
+                    }
+                }
+            });
+
+            const totalRows = rawData.length;
+            let currentIndex = 0;
+            const chunkSize = 250; // Process 250 points per tick to keep UI responsive
+
+            function processChunk() {
+                const end = Math.min(currentIndex + chunkSize, totalRows);
+                
+                for (let i = currentIndex; i < end; i++) {
+                    const r = rawData[i];
+                    const lat = parseFloat(r.Latitude || r.Lat);
+                    const lng = parseFloat(r.Longitude || r.Long || r.Lng);
+                    let taggedValue = "Outside Boundaries"; // Default value
+
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        try {
+                            const pt = turf.point([lng, lat]);
+                            for (let j = 0; j < features.length; j++) {
+                                const fObj = features[j];
+                                const [minX, minY, maxX, maxY] = fObj.bbox;
+                                
+                                // 1. FAST CHECK: Is point roughly inside Bounding Box?
+                                if (lng >= minX && lng <= maxX && lat >= minY && lat <= maxY) {
+                                    // 2. SLOW CHECK: Is point exactly inside complex polygon?
+                                    if (turf.booleanPointInPolygon(pt, fObj.feature)) {
+                                        taggedValue = fObj.feature.properties[prop];
+                                        // Handle null/empty values nicely
+                                        if (taggedValue === null || taggedValue === undefined || taggedValue === '') {
+                                            taggedValue = "Unspecified";
+                                        }
+                                        break; // Found the containing polygon, exit loop
+                                    }
+                                }
+                            }
+                        } catch(e) {
+                            // Silently ignore malformed geometry points during join
+                        }
+                    }
+                    r[colName] = String(taggedValue);
+                }
+                
+                currentIndex = end;
+                
+                if (currentIndex < totalRows) {
+                    // Update progress and schedule next chunk
+                    const percent = Math.round((currentIndex / totalRows) * 100);
+                    btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing ${percent}%`;
+                    setTimeout(processChunk, 10); // Let UI breathe so it doesn't freeze
+                } else {
+                    finishProcessing();
+                }
+            }
+
+            function finishProcessing() {
+                // Update column trackers
+                if (!dynamicFilterCols.includes(colName)) {
+                    dynamicFilterCols.push(colName);
+                }
+
+                // Push updates to view
+                filteredData = [...rawData]; 
+                setupFilters(); // Re-render the side bar, automatically injecting the new tag
+                applyAllFilters(); // Process view
+                
+                // Reset UI
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+
+                closeSpatialJoinModal();
+                showToast(`Data successfully tagged with: ${colName}`);
+            }
+
+            // Start the non-blocking loop
+            setTimeout(processChunk, 50);
+        }
+
+
+        function toggleShapefileLayer(id, isVisible) {
+            const shpData = loadedShapefiles[id];
+            if (!shpData) return;
+            if (isVisible) {
+                shpData.layer.addTo(map);
+            } else {
+                map.removeLayer(shpData.layer);
+            }
+        }
+
+        function updateShapefileStyles() {
+            const newColor = document.getElementById('shpColor').value;
+            const newWeight = parseInt(document.getElementById('shpWeight').value);
+            document.getElementById('shpWeightVal').innerText = newWeight;
+
+            Object.values(loadedShapefiles).forEach(shpData => {
+                shpData.defaultStyle.color = newColor;
+                shpData.defaultStyle.fillColor = newColor;
+                shpData.defaultStyle.weight = newWeight;
+                
+                // Update layers that are not currently highlighted/selected
+                shpData.layer.eachLayer(l => {
+                    if (!selectedSpatialLayers.has(l)) {
+                        l.setStyle(shpData.defaultStyle);
+                    }
+                });
+            });
+        }
+
+        function deleteShapefile(id) {
+            const shpData = loadedShapefiles[id];
+            if (!shpData) return;
+            
+            // Remove from map
+            if (map.hasLayer(shpData.layer)) {
+                map.removeLayer(shpData.layer);
+            }
+            
+            // Remove any selected features belonging to this shapefile
+            shpData.layer.eachLayer(l => {
+                if (selectedSpatialLayers.has(l)) {
+                    selectedSpatialLayers.delete(l);
+                    selectedSpatialFeatures.delete(l.feature);
+                }
+            });
+            
+            delete loadedShapefiles[id];
+            renderShapefileList();
+            
+            // Update UI state
+            if (selectedSpatialFeatures.size === 0) {
+                document.getElementById('spatialBadge').classList.add('hidden');
+                document.getElementById('clearSelectionBtn').classList.add('hidden');
+            }
+            
+            applyAllFilters();
+            showToast("Shapefile deleted.");
+        }
+
+        function clearSpatialSelection() {
+            const currentColor = document.getElementById('shpColor').value;
+            const currentWeight = parseInt(document.getElementById('shpWeight').value);
+
+            selectedSpatialLayers.forEach(layer => {
+                layer.setStyle({
+                    color: currentColor,
+                    weight: currentWeight,
+                    opacity: 0.6,
+                    fillOpacity: 0.1,
+                    fillColor: currentColor
+                });
+            });
+            selectedSpatialFeatures.clear();
+            selectedSpatialLayers.clear();
+            
+            document.getElementById('clearSelectionBtn').classList.add('hidden');
+            document.getElementById('spatialBadge').classList.add('hidden');
+            applyAllFilters();
+            showToast("Region selections cleared.");
+        }
+
+        // --- Core Filtering Logic ---
+
+        function applyAllFilters() {
+            // 1. Attribute filtering
+            filteredData = rawData.filter(r => Object.entries(filters).every(([c, s]) => s.has(r[c])));
+
+            // 2. Spatial filtering via Turf.js
+            if (selectedSpatialFeatures.size > 0 && filteredData.length > 0) {
+                filteredData = filteredData.filter(r => {
+                    const lat = parseFloat(r.Latitude || r.Lat);
+                    const lng = parseFloat(r.Longitude || r.Long || r.Lng);
+                    if (isNaN(lat) || isNaN(lng)) return false; // Ignore points with no coords
+                    
+                    try {
+                        const pt = turf.point([lng, lat]);
+                        let inAnyPolygon = false;
+                        for (const feature of selectedSpatialFeatures) {
+                            if (turf.booleanPointInPolygon(pt, feature)) {
+                                inAnyPolygon = true;
+                                break;
+                            }
+                        }
+                        return inAnyPolygon;
+                    } catch (e) {
+                        return false; 
+                    }
+                });
+            }
+
+            // 3. Update view
+            const count = document.getElementById('rowCount');
+            count.innerText = `${filteredData.length} Total Rows`;
+            renderMapMarkers();
+        }
+
+        function renderMapMarkers() {
+            if(!markersGroup) return;
+            markersGroup.clearLayers();
+            if (!filteredData.length || !markerSettings.visible) return;
+            
+            const param = document.getElementById('mapParamSelect').value;
+            if(!LIMITS[param]) return;
+
+            const lim = LIMITS[param];
+            const bounds = [];
+            
+            filteredData.forEach(r => {
+                const lat = parseFloat(r.Latitude || r.Lat);
+                const lng = parseFloat(r.Longitude || r.Long || r.Lng);
+                const val = parseFloat(r[param]);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    let isAcc = val <= lim.b1;
+                    let isMar = val > lim.b1 && val <= lim.b2;
+                    let isAbo = val > lim.b2;
+
+                    // Skip point if its category visibility is toggled off
+                    if ((isAcc && !markerSettings.showAcc) || 
+                        (isMar && !markerSettings.showMar) || 
+                        (isAbo && !markerSettings.showAbo)) {
+                        return;
+                    }
+
+                    let color = isAcc ? markerSettings.colorAcc : isMar ? markerSettings.colorMar : markerSettings.colorAbo;
+                    const marker = L.circleMarker([lat, lng], { radius: markerSettings.size, fillColor: color, weight: 0, fillOpacity: 0.9 });
+                    
+                    const state = r.State || 'N/A';
+                    const district = r.District || 'N/A';
+                    const block = r.Block || 'N/A';
+                    const location = r.Source || 'Point';
+                    
+                    const popupContent = `
+                        <div class="text-sm font-medium space-y-1 min-w-[200px]">
+                            <div class="border-b border-slate-200 pb-2 mb-2">
+                                <b class="text-base text-slate-800">${location}</b>
+                            </div>
+                            <div class="grid grid-cols-3 gap-1 text-xs">
+                                <span class="text-slate-500">State:</span> <span class="col-span-2 font-semibold text-slate-700">${state}</span>
+                                <span class="text-slate-500">District:</span> <span class="col-span-2 font-semibold text-slate-700">${district}</span>
+                                <span class="text-slate-500">Block:</span> <span class="col-span-2 font-semibold text-slate-700">${block}</span>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-slate-200 bg-slate-50 p-2 rounded-lg">
+                                <span class="text-slate-500">${param}:</span> 
+                                <span class="font-black text-slate-800 text-base">${val || 'N/A'} <span class="text-xs font-bold text-slate-500">${lim.unit}</span></span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    marker.bindPopup(popupContent);
+                    markersGroup.addLayer(marker);
+                    bounds.push([lat, lng]);
+                }
+            });
+            
+            // If spatial filter is active, don't continually jump the map zoom.
+            // Only fit bounds if no shapefile interaction is forcing the view.
+            if (bounds.length > 0 && selectedSpatialFeatures.size === 0) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+
+        // --- Modals & Exports ---
 
         function openSplitModal() {
             if (!filteredData.length) return showToast("Please import data first.");
@@ -390,6 +1193,37 @@ hover:text-accent">Reserved</button>
         }
 
         function closeSplitModal() { document.getElementById('splitModal').classList.add('hidden'); }
+
+        let isMapFullscreen = false;
+        function toggleMapFullscreen() {
+            const mapContainer = document.getElementById('mapContent');
+            const icon = document.getElementById('fullscreenIcon');
+            const currentCenter = map.getCenter(); // Save current view
+
+            isMapFullscreen = !isMapFullscreen;
+
+            if (isMapFullscreen) {
+                mapContainer.classList.add('fullscreen-wrapper');
+                icon.setAttribute('data-lucide', 'minimize');
+                document.body.style.overflow = 'hidden'; // Prevents scrolling behind the full screen modal
+            } else {
+                mapContainer.classList.remove('fullscreen-wrapper');
+                icon.setAttribute('data-lucide', 'maximize');
+                document.body.style.overflow = '';
+            }
+            lucide.createIcons();
+            
+            // Properly update Leaflet sizing instantly, then restore previous center view
+            setTimeout(() => { 
+                map.invalidateSize(); 
+                map.setView(currentCenter, map.getZoom(), {animate: false});
+            }, 10);
+            
+            // Fallback invalidate to ensure tiles load if rendering is slightly delayed
+            setTimeout(() => { 
+                map.invalidateSize(); 
+            }, 300);
+        }
 
         async function confirmSplitToZip() {
             if (!filteredData.length) return;
@@ -527,8 +1361,10 @@ hover:text-accent">Reserved</button>
         function showToast(msg) {
             const t = document.getElementById('toast');
             document.getElementById('toastMsg').innerText = msg;
-            t.classList.remove('translate-y-20');
-            setTimeout(() => t.classList.add('translate-y-20'), 3000);
+            t.classList.remove('translate-y-24');
+            setTimeout(() => t.classList.add('translate-y-24'), 3000);
+            
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
     </script>
 </body>

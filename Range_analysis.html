@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Groundwater Compliance Reporting Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <!-- Highcharts for 3D Graphics and Exporting -->
-    <script src="https://code.highcharts.com/highcharts.js"></script>
-    <script src="https://code.highcharts.com/highcharts-3d.js"></script>
-    <script src="https://code.highcharts.com/modules/exporting.js"></script>
-    <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/highcharts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/highcharts-3d.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/modules/exporting.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/modules/offline-exporting.min.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;700&family=Roboto+Mono&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
@@ -60,15 +59,15 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <div class="max-w-[1600px] mx-auto">
+    <div class="w-full mx-auto">
         <!-- Header & Top Controls -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
                 <h1 class="text-2xl font-black text-yellow-900 flex items-center gap-3">
                     <i data-lucide="database" class="text-yellow-600"></i>
-                    Compliance Reporting Engine
+                    नियामकीय अनुपालन प्रतिवेदन मॉड्यूल
                 </h1>
-                <p class="text-sm text-orange-500 font-bold uppercase tracking-wider">IS : 10500 (Drinking Water Standard) Based Analysis </p>
+                <p class="text-sm text-orange-500 font-bold uppercase tracking-wider">भारतीय मानक आईएस 10500 के आधार पर गुणवत्ता मूल्यांकन </p>
             </div>
             
             <div class="flex flex-wrap gap-3">
@@ -99,7 +98,7 @@
                 <div id="aiContent" class="p-8 overflow-y-auto custom-scrollbar prose prose-slate max-w-none">
                     <div class="flex flex-col items-center justify-center py-12 gap-4">
                         <div class="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                        <p class="font-bold text-indigo-600 animate-pulse">Gemini is analyzing your groundwater data...</p>
+                        <p class="font-bold text-indigo-600 animate-pulse">_____________________</p>
                     </div>
                 </div>
                 <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
@@ -108,108 +107,53 @@
             </div>
         </div>
 
-        <!-- Visual Analytics Section -->
-        <div id="visual-summary" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 hidden">
-            <div id="chart-outer-container" class="lg:col-span-2 theme-white p-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center min-h-[500px] relative">
-                <div id="chart-container"></div>
-                <div class="absolute bottom-4 right-4 flex gap-2">
-                    <button onclick="downloadChart()" class="bg-white/80 backdrop-blur shadow-md p-3 rounded-xl hover:bg-white transition-all group" title="Save as JPEG">
-                        <i data-lucide="image" class="w-5 h-5 text-slate-600 group-hover:scale-110 transition-transform"></i>
+        <!-- Column Mapping Modal -->
+        <div id="mappingModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+                <div class="p-6 border-b border-slate-100 bg-emerald-50 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-black text-emerald-900 flex items-center gap-2">
+                            <i data-lucide="git-merge" class="text-emerald-600"></i> Map Excel Columns
+                        </h2>
+                        <p class="text-xs font-bold text-emerald-700 mt-1 opacity-80">Verify how your data matches our system expectations</p>
+                    </div>
+                    <button onclick="cancelMapping()" class="text-slate-400 hover:text-rose-500 transition-colors">
+                        <i data-lucide="x" class="w-6 h-6"></i>
                     </button>
                 </div>
-            </div>
-
-            <div class="bg-white p-6 rounded-3xl shadow-xl shadow-slate-200 border border-slate-100 flex flex-col h-full overflow-y-auto max-h-[600px] custom-scrollbar">
-                <h3 class="text-lg font-black mb-4 text-slate-800 flex items-center gap-2">
-                    <i data-lucide="settings-2" class="w-5 h-5 text-indigo-500"></i>
-                    Chart Customization
-                </h3>
-                
-                <div class="space-y-6">
-                    <!-- Title & Theme -->
-                    <div class="space-y-3">
-                        <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Custom Chart Title</label>
-                            <input type="text" id="customChartTitle" oninput="updateReport()" placeholder="Analysis Title..." class="w-full bg-slate-50 border-none rounded-xl p-2 text-sm font-bold text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-2 ring-indigo-500">
+                <div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-slate-50">
+                    <div id="mappingContent" class="space-y-6">
+                        <!-- Geolocation & ID Fields -->
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                            <h3 class="font-black text-slate-700 mb-4 uppercase text-xs tracking-widest border-b border-slate-100 pb-3 flex items-center gap-2">
+                                <i data-lucide="map-pin" class="w-4 h-4 text-indigo-500"></i> Base Information (Optional but recommended)
+                            </h3>
+                            <div id="baseMappingGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></div>
                         </div>
-                        <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Background Theme</label>
-                            <select id="chartTheme" onchange="applyTheme()" class="w-full bg-slate-50 border-none rounded-xl p-2 text-sm font-bold text-slate-700 outline-none ring-1 ring-slate-200">
-                                <option value="theme-white">Classic White</option>
-                                <option value="theme-slate">Slate Gradient</option>
-                                <option value="theme-dark">Deep Dark</option>
-                                <option value="theme-indigo">Soft Indigo</option>
-                                <option value="theme-emerald">Fresh Emerald</option>
-                            </select>
+                        <!-- Parameter Fields -->
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                            <h3 class="font-black text-slate-700 mb-4 uppercase text-xs tracking-widest border-b border-slate-100 pb-3 flex items-center gap-2">
+                                <i data-lucide="flask-conical" class="w-4 h-4 text-emerald-500"></i> Water Quality Parameters
+                            </h3>
+                            <div id="paramMappingGrid" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4"></div>
                         </div>
                     </div>
-
-                    <!-- Typography -->
-                    <div class="bg-slate-50 p-4 rounded-2xl space-y-4">
-                        <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest block">Typography Controls</span>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-400 block mb-1">Font Family</label>
-                                <select id="fontFamily" onchange="updateReport()" class="w-full text-xs p-2 rounded-lg border-none ring-1 ring-slate-200 font-bold">
-                                    <option value="'Plus Jakarta Sans'">Jakarta Sans</option>
-                                    <option value="Inter">Inter UI</option>
-                                    <option value="'Playfair Display'">Serif Classic</option>
-                                    <option value="'Roboto Mono'">Monospace</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-400 block mb-1">Font Size</label>
-                                <input type="number" id="fontSize" value="12" min="8" max="24" oninput="updateReport()" class="w-full text-xs p-2 rounded-lg border-none ring-1 ring-slate-200 font-bold">
-                            </div>
-                        </div>
-                        <div class="flex gap-4 items-center">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="fontBold" checked onchange="updateReport()" class="rounded text-indigo-600">
-                                <span class="text-[11px] font-bold text-slate-600">Bold</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="fontItalic" onchange="updateReport()" class="rounded text-indigo-600">
-                                <span class="text-[11px] font-bold text-slate-600">Italic</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- Colors -->
-                    <div class="grid grid-cols-3 gap-2">
-                        <div>
-                            <label id="labelCol1" class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Acc.</label>
-                            <input type="color" id="colorAcc" value="#10b981" onchange="updateReport()" class="w-full h-8 rounded cursor-pointer border-none p-0 bg-transparent">
-                        </div>
-                        <div id="col2Picker">
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Perm.</label>
-                            <input type="color" id="colorPerm" value="#f59e0b" onchange="updateReport()" class="w-full h-8 rounded cursor-pointer border-none p-0 bg-transparent">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Above</label>
-                            <input type="color" id="colorFail" value="#f43f5e" onchange="updateReport()" class="w-full h-8 rounded cursor-pointer border-none p-0 bg-transparent">
-                        </div>
-                    </div>
-
-                    <div class="space-y-3 pt-4 border-t border-slate-100">
-                        <div class="bg-slate-50 p-3 rounded-xl flex justify-between items-center">
-                            <span class="text-[10px] font-black uppercase opacity-60">Total Samples</span>
-                            <span class="text-xl font-black text-slate-800" id="stat-total">0</span>
-                        </div>
-                        <div class="bg-emerald-50 p-3 rounded-xl flex justify-between items-center">
-                            <span id="statLabel" class="text-[10px] font-black uppercase text-emerald-600">Safe Samples</span>
-                            <span class="text-xl font-black text-emerald-700" id="stat-safe">0</span>
-                        </div>
-                        <button onclick="mitigateNow()" class="w-full py-3 bg-amber-100 text-amber-800 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-200 transition-all border border-amber-200 mt-2">
-                            ✨ Suggest Mitigation Strategies
+                </div>
+                <div class="p-5 border-t border-slate-100 flex justify-between items-center gap-3 bg-white">
+                    <p class="text-xs font-bold text-slate-400">Parameters left unmapped will be ignored in the report.</p>
+                    <div class="flex gap-3">
+                        <button onclick="cancelMapping()" class="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">Cancel Upload</button>
+                        <button onclick="saveMapping()" class="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 flex items-center gap-2">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i> Confirm Mapping
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Filter Bar -->
-        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-6 grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-6 items-end">
-            <div>
+        <!-- Shared Global Geo Filters -->
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 mb-6 flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[200px]">
                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">1. Reporting Level</label>
                 <select id="geoLevel" onchange="handleLevelChange()" class="w-full bg-slate-50 border-none rounded-xl p-3 font-bold text-slate-700 outline-none focus:ring-2 ring-indigo-500">
                     <option value="State">State Wise</option>
@@ -217,60 +161,314 @@
                     <option value="Block">Block Wise</option>
                 </select>
             </div>
-            <div id="stateFilterContainer">
+            <div id="stateFilterContainer" class="flex-1 min-w-[200px]">
                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">2. Choose State</label>
                 <select id="stateFilter" onchange="handleStateChange()" class="w-full bg-slate-50 border-none rounded-xl p-3 font-bold text-slate-700 outline-none focus:ring-2 ring-indigo-500">
                     <option value="">All States</option>
                 </select>
             </div>
-            <div id="distFilterContainer" class="hidden">
+            <div id="distFilterContainer" class="flex-1 min-w-[200px] hidden">
                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">3. Choose District</label>
-                <select id="distFilter" onchange="updateReport()" class="w-full bg-slate-50 border-none rounded-xl p-3 font-bold text-slate-700 outline-none focus:ring-2 ring-indigo-500">
+                <select id="distFilter" onchange="handleDistrictChange()" class="w-full bg-slate-50 border-none rounded-xl p-3 font-bold text-slate-700 outline-none focus:ring-2 ring-indigo-500">
                     <option value="">All Districts</option>
-                </select>
-            </div>
-            <div class="md:col-span-2 lg:col-span-2">
-                <label class="text-[10px] font-black text-indigo-500 uppercase tracking-widest block mb-2">4. Active Parameter for Stats</label>
-                <select id="activeParam" onchange="updateReport()" class="w-full bg-indigo-50 border-none rounded-xl p-3 font-bold text-indigo-700 outline-none focus:ring-2 ring-indigo-500">
-                    <!-- Dynamic -->
                 </select>
             </div>
         </div>
 
-        <!-- Main Report Table -->
-        <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-            <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full text-left text-xs" id="mainReportTable">
-                    <thead>
-                        <tr class="sticky-header" id="tableHeaderRow">
-                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">S.No.</th>
-                            <!-- Dynamic Geo Columns inserted here -->
-                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Total Samples</th>
-                            
-                            <th id="headerAcc" class="p-4 font-black text-emerald-600 uppercase tracking-tighter text-center bg-emerald-50/50">≤ Acc.<br><span class="text-[9px] opacity-70">(No / %)</span></th>
-                            <th id="headerPerm" class="p-4 font-black text-amber-600 uppercase tracking-tighter text-center bg-amber-50/50">> Acc. & ≤ Perm.<br><span class="text-[9px] opacity-70">(No / %)</span></th>
-                            <th id="headerFail" class="p-4 font-black text-rose-600 uppercase tracking-tighter text-center bg-rose-50/50">> Perm.<br><span class="text-[9px] opacity-70">(No / %)</span></th>
-                            
-                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center border-l border-slate-200">Min</th>
-                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Max</th>
-                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Avg</th>
-                            <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">SD</th>
-                        </tr>
-                    </thead>
-                    <tbody id="reportContent" class="divide-y divide-slate-100">
-                        <tr>
-                            <td colspan="15" class="p-20 text-center">
-                                <div class="flex flex-col items-center gap-4">
-                                    <i data-lucide="file-spreadsheet" class="w-12 h-12 text-slate-200"></i>
-                                    <p class="text-slate-400 font-bold uppercase tracking-widest">Please upload groundwater data to begin</p>
+        <!-- Tab Navigation -->
+        <div class="flex gap-4 mb-6 border-b border-slate-200 pb-px overflow-x-auto custom-scrollbar">
+            <button id="tab-btn-single" onclick="switchTab('single')" class="whitespace-nowrap px-6 py-3 font-black text-indigo-600 border-b-4 border-indigo-600 transition-all">Detailed Analysis</button>
+            <button id="tab-btn-multi" onclick="switchTab('multi')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-slate-700 transition-all">All Parameters Dashboard</button>
+            <button id="tab-btn-bar" onclick="switchTab('bar')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-slate-700 transition-all">Comparative Exceedance (Bar)</button>
+        </div>
+
+        <!-- Tab Content: Single Parameter Detail View -->
+        <div id="view-single">
+            <!-- Visual Analytics Section -->
+            <div id="visual-summary" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 hidden">
+                <div id="chart-outer-container" class="lg:col-span-2 theme-white p-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center min-h-[500px] relative">
+                    <div id="chart-container"></div>
+                    <div class="absolute bottom-4 right-4 flex gap-2">
+                        <button onclick="downloadChart()" class="bg-white/80 backdrop-blur shadow-md p-3 rounded-xl hover:bg-white transition-all group" title="Save as JPEG">
+                            <i data-lucide="image" class="w-5 h-5 text-slate-600 group-hover:scale-110 transition-transform"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-3xl shadow-xl shadow-slate-200 border border-slate-100 flex flex-col h-full overflow-y-auto max-h-[600px] custom-scrollbar">
+                    <h3 class="text-lg font-black mb-4 text-slate-800 flex items-center gap-2">
+                        <i data-lucide="settings-2" class="w-5 h-5 text-indigo-500"></i>
+                        Chart Customization
+                    </h3>
+                    
+                    <div class="space-y-6">
+                        <!-- Title & Theme -->
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Custom Chart Title</label>
+                                <input type="text" id="customChartTitle" oninput="updateReport()" placeholder="Analysis Title..." class="w-full bg-slate-50 border-none rounded-xl p-2 text-sm font-bold text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-2 ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Background Theme</label>
+                                <select id="chartTheme" onchange="applyTheme()" class="w-full bg-slate-50 border-none rounded-xl p-2 text-sm font-bold text-slate-700 outline-none ring-1 ring-slate-200">
+                                    <option value="theme-white">Classic White</option>
+                                    <option value="theme-slate">Slate Gradient</option>
+                                    <option value="theme-dark">Deep Dark</option>
+                                    <option value="theme-indigo">Soft Indigo</option>
+                                    <option value="theme-emerald">Fresh Emerald</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Typography -->
+                        <div class="bg-slate-50 p-4 rounded-2xl space-y-4">
+                            <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest block">Typography Controls</span>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 block mb-1">Font Family</label>
+                                    <select id="fontFamily" onchange="updateReport()" class="w-full text-xs p-2 rounded-lg border-none ring-1 ring-slate-200 font-bold">
+                                        <option value="'Plus Jakarta Sans'">Jakarta Sans</option>
+                                        <option value="Inter">Inter UI</option>
+                                        <option value="'Playfair Display'">Serif Classic</option>
+                                        <option value="'Roboto Mono'">Monospace</option>
+                                    </select>
                                 </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 block mb-1">Font Size</label>
+                                    <input type="number" id="fontSize" value="12" min="8" max="24" oninput="updateReport()" class="w-full text-xs p-2 rounded-lg border-none ring-1 ring-slate-200 font-bold">
+                                </div>
+                            </div>
+                            <div class="flex gap-4 items-center">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="fontBold" checked onchange="updateReport()" class="rounded text-indigo-600">
+                                    <span class="text-[11px] font-bold text-slate-600">Bold</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="fontItalic" onchange="updateReport()" class="rounded text-indigo-600">
+                                    <span class="text-[11px] font-bold text-slate-600">Italic</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Colors -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label id="labelCol1" class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Acc.</label>
+                                <input type="color" id="colorAcc" value="#10b981" onchange="updateReport()" class="w-full h-8 rounded cursor-pointer border-none p-0 bg-transparent">
+                            </div>
+                            <div id="col2Picker">
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Perm.</label>
+                                <input type="color" id="colorPerm" value="#f59e0b" onchange="updateReport()" class="w-full h-8 rounded cursor-pointer border-none p-0 bg-transparent">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Above</label>
+                                <input type="color" id="colorFail" value="#f43f5e" onchange="updateReport()" class="w-full h-8 rounded cursor-pointer border-none p-0 bg-transparent">
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 pt-4 border-t border-slate-100">
+                            <div class="bg-slate-50 p-3 rounded-xl flex justify-between items-center">
+                                <span class="text-[10px] font-black uppercase opacity-60">Total Samples</span>
+                                <span class="text-xl font-black text-slate-800" id="stat-total">0</span>
+                            </div>
+                            <div class="bg-emerald-50 p-3 rounded-xl flex justify-between items-center">
+                                <span id="statLabel" class="text-[10px] font-black uppercase text-emerald-600">Safe Samples</span>
+                                <span class="text-xl font-black text-emerald-700" id="stat-safe">0</span>
+                            </div>
+                            <button onclick="mitigateNow()" class="w-full py-3 bg-amber-100 text-amber-800 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-200 transition-all border border-amber-200 mt-2">
+                                ✨ Suggest Mitigation Strategies
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Bar for Single View (Param Specific & Export Settings) -->
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+                <div>
+                    <label class="text-[10px] font-black text-indigo-500 uppercase tracking-widest block mb-2">4. Active Parameter for Stats</label>
+                    <select id="activeParam" onchange="updateReport()" class="w-full bg-indigo-50 border-none rounded-xl p-3 font-bold text-indigo-700 outline-none focus:ring-2 ring-indigo-500">
+                        <!-- Dynamic -->
+                    </select>
+                </div>
+                <div id="exportParamContainer" class="relative">
+                    <label class="text-[10px] font-black text-emerald-600 uppercase tracking-widest block mb-2">5. Export Report Parameters</label>
+                    <div class="relative">
+                        <button onclick="document.getElementById('paramDropdown').classList.toggle('hidden')" class="w-full bg-emerald-50 border-none rounded-xl p-3 font-bold text-emerald-700 outline-none focus:ring-2 ring-emerald-500 flex justify-between items-center text-left">
+                            <span id="paramDropdownText" class="truncate">All Parameters Selected</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 ml-2 shrink-0"></i>
+                        </button>
+                        <div id="paramDropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 shadow-xl rounded-xl z-50 max-h-60 overflow-y-auto custom-scrollbar p-2">
+                            <!-- Dynamic Checkboxes -->
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-rose-500 uppercase tracking-widest block mb-2">6. Additional Export Sheets</label>
+                    <div class="bg-rose-50 border-none rounded-xl p-3 flex flex-col gap-3">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="exportExceedanceSheet" checked class="rounded text-rose-600 focus:ring-rose-500 w-4 h-4">
+                            <span class="text-[11px] font-bold text-rose-700 truncate">Exceedance Locations (Individual)</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="exportCombinedSheet" checked class="rounded text-rose-600 focus:ring-rose-500 w-4 h-4">
+                            <span class="text-[11px] font-bold text-rose-700 truncate">Combined Exceedances</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="combinedParamContainer" class="relative">
+                    <label class="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest block mb-2">7. Combined Exceedance Params</label>
+                    <div class="relative">
+                        <button onclick="document.getElementById('combinedParamDropdown').classList.toggle('hidden')" class="w-full bg-fuchsia-50 border-none rounded-xl p-3 font-bold text-fuchsia-700 outline-none focus:ring-2 ring-fuchsia-500 flex justify-between items-center text-left">
+                            <span id="combinedParamDropdownText" class="truncate">All Parameters Selected</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 ml-2 shrink-0"></i>
+                        </button>
+                        <div id="combinedParamDropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 shadow-xl rounded-xl z-50 max-h-60 overflow-y-auto custom-scrollbar p-2">
+                            <!-- Dynamic Checkboxes -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Report Table -->
+            <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs" id="mainReportTable">
+                        <thead>
+                            <tr class="sticky-header" id="tableHeaderRow">
+                                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">S.No.</th>
+                                <!-- Dynamic Geo Columns inserted here -->
+                                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Total Samples</th>
+                                
+                                <th id="headerAcc" class="p-4 font-black text-emerald-600 uppercase tracking-tighter text-center bg-emerald-50/50">≤ Acc.<br><span class="text-[9px] opacity-70">(No / %)</span></th>
+                                <th id="headerPerm" class="p-4 font-black text-amber-600 uppercase tracking-tighter text-center bg-amber-50/50">> Acc. & ≤ Perm.<br><span class="text-[9px] opacity-70">(No / %)</span></th>
+                                <th id="headerFail" class="p-4 font-black text-rose-600 uppercase tracking-tighter text-center bg-rose-50/50">> Perm.<br><span class="text-[9px] opacity-70">(No / %)</span></th>
+                                
+                                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center border-l border-slate-200">Min</th>
+                                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Max</th>
+                                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Avg</th>
+                                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">SD</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportContent" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="15" class="p-20 text-center">
+                                    <div class="flex flex-col items-center gap-4">
+                                        <i data-lucide="file-spreadsheet" class="w-12 h-12 text-slate-200"></i>
+                                        <p class="text-slate-400 font-bold uppercase tracking-widest">Please upload groundwater data to begin</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div> <!-- End view-single -->
+
+        <!-- Tab Content: Multi Parameter Dashboard -->
+        <div id="view-multi" class="hidden">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5 text-indigo-500"></i>
+                        All Parameters Overview
+                    </h3>
+                    <div id="multiParamContainer" class="relative min-w-[250px] z-40">
+                        <div class="relative">
+                            <button onclick="document.getElementById('multiParamDropdown').classList.toggle('hidden')" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-bold text-slate-700 outline-none focus:ring-2 ring-indigo-500 flex justify-between items-center text-left shadow-sm">
+                                <span id="multiParamDropdownText" class="truncate">All Parameters Selected</span>
+                                <i data-lucide="chevron-down" class="w-4 h-4 ml-2 shrink-0"></i>
+                            </button>
+                            <div id="multiParamDropdown" class="hidden absolute top-full mt-2 right-0 w-64 bg-white border border-slate-200 shadow-xl rounded-xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                <!-- Dynamic Checkboxes -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="multi-charts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div class="col-span-full p-12 text-center text-slate-400 font-bold uppercase tracking-widest border-2 border-dashed border-slate-100 rounded-2xl">
+                        Please upload groundwater data to view the dashboard
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- Tab Content: Comparative Bar Chart -->
+        <div id="view-bar" class="hidden">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <i data-lucide="bar-chart-3" class="w-5 h-5 text-indigo-500"></i>
+                        Parameter Exceedance Comparison (% Above Permissible Limit)
+                    </h3>
+                </div>
+
+                <!-- Bar Chart Controls -->
+                <div class="bg-slate-50 p-6 rounded-2xl mb-6 grid grid-cols-1 md:grid-cols-3 gap-6 border border-slate-100">
+                    <!-- Minimum Exceedance Filter -->
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">1. Filter by Minimum Exceedance:</label>
+                        <div class="flex items-center gap-4">
+                            <input type="range" id="barExceedanceThreshold" min="0" max="100" value="0" oninput="document.getElementById('thresholdValueDisplay').innerText = this.value + '%'; renderBarChart();" class="flex-1 w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="bg-white border border-slate-200 px-4 py-2 rounded-xl flex items-center justify-center min-w-[80px] shadow-sm">
+                                <span id="thresholdValueDisplay" class="font-black text-indigo-600 text-sm">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Y-Axis Maximum Limit Control -->
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">2. Set Chart Y-Axis Scale (Max %):</label>
+                        <div class="flex items-center gap-4">
+                            <input type="range" id="barYAxisMax" min="10" max="100" value="100" step="10" oninput="document.getElementById('yAxisMaxValueDisplay').innerText = this.value + '%'; renderBarChart();" class="flex-1 w-full accent-emerald-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="bg-white border border-slate-200 px-4 py-2 rounded-xl flex items-center justify-center min-w-[80px] shadow-sm">
+                                <span id="yAxisMaxValueDisplay" class="font-black text-emerald-600 text-sm">100%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Decimal Places Control -->
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">3. Decimal Places:</label>
+                        <div class="flex items-center gap-4">
+                            <input type="range" id="barDecimals" min="0" max="4" value="2" step="1" oninput="document.getElementById('decimalsValueDisplay').innerText = this.value; renderBarChart();" class="flex-1 w-full accent-amber-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="bg-white border border-slate-200 px-4 py-2 rounded-xl flex items-center justify-center min-w-[80px] shadow-sm">
+                                <span id="decimalsValueDisplay" class="font-black text-amber-600 text-sm">2</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="bar-chart-container" class="w-full h-[550px]">
+                    <div class="flex items-center justify-center h-full text-slate-400 font-bold uppercase tracking-widest border-2 border-dashed border-slate-100 rounded-2xl p-12 text-center">
+                        Please upload groundwater data to view the chart
+                    </div>
+                </div>
+
+                <!-- Parameter Exceedance Data Table -->
+                <div id="bar-table-wrapper" class="mt-8 overflow-x-auto custom-scrollbar hidden">
+                    <table class="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+                        <thead class="bg-slate-100">
+                            <tr>
+                                <th class="p-3 font-black text-slate-500 uppercase tracking-tighter w-16 text-center">Sl. No.</th>
+                                <th class="p-3 font-black text-slate-500 uppercase tracking-tighter">Parameter</th>
+                                <th class="p-3 font-black text-slate-500 uppercase tracking-tighter">Permissible Limit</th>
+                                <th class="p-3 font-black text-slate-500 uppercase tracking-tighter text-center">Total Samples</th>
+                                <th class="p-3 font-black text-slate-500 uppercase tracking-tighter text-center">% Above Permissible Limit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bar-table-body" class="divide-y divide-slate-100 bg-white">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[200] flex flex-col gap-2"></div>
 
     <script>
         const apiKey = ""; // Managed by environment
@@ -279,8 +477,8 @@
             'TDS': { b1: 500, b2: 2000, unit: 'mg/l', name: 'Total Dissolved Solids', keywords: ['tds', 'total dissolved solids'] },
             'Turbidity': { b1: 1, b2: 5, unit: 'NTU', name: 'Turbidity', keywords: ['turbidity'] },
             'Alkalinity': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Alkalinity', keywords: ['alkalinity', 'total alkalinity'] },
-            'TH': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Hardness', keywords: ['th', 'total hardness', 'hardness'] },
-            'EC': { b1: 750, b2: 3000, unit: 'µS/cm', name: 'Electrical Conductivity', keywords: ['ec', 'cond', 'conductivity', 'electrical conductivity'] },
+            'TH': { b1: 200, b2: 600, unit: 'mg/l as CaCO3', name: 'Total Hardness', keywords: ['th', 'total hardness', 'hardness'] },
+            'EC': { b1: 750, b2: 3000, unit: 'µS/cm at 25°C  ', name: 'Electrical Conductivity', keywords: ['ec', 'cond', 'conductivity', 'electrical conductivity'] },
             'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride', keywords: ['cl', 'chloride'] },
             'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate', keywords: ['no3', 'nitrate'] },
             'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride', keywords: ['f', 'fluoride'] },
@@ -289,23 +487,71 @@
             'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium', keywords: ['u', 'uranium'] },
             'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc', keywords: ['zn', 'zinc'] },
             'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper', keywords: ['cu', 'copper'] },
-            'Pb': { b1: 10, b2: 10, unit: 'ppb', name: 'Lead', keywords: ['pb', 'lead'] },
-            'Cd': { b1: 3, b2: 3, unit: 'ppb', name: 'Cadmium', keywords: ['cd', 'cadmium'] },
+            'Pb': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Lead', keywords: ['Pb', 'lead'] },
+            'Cd': { b1: 0.003, b2: 0.003, unit: 'mg/L', name: 'Cadmium', keywords: ['cd', 'cadmium'] },
             'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium', keywords: ['cr', 'chromium'] },
-            'Hg': { b1: 1, b2: 1, unit: 'ppb', name: 'Mercury', keywords: ['hg', 'mercury'] },
+            'Hg': { b1: 0.001, b2: 0.001, unit: 'mg/L', name: 'Mercury', keywords: ['hg', 'mercury'] },
             'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel', keywords: ['ni', 'nickel'] },
-            'Se': { b1: 10, b2: 10, unit: 'ppb', name: 'Selenium', keywords: ['se', 'selenium'] },
+            'Se': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Selenium', keywords: ['se', 'selenium'] },
             'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium', keywords: ['ca', 'calcium'] },
             'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium', keywords: ['mg', 'magnesium'] },
-            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate', keywords: ['so4', 'sulphate', 'sulfate'] }
+            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate', keywords: ['so4', 'sulphate', 'sulfate'] },
+            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese', keywords: ['Mn', 'Manganese'] },
+            'Al': { b1: 0.03, b2: 0.2, unit: 'mg/l', name: 'Alluminium', keywords: ['Al', 'Alluminium'] },
+            'Ba': { b1: 0.7, b2: 0.7, unit: 'mg/l', name: 'Barium', keywords: ['Ba', 'Barium'] },
+            'B': { b1: 0.5, b2: 2.4, unit: 'mg/l', name: 'Boran', keywords: ['B', 'Boran'] },
+            'Mo': { b1: 0.05, b2: 0.07, unit: 'mg/l', name: 'Boran', keywords: ['Mo', 'Molybdnum'] },
         };
 
         let rawData = [];
         let dataHeaders = {};
         let headerMap = {}; // Maps Excel Header -> Config Key
         let chart = null;
+        let uploadedHeaders = []; // Stores raw excel headers
 
         window.onload = () => lucide.createIcons();
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropContainer = document.getElementById('exportParamContainer');
+            const dropdown = document.getElementById('paramDropdown');
+            if (dropContainer && dropdown && !dropContainer.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+            
+            const combinedDropContainer = document.getElementById('combinedParamContainer');
+            const combinedDropdown = document.getElementById('combinedParamDropdown');
+            if (combinedDropContainer && combinedDropdown && !combinedDropContainer.contains(event.target)) {
+                combinedDropdown.classList.add('hidden');
+            }
+
+            const multiDropContainer = document.getElementById('multiParamContainer');
+            const multiDropdown = document.getElementById('multiParamDropdown');
+            if (multiDropContainer && multiDropdown && !multiDropContainer.contains(event.target)) {
+                multiDropdown.classList.add('hidden');
+            }
+        });
+
+        // Custom Toast Notification Function (Replaces alert())
+        function showToast(message, type = 'error') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `px-6 py-3 rounded-xl font-bold text-white shadow-lg transition-all duration-300 transform translate-y-full opacity-0 flex items-center gap-2 ${type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'}`;
+            toast.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'check-circle'}" class="w-5 h-5"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-full', 'opacity-0');
+            });
+
+            // Remove after 3.5 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-y-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
 
         // Gemini API Integration - Exponential Backoff
         async function callGemini(prompt, systemPrompt = "You are a professional groundwater quality expert.") {
@@ -334,7 +580,10 @@
         }
 
         async function generateAISummary() {
-            if (!rawData.length) return;
+            if (!rawData.length) {
+                showToast("Please upload data first before running system online checks.", "error");
+                return;
+            }
             openAIModal();
             const level = document.getElementById('geoLevel').value;
             const param = document.getElementById('activeParam').value;
@@ -398,60 +647,204 @@
             const reader = new FileReader();
             reader.onload = (evt) => {
                 const wb = XLSX.read(evt.target.result, { type: 'binary' });
-                rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                rawData = XLSX.utils.sheet_to_json(ws);
+                
+                if (rawData.length === 0) {
+                    showToast("Uploaded Excel file is empty", "error");
+                    return;
+                }
+
+                // Extract all column headers from row 1 to handle cases with missing data gracefully
+                uploadedHeaders = [];
+                const headerRange = XLSX.utils.decode_range(ws['!ref']);
+                for(let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+                    const cell = ws[XLSX.utils.encode_cell({r: headerRange.s.r, c: C})];
+                    if(cell && cell.v) uploadedHeaders.push(String(cell.v).trim());
+                }
+
+                // Deduplicate headers just in case
+                uploadedHeaders = [...new Set(uploadedHeaders)];
+
                 identifyHeaders();
-                initParamSelector();
-                populateStateFilter();
-                document.getElementById('visual-summary').classList.remove('hidden');
-                updateReport();
+                openMappingModal(); // Stop here and ask user to confirm mapping
             };
             reader.readAsBinaryString(file);
         };
 
+        function openMappingModal() {
+            const baseGrid = document.getElementById('baseMappingGrid');
+            const paramGrid = document.getElementById('paramMappingGrid');
+            
+            // Build the Options dropdown dynamically
+            const optionsHtml = `<option value="">-- None / Ignore --</option>` + 
+                uploadedHeaders.map(h => `<option value="${h}">${h}</option>`).join('');
+
+            const buildSelect = (id, label) => `
+                <div class="flex flex-col gap-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate" title="${label}">${label}</label>
+                    <select id="map_${id}" class="w-full text-xs p-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 font-bold bg-white text-slate-700 shadow-sm cursor-pointer hover:border-indigo-300 transition-colors">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            `;
+
+            // Setup Geolocation & Identity Grids
+            baseGrid.innerHTML = 
+                buildSelect('state', 'State') +
+                buildSelect('district', 'District') +
+                buildSelect('block', 'Block / Tehsil') +
+                buildSelect('wellId', 'Well / Station ID') +
+                buildSelect('location', 'Location / Village') +
+                buildSelect('longitude', 'Longitude') +
+                buildSelect('latitude', 'Latitude');
+
+            // Setup Parameter Grid directly from PARAM_CONFIG
+            paramGrid.innerHTML = Object.keys(PARAM_CONFIG).map(paramKey => {
+                return buildSelect(`param_${paramKey}`, `${PARAM_CONFIG[paramKey].name} (${paramKey})`);
+            }).join('');
+
+            // Pre-select guessed values based on identifyHeaders()
+            document.getElementById('map_state').value = dataHeaders.state || "";
+            document.getElementById('map_district').value = dataHeaders.district || "";
+            document.getElementById('map_block').value = dataHeaders.block || "";
+            document.getElementById('map_wellId').value = dataHeaders.wellId || "";
+            document.getElementById('map_location').value = dataHeaders.location || "";
+            document.getElementById('map_longitude').value = dataHeaders.longitude || "";
+            document.getElementById('map_latitude').value = dataHeaders.latitude || "";
+
+            Object.keys(PARAM_CONFIG).forEach(paramKey => {
+                const guessedHeader = Object.keys(headerMap).find(k => headerMap[k] === paramKey) || "";
+                if (guessedHeader) {
+                    const el = document.getElementById(`map_param_${paramKey}`);
+                    if (el) el.value = guessedHeader;
+                }
+            });
+
+            document.getElementById('mappingModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function saveMapping() {
+            // Apply Base Information Mappings
+            dataHeaders.state = document.getElementById('map_state').value;
+            dataHeaders.district = document.getElementById('map_district').value;
+            dataHeaders.block = document.getElementById('map_block').value;
+            dataHeaders.wellId = document.getElementById('map_wellId').value;
+            dataHeaders.location = document.getElementById('map_location').value;
+            dataHeaders.longitude = document.getElementById('map_longitude').value;
+            dataHeaders.latitude = document.getElementById('map_latitude').value;
+
+            // Rebuild the parameters array and map logic based on user selection
+            dataHeaders.params = [];
+            headerMap = {};
+
+            Object.keys(PARAM_CONFIG).forEach(paramKey => {
+                const selectedHeader = document.getElementById(`map_param_${paramKey}`).value;
+                if (selectedHeader) {
+                    // Prevent duplicate mapping of the same Excel column to multiple parameters
+                    if(!dataHeaders.params.includes(selectedHeader)) {
+                        dataHeaders.params.push(selectedHeader);
+                    }
+                    headerMap[selectedHeader] = paramKey;
+                }
+            });
+
+            if (dataHeaders.params.length === 0) {
+                return showToast("Please map at least one Water Quality Parameter to proceed.", "error");
+            }
+
+            document.getElementById('mappingModal').classList.add('hidden');
+            
+            // Proceed with rendering the application
+            initParamSelector();
+            populateStateFilter();
+            document.getElementById('visual-summary').classList.remove('hidden');
+            updateReport();
+            renderMultiDashboard();
+            renderBarChart();
+            showToast("Data mapped & loaded successfully!", "success");
+        }
+
+        function cancelMapping() {
+            document.getElementById('mappingModal').classList.add('hidden');
+            document.getElementById('fileInput').value = ''; // Reset input to allow re-upload
+            showToast("Upload cancelled.", "error");
+        }
+
+        function switchTab(activeTab) {
+            const tabs = ['single', 'multi', 'bar'];
+            tabs.forEach(tab => {
+                const btn = document.getElementById(`tab-btn-${tab}`);
+                const view = document.getElementById(`view-${tab}`);
+                if (tab === activeTab) {
+                    view.classList.remove('hidden');
+                    btn.classList.replace('text-slate-400', 'text-indigo-600');
+                    btn.classList.replace('border-transparent', 'border-indigo-600');
+                } else {
+                    view.classList.add('hidden');
+                    btn.classList.replace('text-indigo-600', 'text-slate-400');
+                    btn.classList.replace('border-indigo-600', 'border-transparent');
+                }
+            });
+
+            if (activeTab === 'multi') renderMultiDashboard();
+            if (activeTab === 'bar') renderBarChart();
+        }
+
         function applyTheme() {
             const theme = document.getElementById('chartTheme').value;
             const container = document.getElementById('chart-outer-container');
-            container.className = `lg:col-span-2 p-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center min-h-[500px] relative ${theme}`;
+            if(container) {
+                container.className = `lg:col-span-2 p-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center min-h-[500px] relative ${theme}`;
+            }
             updateReport();
         }
 
         function identifyHeaders() {
-            if (rawData.length === 0) return;
-            const keys = Object.keys(rawData[0]);
-            const find = (targets) => keys.find(k => targets.some(t => k.toLowerCase().trim() === t.toLowerCase()));
+            if (uploadedHeaders.length === 0) return;
+            const find = (targets) => uploadedHeaders.find(k => targets.some(t => k.toLowerCase().trim() === t.toLowerCase()));
             
             dataHeaders = {
                 state: find(['State', 'State_Name', 'State/UT']),
                 district: find(['District', 'Dist']),
-                block: find(['Block', 'Tehsil']),
+                block: find(['Block', 'Tehsil', 'Block/Talluka']),
+                wellId: find(['Well ID', 'Well_ID', 'Station ID', 'Site ID', 'WLS_ID']),
+                location: find(['Location', 'Village', 'Site Name', 'Place']),
+                longitude: find(['Longitude', 'Long', 'Lon', 'X']),
+                latitude: find(['Latitude', 'Lat', 'Y']),
                 params: []
             };
 
+            // Identify known static columns to prevent them from becoming parameters
+            const knownStaticHeaders = Object.values(dataHeaders).filter(h => typeof h === 'string');
+
             // Intelligent Parameter Mapping
             headerMap = {};
-            keys.forEach(header => {
+            uploadedHeaders.forEach(header => {
+                // 1. Skip if it's already identified as a static geo/ID column
+                if (knownStaticHeaders.includes(header)) return;
+                
                 const hLower = header.toLowerCase().trim();
-                // Check against all config keys and their keywords
-                // Sort keys by length desc to match 'Fe' before 'F' if ambiguous, though keywords handle this better
+                
+                // 2. Explicitly block other common static fields from showing up as parameters
+                const staticKeywords = ['location', 'lat', 'lon', 'district', 'state', 'block', 'village', 'well', 'sl. no', 'serial', 'unit'];
+                if (staticKeywords.some(sw => hLower.includes(sw))) return;
+
                 const matchedKey = Object.keys(PARAM_CONFIG).find(key => {
                     const config = PARAM_CONFIG[key];
-                    // 1. Exact Key Match
                     if (hLower === key.toLowerCase()) return true;
-                    // 2. Keyword Match (Exact word or contained with boundary check usually, but simple includes for now with keywords is safer)
+                    
+                    // 3. Strict word-boundary matching (prevents 'ca' from matching 'location')
                     if (config.keywords && config.keywords.some(kw => {
-                        // Strict check: Header is exactly keyword OR Header contains keyword with brackets e.g. "Iron (Fe)"
-                        return hLower === kw || hLower.includes(`(${kw})`) || hLower.includes(`${kw} `) || hLower === kw; 
+                        if (hLower === kw) return true;
+                        if (hLower.includes(`(${kw})`)) return true;
+                        // Match exact whole words only
+                        const regex = new RegExp(`\\b${kw}\\b`, 'i');
+                        return regex.test(hLower);
                     })) return true;
-                    // 3. Fallback: Check if keyword is contained in header (e.g. "Total Iron")
-                     if (config.keywords && config.keywords.some(kw => {
-                         if (hLower.includes(kw)) {
-                             // Anti-Collision: Don't match 'F' in 'Fe' or 'Sulfate'
-                             if (kw === 'f' && hLower.includes('fe')) return false; 
-                             return true;
-                         }
-                         return false;
-                     })) return true;
-                     return false;
+                    
+                    return false;
                 });
 
                 if (matchedKey) {
@@ -462,12 +855,156 @@
         }
 
         function initParamSelector() {
+            // Active param (Stats)
             const sel = document.getElementById('activeParam');
-            sel.innerHTML = dataHeaders.params.map(p => `<option value="${p}">${p}</option>`).join('');
+            if (sel) {
+                sel.innerHTML = dataHeaders.params.map(p => `<option value="${p}">${p}</option>`).join('');
+            }
+
+            // Export params (Exceedance Sheets & Compliance Subsheets)
+            const drop = document.getElementById('paramDropdown');
+            if (drop) {
+                drop.innerHTML = `
+                    <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer border-b border-slate-100 mb-1">
+                        <input type="checkbox" id="selectAllParams" checked onchange="toggleAllExportParams(this)" class="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4">
+                        <span class="text-xs font-black text-slate-700">Select All</span>
+                    </label>
+                ` + dataHeaders.params.map(p => `
+                    <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
+                        <input type="checkbox" value="${p}" checked onchange="updateExportParamText()" class="export-param-cb rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4">
+                        <span class="text-xs font-bold text-slate-600">${p}</span>
+                    </label>
+                `).join('');
+                updateExportParamText();
+            }
+
+            // Combined Exceedance Params (Specifically for the Combined Sheet)
+            const combinedDrop = document.getElementById('combinedParamDropdown');
+            if (combinedDrop) {
+                combinedDrop.innerHTML = `
+                    <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer border-b border-slate-100 mb-1">
+                        <input type="checkbox" id="selectAllCombinedParams" checked onchange="toggleAllCombinedParams(this)" class="rounded text-fuchsia-600 focus:ring-fuchsia-500 w-4 h-4">
+                        <span class="text-xs font-black text-slate-700">Select All</span>
+                    </label>
+                ` + dataHeaders.params.map(p => `
+                    <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
+                        <input type="checkbox" value="${p}" checked onchange="updateCombinedParamText()" class="combined-param-cb rounded text-fuchsia-600 focus:ring-fuchsia-500 w-4 h-4">
+                        <span class="text-xs font-bold text-slate-600">${p}</span>
+                    </label>
+                `).join('');
+                updateCombinedParamText();
+            }
+            
+            // Multi Dashboard Params
+            const multiDrop = document.getElementById('multiParamDropdown');
+            if (multiDrop) {
+                multiDrop.innerHTML = `
+                    <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer border-b border-slate-100 mb-1">
+                        <input type="checkbox" id="selectAllMultiParams" checked onchange="toggleAllMultiParams(this); renderMultiDashboard();" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                        <span class="text-xs font-black text-slate-700">Select All</span>
+                    </label>
+                ` + dataHeaders.params.map(p => `
+                    <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
+                        <input type="checkbox" value="${p}" checked onchange="updateMultiParamText(); renderMultiDashboard();" class="multi-param-cb rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                        <span class="text-xs font-bold text-slate-600">${p}</span>
+                    </label>
+                `).join('');
+                updateMultiParamText();
+            }
         }
+
+        // --- Start Checkbox Handlers ---
+        function toggleAllExportParams(source) {
+            const cbs = document.querySelectorAll('.export-param-cb');
+            cbs.forEach(cb => cb.checked = source.checked);
+            updateExportParamText();
+        }
+
+        function updateExportParamText() {
+            const cbs = document.querySelectorAll('.export-param-cb');
+            const checked = Array.from(cbs).filter(cb => cb.checked);
+            const textEl = document.getElementById('paramDropdownText');
+            const selectAll = document.getElementById('selectAllParams');
+            
+            if (!textEl) return;
+
+            if (checked.length === cbs.length && cbs.length > 0) {
+                textEl.innerText = "All Parameters Selected";
+                if(selectAll) selectAll.checked = true;
+            } else if (checked.length === 0) {
+                textEl.innerText = "No Parameters Selected";
+                if(selectAll) selectAll.checked = false;
+            } else if (checked.length <= 2) {
+                textEl.innerText = checked.map(c => c.value).join(', ');
+                if(selectAll) selectAll.checked = false;
+            } else {
+                textEl.innerText = `${checked.length} Parameters Selected`;
+                if(selectAll) selectAll.checked = false;
+            }
+        }
+
+        function toggleAllCombinedParams(source) {
+            const cbs = document.querySelectorAll('.combined-param-cb');
+            cbs.forEach(cb => cb.checked = source.checked);
+            updateCombinedParamText();
+        }
+
+        function updateCombinedParamText() {
+            const cbs = document.querySelectorAll('.combined-param-cb');
+            const checked = Array.from(cbs).filter(cb => cb.checked);
+            const textEl = document.getElementById('combinedParamDropdownText');
+            const selectAll = document.getElementById('selectAllCombinedParams');
+            
+            if (!textEl) return;
+
+            if (checked.length === cbs.length && cbs.length > 0) {
+                textEl.innerText = "All Parameters Selected";
+                if(selectAll) selectAll.checked = true;
+            } else if (checked.length === 0) {
+                textEl.innerText = "No Parameters Selected";
+                if(selectAll) selectAll.checked = false;
+            } else if (checked.length <= 2) {
+                textEl.innerText = checked.map(c => c.value).join(', ');
+                if(selectAll) selectAll.checked = false;
+            } else {
+                textEl.innerText = `${checked.length} Parameters Selected`;
+                if(selectAll) selectAll.checked = false;
+            }
+        }
+
+        function toggleAllMultiParams(source) {
+            const cbs = document.querySelectorAll('.multi-param-cb');
+            cbs.forEach(cb => cb.checked = source.checked);
+            updateMultiParamText();
+        }
+
+        function updateMultiParamText() {
+            const cbs = document.querySelectorAll('.multi-param-cb');
+            const checked = Array.from(cbs).filter(cb => cb.checked);
+            const textEl = document.getElementById('multiParamDropdownText');
+            const selectAll = document.getElementById('selectAllMultiParams');
+            
+            if (!textEl) return;
+
+            if (checked.length === cbs.length && cbs.length > 0) {
+                textEl.innerText = "All Parameters Selected";
+                if(selectAll) selectAll.checked = true;
+            } else if (checked.length === 0) {
+                textEl.innerText = "No Parameters Selected";
+                if(selectAll) selectAll.checked = false;
+            } else if (checked.length <= 2) {
+                textEl.innerText = checked.map(c => c.value).join(', ');
+                if(selectAll) selectAll.checked = false;
+            } else {
+                textEl.innerText = `${checked.length} Parameters Selected`;
+                if(selectAll) selectAll.checked = false;
+            }
+        }
+        // --- End Checkbox Handlers ---
 
         function populateStateFilter() {
             const sel = document.getElementById('stateFilter');
+            if (!sel) return;
             sel.innerHTML = '<option value="">All States</option>';
             const states = [...new Set(rawData.map(d => String(d[dataHeaders.state] || '').trim()))].filter(v => v).sort();
             states.forEach(v => sel.add(new Option(v, v)));
@@ -475,7 +1012,8 @@
 
         function handleLevelChange() {
             const level = document.getElementById('geoLevel').value;
-            document.getElementById('distFilterContainer').classList.toggle('hidden', level !== 'Block');
+            const distFilterContainer = document.getElementById('distFilterContainer');
+            if(distFilterContainer) distFilterContainer.classList.toggle('hidden', level !== 'Block');
             handleStateChange(); 
         }
 
@@ -483,15 +1021,26 @@
             const level = document.getElementById('geoLevel').value;
             const state = document.getElementById('stateFilter').value;
             const distSel = document.getElementById('distFilter');
-            distSel.innerHTML = '<option value="">All Districts</option>';
-            if (level === 'Block' && state) {
-                const districts = [...new Set(rawData
-                    .filter(d => String(d[dataHeaders.state] || '').trim() === state)
-                    .map(d => String(d[dataHeaders.district] || '').trim())
-                )].filter(v => v).sort();
-                districts.forEach(v => distSel.add(new Option(v, v)));
+            
+            if (distSel) {
+                distSel.innerHTML = '<option value="">All Districts</option>';
+                if (level === 'Block' && state) {
+                    const districts = [...new Set(rawData
+                        .filter(d => String(d[dataHeaders.state] || '').trim() === state)
+                        .map(d => String(d[dataHeaders.district] || '').trim())
+                    )].filter(v => v).sort();
+                    districts.forEach(v => distSel.add(new Option(v, v)));
+                }
             }
             updateReport();
+            renderMultiDashboard();
+            renderBarChart();
+        }
+
+        function handleDistrictChange() {
+            updateReport();
+            renderMultiDashboard();
+            renderBarChart();
         }
 
         function getStats(arr) {
@@ -505,18 +1054,42 @@
         }
 
         function downloadChart() {
-            if (chart) chart.exportChart({ type: 'image/jpeg', filename: 'Groundwater_Compliance' });
+            if (typeof Highcharts === 'undefined' || !chart) {
+                showToast("Chart is not available for download.", "error");
+                return;
+            }
+            chart.exportChart({ type: 'image/jpeg', filename: 'Groundwater_Compliance' });
         }
 
         function initChart(data, paramName) {
-            const customTitle = document.getElementById('customChartTitle').value;
-            const theme = document.getElementById('chartTheme').value;
+            if (typeof Highcharts === 'undefined') {
+                console.warn("Highcharts is not loaded. Skipping chart generation.");
+                const container = document.getElementById('chart-container');
+                if(container) container.innerHTML = '<div class="flex items-center justify-center h-full text-slate-400 font-bold">Chart library could not be loaded. Ensure you are connected to the internet and not blocking scripts.</div>';
+                return;
+            }
+
+            // Safety check for UI elements
+            const titleEl = document.getElementById('customChartTitle');
+            const themeEl = document.getElementById('chartTheme');
+            const fontFamEl = document.getElementById('fontFamily');
+            const fontSizeEl = document.getElementById('fontSize');
+            const fontBoldEl = document.getElementById('fontBold');
+            const fontItalicEl = document.getElementById('fontItalic');
+
+            if (!titleEl || !themeEl || !fontFamEl || !fontSizeEl || !fontBoldEl || !fontItalicEl) {
+                console.warn("Chart UI configuration elements not found. Chart update aborted.");
+                return;
+            }
+
+            const customTitle = titleEl.value;
+            const theme = themeEl.value;
             
             // Typography Config
-            const fontFamily = document.getElementById('fontFamily').value;
-            const fontSize = parseInt(document.getElementById('fontSize').value);
-            const isBold = document.getElementById('fontBold').checked;
-            const isItalic = document.getElementById('fontItalic').checked;
+            const fontFamily = fontFamEl.value;
+            const fontSize = parseInt(fontSizeEl.value) || 12;
+            const isBold = fontBoldEl.checked;
+            const isItalic = fontItalicEl.checked;
 
             const fontStyle = {
                 fontFamily: fontFamily,
@@ -525,6 +1098,9 @@
                 fontStyle: isItalic ? 'italic' : 'normal',
                 color: theme === 'theme-dark' ? '#f8fafc' : '#1e293b'
             };
+
+            const chartContainer = document.getElementById('chart-container');
+            if(!chartContainer) return;
 
             chart = Highcharts.chart('chart-container', {
                 chart: { 
@@ -568,19 +1144,269 @@
             });
         }
 
+        function renderMultiDashboard() {
+            if (!rawData.length) return;
+            const grid = document.getElementById('multi-charts-grid');
+            if(!grid) return;
+            grid.innerHTML = '';
+            
+            const selectedParams = Array.from(document.querySelectorAll('.multi-param-cb:checked')).map(cb => cb.value);
+            if (selectedParams.length === 0) {
+                grid.innerHTML = '<div class="col-span-full p-12 text-center text-slate-400 font-bold uppercase border-2 border-dashed border-slate-100 rounded-2xl">No parameters selected</div>';
+                return;
+            }
+
+            const stateVal = document.getElementById('stateFilter')?.value || '';
+            const distVal = document.getElementById('distFilter')?.value || '';
+            const level = document.getElementById('geoLevel')?.value || 'State';
+
+            // Filter Data Globally
+            let filtered = rawData;
+            if (stateVal) filtered = filtered.filter(d => String(d[dataHeaders.state] || '').trim() === stateVal);
+            if (level === 'Block' && distVal) filtered = filtered.filter(d => String(d[dataHeaders.district] || '').trim() === distVal);
+
+            // Render charts
+            selectedParams.forEach((paramName, idx) => {
+                const configKey = headerMap[paramName];
+                const config = PARAM_CONFIG[configKey];
+                if (!config) return;
+
+                const unit = config.unit;
+                const isSingleLimit = config.b1 === config.b2 && configKey !== 'pH';
+                
+                let tAcc = 0, tPerm = 0, tFail = 0;
+                let validSamples = 0;
+
+                filtered.forEach(d => {
+                    const v = parseFloat(d[paramName]);
+                    if (isNaN(v)) return;
+                    validSamples++;
+
+                    if (configKey === 'pH') {
+                        if (v >= config.b1 && v <= config.b2) tAcc++; else tFail++;
+                    } else if (isSingleLimit) {
+                        if (v <= config.b1) tAcc++; else tFail++;
+                    } else {
+                        if (v <= config.b1) tAcc++;
+                        else if (v <= config.b2) tPerm++;
+                        else tFail++;
+                    }
+                });
+                
+                // Skip rendering if no valid samples for this parameter
+                if (validSamples === 0) return;
+
+                // Colors
+                const cAcc = '#10b981'; // Emerald
+                const cPerm = '#f59e0b'; // Amber
+                const cFail = '#f43f5e'; // Rose
+
+                const chartData = [
+                    { name: 'Acceptable', y: tAcc, color: cAcc },
+                    ...(isSingleLimit || configKey === 'pH' ? [] : [{ name: 'Permissible', y: tPerm, color: cPerm }]),
+                    { name: 'Above Limit', y: tFail, color: cFail }
+                ].filter(dataPoint => dataPoint.y > 0); // Only pass data that has >0 samples to keep chart clean
+
+                // Create container
+                const containerId = `multi-chart-${idx}`;
+                const wrapDiv = document.createElement('div');
+                wrapDiv.className = "bg-slate-50 p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center hover:shadow-md transition-shadow";
+                
+                let limitText = "";
+                if (configKey === 'pH') {
+                    limitText = `Limits: ${config.b1} - ${config.b2}`;
+                } else if (isSingleLimit) {
+                    limitText = `Limit: ≤ ${config.b1} ${unit}`;
+                } else {
+                    limitText = `Acc: ≤ ${config.b1} | Perm: ≤ ${config.b2} ${unit}`;
+                }
+
+                wrapDiv.innerHTML = `
+                    <div class="text-sm font-black text-slate-800 mb-1 text-center flex items-center gap-1 justify-center flex-wrap">
+                        ${paramName} 
+                        <span class="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md text-[11px]">(${validSamples})</span>
+                    </div>
+                    <div class="text-[10px] font-bold text-slate-500 mb-2 bg-white px-2 py-1 rounded-md border border-slate-200 text-center">
+                        ${limitText}
+                    </div>
+                    <div id="${containerId}" class="w-full h-56"></div>
+                `;
+                grid.appendChild(wrapDiv);
+
+                // Render Highcharts
+                if (typeof Highcharts !== 'undefined') {
+                    Highcharts.chart(containerId, {
+                        chart: { type: 'pie', options3d: { enabled: true, alpha: 45, beta: 0 }, backgroundColor: 'transparent' },
+                        title: { text: null },
+                        tooltip: { pointFormat: '<b>{point.y} samples</b> ({point.percentage:.1f}%)' },
+                        plotOptions: {
+                            pie: {
+                                innerSize: '40%',
+                                depth: 30,
+                                dataLabels: { enabled: true, format: '{point.percentage:.1f}%', style: { fontSize: '10px', color: '#475569' }, distance: 10 }
+                            }
+                        },
+                        series: [{ name: 'Samples', data: chartData }],
+                        credits: { enabled: false }
+                    });
+                }
+            });
+        }
+
+        function renderBarChart() {
+            if (!rawData.length) return;
+            const container = document.getElementById('bar-chart-container');
+            if(!container) return;
+
+            const stateVal = document.getElementById('stateFilter')?.value || '';
+            const distVal = document.getElementById('distFilter')?.value || '';
+            const level = document.getElementById('geoLevel')?.value || 'State';
+            const threshold = parseFloat(document.getElementById('barExceedanceThreshold')?.value || 0);
+            const yAxisMax = parseInt(document.getElementById('barYAxisMax')?.value || 100);
+            const decimals = parseInt(document.getElementById('barDecimals')?.value || 2);
+
+            let filtered = rawData;
+            if (stateVal) filtered = filtered.filter(d => String(d[dataHeaders.state] || '').trim() === stateVal);
+            if (level === 'Block' && distVal) filtered = filtered.filter(d => String(d[dataHeaders.district] || '').trim() === distVal);
+
+            const categories = [];
+            const dataSeries = [];
+            const tableData = [];
+            let slNo = 1;
+
+            // Loop over all available parameters to calculate exceedance percentage
+            dataHeaders.params.forEach(paramName => {
+                const configKey = headerMap[paramName];
+                const config = PARAM_CONFIG[configKey];
+                if (!config) return;
+
+                const isSingleLimit = config.b1 === config.b2 && configKey !== 'pH';
+                let validSamples = 0;
+                let exceedSamples = 0;
+
+                filtered.forEach(d => {
+                    const v = parseFloat(d[paramName]);
+                    if (isNaN(v)) return;
+                    validSamples++;
+
+                    // Count samples above permissible limit
+                    if (configKey === 'pH') {
+                        if (v < config.b1 || v > config.b2) exceedSamples++;
+                    } else if (isSingleLimit) {
+                        if (v > config.b1) exceedSamples++;
+                    } else {
+                        if (v > config.b2) exceedSamples++;
+                    }
+                });
+
+                if (validSamples > 0) {
+                    const pct = (exceedSamples / validSamples) * 100;
+                    
+                    if (pct >= threshold) {
+                        categories.push(paramName);
+                        
+                        dataSeries.push({
+                            y: parseFloat(pct.toFixed(decimals)),
+                            samples: exceedSamples,
+                            total: validSamples
+                        });
+
+                        // Format Permissible Limit String (Exceedance criteria)
+                        let limitStr = '';
+                        if (configKey === 'pH') {
+                            limitStr = `< ${config.b1} or > ${config.b2}`;
+                        } else if (isSingleLimit) {
+                            limitStr = `> ${config.b1} ${config.unit}`;
+                        } else {
+                            limitStr = `> ${config.b2} ${config.unit}`; // Permissible Limit is the higher boundary
+                        }
+
+                        tableData.push({
+                            slNo: slNo++,
+                            paramName: paramName,
+                            limitStr: limitStr,
+                            totalSamples: validSamples,
+                            exceedPct: pct.toFixed(decimals)
+                        });
+                    }
+                }
+            });
+
+            const tableWrapper = document.getElementById('bar-table-wrapper');
+            const tableBody = document.getElementById('bar-table-body');
+
+            if (categories.length === 0) {
+                container.innerHTML = `<div class="flex items-center justify-center h-full text-slate-400 font-bold uppercase tracking-widest border-2 border-dashed border-slate-100 rounded-2xl p-8 text-center">No parameters exceed the ${threshold}% threshold</div>`;
+                if(tableWrapper) tableWrapper.classList.add('hidden');
+                return;
+            }
+
+            // Populate Table
+            if (tableWrapper && tableBody) {
+                tableWrapper.classList.remove('hidden');
+                tableBody.innerHTML = tableData.map(r => `
+                    <tr class="hover:bg-slate-50 transition-colors text-slate-700">
+                        <td class="p-3 text-center font-bold text-slate-400 border-r border-slate-100">${r.slNo}</td>
+                        <td class="p-3 font-bold border-r border-slate-100">${r.paramName}</td>
+                        <td class="p-3 font-medium border-r border-slate-100">${r.limitStr}</td>
+                        <td class="p-3 text-center font-bold border-r border-slate-100">${r.totalSamples}</td>
+                        <td class="p-3 text-center font-black ${parseFloat(r.exceedPct) > 0 ? 'text-rose-600' : 'text-emerald-600'}">${r.exceedPct}%</td>
+                    </tr>
+                `).join('');
+            }
+
+            if (typeof Highcharts !== 'undefined') {
+                Highcharts.chart('bar-chart-container', {
+                    chart: { type: 'column', options3d: { enabled: true, alpha: 10, beta: 15, depth: 50, viewDistance: 25 }, backgroundColor: 'transparent' },
+                    title: { text: null },
+                    xAxis: { 
+                        categories: categories, 
+                        labels: { style: { fontWeight: 'bold', color: '#475569' } },
+                        title: { text: 'Parameters', style: { fontWeight: 'black', color: '#1e293b' } }
+                    },
+                    yAxis: { 
+                        title: { text: '% of Samples Exceeding Permissible Limit', style: { fontWeight: 'black', color: '#1e293b' } },
+                        max: yAxisMax
+                    },
+                    tooltip: {
+                        headerFormat: '<span style="font-size: 10px">{point.key}</span><br/>',
+                        pointFormat: `Exceedance: <b>{point.y:.${decimals}f}%</b><br/>({point.samples} out of {point.total} samples failed)`
+                    },
+                    plotOptions: {
+                        column: {
+                            depth: 40,
+                            colorByPoint: true,
+                            dataLabels: { 
+                                enabled: true, 
+                                format: `{point.y:.${decimals}f}%`, 
+                                style: { fontSize: '10px', color: '#1e293b', textOutline: 'none' } 
+                            }
+                        }
+                    },
+                    series: [{ name: 'Exceedance %', data: dataSeries, showInLegend: false }],
+                    credits: { enabled: false }
+                });
+            }
+        }
+
         function updateReport() {
             if (!rawData.length) return;
 
-            const level = document.getElementById('geoLevel').value;
-            const stateVal = document.getElementById('stateFilter').value;
-            const distVal = document.getElementById('distFilter').value;
-            const activeParam = document.getElementById('activeParam').value;
+            const levelEl = document.getElementById('geoLevel');
+            const stateFilterEl = document.getElementById('stateFilter');
+            const distFilterEl = document.getElementById('distFilter');
+            const activeParamEl = document.getElementById('activeParam');
             
-            // Retrieve Config Key from Map instead of fuzzy searching again
+            if (!levelEl || !stateFilterEl || !distFilterEl || !activeParamEl) return;
+
+            const level = levelEl.value;
+            const stateVal = stateFilterEl.value;
+            const distVal = distFilterEl.value;
+            const activeParam = activeParamEl.value;
+            
             const configKey = headerMap[activeParam]; 
             const config = PARAM_CONFIG[configKey];
             
-            // Fallback for safety
             if (!config) return;
 
             const unit = config.unit;
@@ -588,59 +1414,70 @@
 
             // Prepare Header UI
             let accLabel, permLabel, failLabel;
+            
+            const headerPerm = document.getElementById('headerPerm');
+            const col2Picker = document.getElementById('col2Picker');
+            const labelCol1 = document.getElementById('labelCol1');
+
             if (configKey === 'pH') {
                 accLabel = `pH: ${config.b1}-${config.b2}`;
                 permLabel = `N/A`;
                 failLabel = `Out Range`;
-                document.getElementById('headerPerm').style.display = 'none';
+                if(headerPerm) headerPerm.style.display = 'none';
             } else if (isSingleLimit) {
                 accLabel = `≤${config.b1} ${unit}`;
                 failLabel = `>${config.b1} ${unit}`;
-                document.getElementById('headerPerm').style.display = 'none';
-                document.getElementById('col2Picker').style.display = 'none';
-                document.getElementById('labelCol1').innerText = "Limit";
+                if(headerPerm) headerPerm.style.display = 'none';
+                if(col2Picker) col2Picker.style.display = 'none';
+                if(labelCol1) labelCol1.innerText = "Limit";
             } else {
                 accLabel = `≤${config.b1} ${unit}`;
                 permLabel = `>${config.b1}-${config.b2} ${unit}`;
                 failLabel = `>${config.b2} ${unit}`;
-                document.getElementById('headerPerm').style.display = 'table-cell';
-                document.getElementById('col2Picker').style.display = 'block';
-                document.getElementById('labelCol1').innerText = "Acc.";
+                if(headerPerm) headerPerm.style.display = 'table-cell';
+                if(col2Picker) col2Picker.style.display = 'block';
+                if(labelCol1) labelCol1.innerText = "Acc.";
             }
 
-            document.getElementById('headerAcc').innerHTML = `${accLabel}<br>(N/%)`;
-            document.getElementById('headerPerm').innerHTML = `${permLabel}<br>(N/%)`;
-            document.getElementById('headerFail').innerHTML = `${failLabel}<br>(N/%)`;
+            const hAcc = document.getElementById('headerAcc');
+            const hPerm = document.getElementById('headerPerm');
+            const hFail = document.getElementById('headerFail');
+
+            if(hAcc) hAcc.innerHTML = `${accLabel}<br>(N/%)`;
+            if(hPerm) hPerm.innerHTML = `${permLabel}<br>(N/%)`;
+            if(hFail) hFail.innerHTML = `${failLabel}<br>(N/%)`;
 
             // Clear and Rebuild Headers for Dynamic Geo Columns
             const headerRow = document.getElementById('tableHeaderRow');
-            headerRow.innerHTML = `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">S.No.</th>`;
-            
-            let currentOffset = 60;
-            if (level === 'District') {
-                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">State</th>`;
-                currentOffset += 120;
-                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">District</th>`;
-            } else if (level === 'Block') {
-                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">State</th>`;
-                currentOffset += 120;
-                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">District</th>`;
-                currentOffset += 120;
-                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">Block</th>`;
-            } else {
-                headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">State</th>`;
-            }
+            if (headerRow) {
+                headerRow.innerHTML = `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">S.No.</th>`;
+                
+                let currentOffset = 60;
+                if (level === 'District') {
+                    headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">State</th>`;
+                    currentOffset += 120;
+                    headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">District</th>`;
+                } else if (level === 'Block') {
+                    headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">State</th>`;
+                    currentOffset += 120;
+                    headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">District</th>`;
+                    currentOffset += 120;
+                    headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">Block</th>`;
+                } else {
+                    headerRow.innerHTML += `<th class="p-4 font-black text-slate-500 uppercase tracking-tighter sticky-col bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" style="left: ${currentOffset}px;">State</th>`;
+                }
 
-            headerRow.innerHTML += `
-                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Total Samples</th>
-                <th id="headerAcc" class="p-4 font-black text-emerald-600 uppercase tracking-tighter text-center bg-emerald-50/50">${accLabel}<br>(N/%)</th>
-                <th id="headerPerm" class="p-4 font-black text-amber-600 uppercase tracking-tighter text-center bg-amber-50/50" style="display: ${(!isSingleLimit && configKey !== 'pH' ? 'table-cell' : 'none')}">${permLabel}<br>(N/%)</th>
-                <th id="headerFail" class="p-4 font-black text-rose-600 uppercase tracking-tighter text-center bg-rose-50/50">${failLabel}<br>(N/%)</th>
-                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center border-l border-slate-200">Min</th>
-                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Max</th>
-                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Avg</th>
-                <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">SD</th>
-            `;
+                headerRow.innerHTML += `
+                    <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Total Samples</th>
+                    <th id="headerAcc" class="p-4 font-black text-emerald-600 uppercase tracking-tighter text-center bg-emerald-50/50">${accLabel}<br>(N/%)</th>
+                    <th id="headerPerm" class="p-4 font-black text-amber-600 uppercase tracking-tighter text-center bg-amber-50/50" style="display: ${(!isSingleLimit && configKey !== 'pH' ? 'table-cell' : 'none')}">${permLabel}<br>(N/%)</th>
+                    <th id="headerFail" class="p-4 font-black text-rose-600 uppercase tracking-tighter text-center bg-rose-50/50">${failLabel}<br>(N/%)</th>
+                    <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center border-l border-slate-200">Min</th>
+                    <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Max</th>
+                    <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">Avg</th>
+                    <th class="p-4 font-black text-slate-500 uppercase tracking-tighter text-center">SD</th>
+                `;
+            }
 
             // Filter Data
             let filtered = rawData;
@@ -673,9 +1510,13 @@
             });
 
             // Update Chart & Global Stats
-            const cAcc = document.getElementById('colorAcc').value;
-            const cPerm = document.getElementById('colorPerm').value;
-            const cFail = document.getElementById('colorFail').value;
+            const colorAccEl = document.getElementById('colorAcc');
+            const colorPermEl = document.getElementById('colorPerm');
+            const colorFailEl = document.getElementById('colorFail');
+
+            const cAcc = colorAccEl ? colorAccEl.value : '#10b981';
+            const cPerm = colorPermEl ? colorPermEl.value : '#f59e0b';
+            const cFail = colorFailEl ? colorFailEl.value : '#f43f5e';
 
             initChart([
                 { name: accLabel, y: tAcc, color: cAcc },
@@ -683,18 +1524,24 @@
                 { name: failLabel, y: tFail, color: cFail }
             ], activeParam);
 
-            document.getElementById('stat-total').innerText = filtered.length;
-            document.getElementById('stat-safe').innerText = tAcc;
+            // UPDATED: Only count samples that actually have a numeric value for the active parameter
+            const statTotal = document.getElementById('stat-total');
+            const statSafe = document.getElementById('stat-safe');
+            
+            if (statTotal) statTotal.innerText = allVals.length;
+            if (statSafe) statSafe.innerText = tAcc;
 
             // Render Table
             const container = document.getElementById('reportContent');
+            if (!container) return;
             container.innerHTML = '';
 
             const sortedEntries = Object.entries(groups).sort();
             sortedEntries.forEach(([name, data], idx) => {
                 const samples = data.samples;
-                const total = samples.length;
                 const vals = samples.map(s => parseFloat(s[activeParam])).filter(v => !isNaN(v));
+                const total = vals.length; // UPDATED: Only count valid samples for this parameter in this row
+                
                 let nAcc = 0, nPerm = 0, nFail = 0;
                 vals.forEach(v => {
                     if (configKey === 'pH' || isSingleLimit) {
@@ -708,11 +1555,12 @@
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition-colors font-medium text-slate-700";
                 
-                let complianceCells = `<td class="p-4 text-center bg-emerald-50/20"><div class="font-black text-emerald-700">${nAcc}</div><div class="text-[9px] opacity-60">${((nAcc/total)*100).toFixed(1)}%</div></td>`;
+                // Safe percentage calculations to prevent NaN% when total is 0
+                let complianceCells = `<td class="p-4 text-center bg-emerald-50/20"><div class="font-black text-emerald-700">${nAcc}</div><div class="text-[9px] opacity-60">${total > 0 ? ((nAcc/total)*100).toFixed(1) : '0.0'}%</div></td>`;
                 if (!isSingleLimit && configKey !== 'pH') {
-                    complianceCells += `<td class="p-4 text-center bg-amber-50/20"><div class="font-black text-amber-700">${nPerm}</div><div class="text-[9px] opacity-60">${((nPerm/total)*100).toFixed(1)}%</div></td>`;
+                    complianceCells += `<td class="p-4 text-center bg-amber-50/20"><div class="font-black text-amber-700">${nPerm}</div><div class="text-[9px] opacity-60">${total > 0 ? ((nPerm/total)*100).toFixed(1) : '0.0'}%</div></td>`;
                 }
-                complianceCells += `<td class="p-4 text-center bg-rose-50/20"><div class="font-black text-rose-700">${nFail}</div><div class="text-[9px] opacity-60">${((nFail/total)*100).toFixed(1)}%</div></td>`;
+                complianceCells += `<td class="p-4 text-center bg-rose-50/20"><div class="font-black text-rose-700">${nFail}</div><div class="text-[9px] opacity-60">${total > 0 ? ((nFail/total)*100).toFixed(1) : '0.0'}%</div></td>`;
 
                 let geoCells = '';
                 if (level === 'District') {
@@ -741,16 +1589,16 @@
 
             // Add Total Aggregation Row
             if (sortedEntries.length > 0) {
-                const totalSamplesCount = filtered.length;
+                const totalSamplesCount = allVals.length; // UPDATED: Global valid samples count
                 const statsTotal = getStats(allVals);
                 const trTotal = document.createElement('tr');
                 trTotal.className = "bg-slate-900 text-white font-black";
                 
-                let complianceTotalCells = `<td class="p-4 text-center"><div class="text-emerald-400">${tAcc}</div><div class="text-[9px] opacity-60">${((tAcc/totalSamplesCount)*100).toFixed(1)}%</div></td>`;
+                let complianceTotalCells = `<td class="p-4 text-center"><div class="text-emerald-400">${tAcc}</div><div class="text-[9px] opacity-60">${totalSamplesCount > 0 ? ((tAcc/totalSamplesCount)*100).toFixed(1) : '0.0'}%</div></td>`;
                 if (!isSingleLimit && configKey !== 'pH') {
-                    complianceTotalCells += `<td class="p-4 text-center"><div class="text-amber-400">${tPerm}</div><div class="text-[9px] opacity-60">${((tPerm/totalSamplesCount)*100).toFixed(1)}%</div></td>`;
+                    complianceTotalCells += `<td class="p-4 text-center"><div class="text-amber-400">${tPerm}</div><div class="text-[9px] opacity-60">${totalSamplesCount > 0 ? ((tPerm/totalSamplesCount)*100).toFixed(1) : '0.0'}%</div></td>`;
                 }
-                complianceTotalCells += `<td class="p-4 text-center"><div class="text-rose-400">${tFail}</div><div class="text-[9px] opacity-60">${((tFail/totalSamplesCount)*100).toFixed(1)}%</div></td>`;
+                complianceTotalCells += `<td class="p-4 text-center"><div class="text-rose-400">${tFail}</div><div class="text-[9px] opacity-60">${totalSamplesCount > 0 ? ((tFail/totalSamplesCount)*100).toFixed(1) : '0.0'}%</div></td>`;
 
                 let geoSpan = level === 'State' ? 1 : (level === 'District' ? 2 : 3);
                 trTotal.innerHTML = `
@@ -769,9 +1617,403 @@
             lucide.createIcons();
         }
 
+        // Helper function to apply advanced Excel styling
+        function applyExcelStyles(ws, headerRowCount = 1) {
+            if (!ws['!ref']) return;
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            const colWidths = [];
+            const rowHeights = [];
+
+            // Pass 1: Calculate max column widths based on content
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!ws[cellRef]) ws[cellRef] = { t: 's', v: '' };
+                    const cellText = ws[cellRef].w || String(ws[cellRef].v || "");
+                    
+                    // Consider newlines when finding the longest string in a cell
+                    const maxLineLen = Math.max(...cellText.split('\n').map(l => l.length));
+                    const textLen = maxLineLen + 2; // Add padding
+                    
+                    if (!colWidths[C] || colWidths[C].wch < textLen) {
+                        // Cap width between 10 (min) and 50 (max) to prevent giant columns
+                        colWidths[C] = { wch: Math.min(Math.max(textLen, 10), 50) };
+                    }
+                }
+            }
+
+            // Pass 2: Calculate minimum required row heights and apply final styles
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+                const isHeader = R < headerRowCount;
+                let maxRowHeight = isHeader ? 25 : 18; // Minimum baseline height
+
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                    const cell = ws[cellRef];
+                    
+                    const cellText = cell.w || String(cell.v || "");
+                    const lines = cellText.split('\n');
+                    const colWidthLimit = colWidths[C].wch;
+                    
+                    // Estimate how many lines the text will occupy when wrapped
+                    let estimatedLines = 0;
+                    lines.forEach(line => {
+                        estimatedLines += Math.max(1, Math.ceil((line.length + 1) / colWidthLimit));
+                    });
+
+                    // 15 points per line of text
+                    const calcHeight = estimatedLines * 15 + 4; // Add 4 points of padding
+                    if (calcHeight > maxRowHeight) maxRowHeight = calcHeight;
+
+                    // Apply styles
+                    cell.s = {
+                        font: { 
+                            name: "Times New Roman", 
+                            sz: 12, 
+                            bold: isHeader, 
+                            color: { rgb: isHeader ? "FFFFFF" : "000000" } 
+                        },
+                        fill: isHeader ? { fgColor: { rgb: "000000" } } : null,
+                        border: {
+                            top: { style: 'thin', color: { rgb: "000000" } },
+                            bottom: { style: 'thin', color: { rgb: "000000" } },
+                            left: { style: 'thin', color: { rgb: "000000" } },
+                            right: { style: 'thin', color: { rgb: "000000" } }
+                        },
+                        alignment: { 
+                            wrapText: true, 
+                            vertical: "center", 
+                            horizontal: isHeader ? "center" : "left" 
+                        }
+                    };
+                }
+                // Assign the minimum required row height to wrap the content
+                rowHeights[R] = { hpt: maxRowHeight };
+            }
+            
+            ws['!cols'] = colWidths;
+            ws['!rows'] = rowHeights;
+        }
+
+        function getComplianceSheetData(paramName, filteredData, level) {
+            const configKey = headerMap[paramName];
+            const config = PARAM_CONFIG[configKey];
+            if (!config) return null;
+
+            const unit = config.unit;
+            const isSingleLimit = config.b1 === config.b2 && configKey !== 'pH';
+
+            // Headers setup
+            let accLabel, permLabel, failLabel;
+            if (configKey === 'pH') {
+                accLabel = `pH: ${config.b1}-${config.b2}`;
+                failLabel = `Out Range`;
+            } else if (isSingleLimit) {
+                accLabel = `≤${config.b1} ${unit}`;
+                failLabel = `>${config.b1} ${unit}`;
+            } else {
+                accLabel = `≤${config.b1} ${unit}`;
+                permLabel = `>${config.b1}-${config.b2} ${unit}`;
+                failLabel = `>${config.b2} ${unit}`;
+            }
+
+            const headers = ['S.No.'];
+            if (level === 'State') headers.push('State');
+            else if (level === 'District') headers.push('State', 'District');
+            else headers.push('State', 'District', 'Block');
+            
+            headers.push('Total Samples', `${accLabel} (No)`, `${accLabel} (%)`);
+            if (!isSingleLimit && configKey !== 'pH') headers.push(`${permLabel} (No)`, `${permLabel} (%)`);
+            headers.push(`${failLabel} (No)`, `${failLabel} (%)`, 'Min', 'Max', 'Average', 'Std Dev');
+
+            const groupKey = level === 'State' ? dataHeaders.state : (level === 'District' ? dataHeaders.district : dataHeaders.block);
+            const groups = {};
+            const allVals = [];
+            let tAccGlobal = 0, tPermGlobal = 0, tFailGlobal = 0;
+
+            filteredData.forEach(d => {
+                const loc = String(d[groupKey] || 'Unknown').trim();
+                if (!groups[loc]) groups[loc] = { samples: [], state: String(d[dataHeaders.state] || ''), district: String(d[dataHeaders.district] || ''), block: String(d[dataHeaders.block] || '') };
+                groups[loc].samples.push(d);
+
+                const v = parseFloat(d[paramName]);
+                if (!isNaN(v)) allVals.push(v);
+            });
+
+            const rows = [];
+            const sortedEntries = Object.entries(groups).sort();
+            
+            sortedEntries.forEach(([name, data], idx) => {
+                const vals = data.samples.map(s => parseFloat(s[paramName])).filter(v => !isNaN(v));
+                const total = vals.length;
+                if (total === 0) return;
+
+                let nAcc = 0, nPerm = 0, nFail = 0;
+                vals.forEach(v => {
+                    if (configKey === 'pH') {
+                        if (v >= config.b1 && v <= config.b2) { nAcc++; tAccGlobal++; } else { nFail++; tFailGlobal++; }
+                    } else if (isSingleLimit) {
+                        if (v <= config.b1) { nAcc++; tAccGlobal++; } else { nFail++; tFailGlobal++; }
+                    } else {
+                        if (v <= config.b1) { nAcc++; tAccGlobal++; }
+                        else if (v <= config.b2) { nPerm++; tPermGlobal++; }
+                        else { nFail++; tFailGlobal++; }
+                    }
+                });
+
+                const stats = getStats(vals);
+                const rowData = [idx + 1];
+
+                if (level === 'State') {
+                    rowData.push(data.state);
+                } else if (level === 'District') {
+                    rowData.push(data.state, data.district);
+                } else {
+                    rowData.push(data.state, data.district, name);
+                }
+
+                rowData.push(total);
+                rowData.push(nAcc, { v: total > 0 ? (nAcc / total) * 100 : 0, t: 'n', z: '0.00' });
+                if (!isSingleLimit && configKey !== 'pH') {
+                    rowData.push(nPerm, { v: total > 0 ? (nPerm / total) * 100 : 0, t: 'n', z: '0.00' });
+                }
+                rowData.push(nFail, { v: total > 0 ? (nFail / total) * 100 : 0, t: 'n', z: '0.00' });
+                
+                rowData.push(
+                    parseFloat(stats.min.toFixed(2)),
+                    parseFloat(stats.max.toFixed(2)),
+                    parseFloat(stats.avg.toFixed(2)),
+                    parseFloat(stats.std.toFixed(2))
+                );
+
+                rows.push(rowData);
+            });
+
+            if (allVals.length > 0) {
+                const statsTotal = getStats(allVals);
+                const totalRow = ['-'];
+                
+                if (level === 'State') {
+                    totalRow.push('TOTAL SUMMARY');
+                } else if (level === 'District') {
+                    totalRow.push('TOTAL SUMMARY', '');
+                } else {
+                    totalRow.push('TOTAL SUMMARY', '', '');
+                }
+                
+                totalRow.push(allVals.length);
+                totalRow.push(tAccGlobal, { v: allVals.length > 0 ? (tAccGlobal / allVals.length) * 100 : 0, t: 'n', z: '0.00' });
+                if (!isSingleLimit && configKey !== 'pH') {
+                    totalRow.push(tPermGlobal, { v: allVals.length > 0 ? (tPermGlobal / allVals.length) * 100 : 0, t: 'n', z: '0.00' });
+                }
+                totalRow.push(tFailGlobal, { v: allVals.length > 0 ? (tFailGlobal / allVals.length) * 100 : 0, t: 'n', z: '0.00' });
+
+                totalRow.push(
+                    parseFloat(statsTotal.min.toFixed(2)),
+                    parseFloat(statsTotal.max.toFixed(2)),
+                    parseFloat(statsTotal.avg.toFixed(2)),
+                    parseFloat(statsTotal.std.toFixed(2))
+                );
+                rows.push(totalRow);
+            }
+
+            return [headers, ...rows];
+        }
+
         function exportReport() {
-            const wb = XLSX.utils.table_to_book(document.getElementById('mainReportTable'));
-            XLSX.writeFile(wb, `Compliance_${new Date().getTime()}.xlsx`);
+            if (!rawData.length) return showToast("No data to export!", "error");
+            
+            // Parameter Filters 
+            const selectedParams = Array.from(document.querySelectorAll('.export-param-cb:checked')).map(cb => cb.value);
+            const combinedSelectedParams = Array.from(document.querySelectorAll('.combined-param-cb:checked')).map(cb => cb.value);
+
+            if (selectedParams.length === 0 && combinedSelectedParams.length === 0) {
+                return showToast("Please select at least one parameter to export in the Filter section.", "error");
+            }
+
+            const includeExceedance = document.getElementById('exportExceedanceSheet')?.checked ?? true;
+            const includeCombined = document.getElementById('exportCombinedSheet')?.checked ?? true;
+
+            const level = document.getElementById('geoLevel').value;
+            const stateVal = document.getElementById('stateFilter')?.value || '';
+            const distVal = document.getElementById('distFilter')?.value || '';
+            
+            let filtered = rawData;
+            if (stateVal) filtered = filtered.filter(d => String(d[dataHeaders.state] || '').trim() === stateVal);
+            if (level === 'Block' && distVal) filtered = filtered.filter(d => String(d[dataHeaders.district] || '').trim() === distVal);
+
+            const wb = XLSX.utils.book_new();
+            let generatedSheetNames = new Set();
+
+            // --- 1. GENERATE A COMPLIANCE SUBSHEET FOR EVERY SELECTED PARAMETER ---
+            selectedParams.forEach(paramName => {
+                const sheetData = getComplianceSheetData(paramName, filtered, level);
+                if (sheetData && sheetData.length > 1) { 
+                    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                    applyExcelStyles(ws, 1); // 1 header row
+                    
+                    // Create safe and unique sheet name (Max 31 chars for Excel)
+                    let baseName = paramName.substring(0, 25).replace(/[\[\]\*\/\\\?\:]/g, '_');
+                    let finalName = baseName;
+                    let counter = 1;
+                    while(generatedSheetNames.has(finalName)) {
+                        finalName = `${baseName} (${counter++})`;
+                    }
+                    generatedSheetNames.add(finalName);
+                    
+                    XLSX.utils.book_append_sheet(wb, ws, finalName);
+                }
+            });
+
+            // --- 2. EXCEEDANCE SHEET GENERATION (Decoupled selection loops) ---
+            if (includeExceedance || includeCombined) {
+                const titleRow = ["Locations where parameter values exceed the respective permissible limits as per BIS: 10500"];
+                const excHeaders = ['Sl. No', 'Well ID', 'State/UT', 'District', 'Block/Talluka', 'Location', 'Longitude', 'Latitude', 'Parameter Concentration', 'Parameter', 'Permissible Limit (BIS 10500)', 'Unit'];
+                const excRows = [];
+                let slNo = 1;
+
+                const multiTitleRow = ["Locations with one or more parameters exceeding permissible limits as per BIS: 10500"];
+                const multiExcHeaders = ['Sl. No', 'Well ID', 'State/UT', 'District', 'Block/Talluka', 'Location', 'Longitude', 'Latitude', 'No. of Exceeding Parameters', 'Names of Exceeding Parameters', 'Exceeding Parameters (Value Unit)', 'Contamination Type'];
+                const multiExcRows = [];
+                let multiSlNo = 1;
+
+                // List of heavy/toxic metals based on BIS 10500 config keys
+                const heavyMetals = ['Fe', 'As', 'U', 'Zn', 'Cu', 'Pb', 'Cd', 'Cr', 'Hg', 'Ni', 'Se', 'Mn', 'Al', 'Ba'];
+
+                rawData.forEach(row => {
+                    let combinedExceedances = [];
+                    let combinedExceedanceNames = [];
+                    let hasHeavyMetal = false;
+
+                    // Iterate over ALL mapped parameters to evaluate against our logic
+                    Object.keys(headerMap).forEach(headerCol => {
+                        const isSelectedForIndividual = selectedParams.includes(headerCol);
+                        const isSelectedForCombined = combinedSelectedParams.includes(headerCol);
+
+                        // Skip if the user has disabled this parameter in both dropdowns
+                        if (!isSelectedForIndividual && !isSelectedForCombined) return;
+
+                        const configKey = headerMap[headerCol];
+                        const config = PARAM_CONFIG[configKey];
+                        const val = parseFloat(row[headerCol]);
+
+                        if (isNaN(val)) return;
+
+                        const isSingleLimit = config.b1 === config.b2 && configKey !== 'pH';
+                        let isExceeding = false;
+                        let limitStr = '';
+
+                        // Determine Exceedance (Checking Permissible limits)
+                        if (configKey === 'pH') {
+                            if (val < config.b1 || val > config.b2) {
+                                isExceeding = true;
+                                limitStr = `${config.b1}-${config.b2}`;
+                            }
+                        } else if (isSingleLimit) {
+                            if (val > config.b1) {
+                                isExceeding = true;
+                                limitStr = `${config.b1}`;
+                            }
+                        } else {
+                            if (val > config.b2) { // Exceeds Permissible Limit (b2)
+                                isExceeding = true;
+                                limitStr = `${config.b2}`;
+                            }
+                        }
+
+                        if (isExceeding) {
+                            // Apply specific decimal formatting rules
+                            let zFormat = '0.000'; // Default to 3 decimals for remaining metals
+                            let decimalPlaces = 3; // For string formatting
+
+                            const wholeNumbers = ['EC', 'NO3', 'TH', 'Ca', 'SO4', 'Mg', 'Cl'];
+                            
+                            if (wholeNumbers.includes(configKey)) { zFormat = '0'; decimalPlaces = 0; }
+                            else if (configKey === 'F') { zFormat = '0.00'; decimalPlaces = 2; }
+                            else if (configKey === 'As' || configKey === 'U') { zFormat = '0.0'; decimalPlaces = 1; }
+
+                            // Generate row for Individual Exceedance Sheet (if selected)
+                            if (isSelectedForIndividual) {
+                                excRows.push([
+                                    slNo++,
+                                    row[dataHeaders.wellId] || '-',
+                                    row[dataHeaders.state] || '-',
+                                    row[dataHeaders.district] || '-',
+                                    row[dataHeaders.block] || '-',
+                                    row[dataHeaders.location] || '-',
+                                    row[dataHeaders.longitude] || '-',
+                                    row[dataHeaders.latitude] || '-',
+                                    { v: val, t: 'n', z: zFormat }, 
+                                    headerCol,
+                                    `${limitStr} ${config.unit}`.trim(),
+                                    config.unit
+                                ]);
+                            }
+
+                            // Add parameter to Combined Exceedance aggregation (if selected)
+                            if (isSelectedForCombined) {
+                                if (heavyMetals.includes(configKey)) {
+                                    hasHeavyMetal = true;
+                                }
+                                combinedExceedances.push(`${headerCol} (${val.toFixed(decimalPlaces)} ${config.unit})`);
+                                combinedExceedanceNames.push(headerCol);
+                            }
+                        }
+                    });
+
+                    // If one or more combined parameters exceeded, push to the combined sheet
+                    if (combinedExceedances.length > 0) {
+                        let contaminationType = "";
+                        if (hasHeavyMetal) {
+                            contaminationType = "Contamination with heavy metals";
+                        } else if (combinedExceedances.length > 1) {
+                            contaminationType = "Multi Parameter Contamination";
+                        } else {
+                            contaminationType = "One Parameter Contamination";
+                        }
+
+                        multiExcRows.push([
+                            multiSlNo++,
+                            row[dataHeaders.wellId] || '-',
+                            row[dataHeaders.state] || '-',
+                            row[dataHeaders.district] || '-',
+                            row[dataHeaders.block] || '-',
+                            row[dataHeaders.location] || '-',
+                            row[dataHeaders.longitude] || '-',
+                            row[dataHeaders.latitude] || '-',
+                            combinedExceedanceNames.length,
+                            combinedExceedanceNames.join(', '),
+                            combinedExceedances.join(', '),
+                            contaminationType
+                        ]);
+                    }
+                });
+
+                // Create Sheet and add Title Merging
+                if (includeExceedance && excRows.length > 0) {
+                    const wsExceedanceData = [titleRow, excHeaders, ...excRows];
+                    const wsExceedance = XLSX.utils.aoa_to_sheet(wsExceedanceData);
+                    wsExceedance['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 11 } }];
+                    applyExcelStyles(wsExceedance, 2);
+                    XLSX.utils.book_append_sheet(wb, wsExceedance, "Exceedance Locations");
+                }
+
+                // Create the new Combined Exceedance Sheet
+                if (includeCombined && multiExcRows.length > 0) {
+                    const wsMultiExcData = [multiTitleRow, multiExcHeaders, ...multiExcRows];
+                    const wsMultiExc = XLSX.utils.aoa_to_sheet(wsMultiExcData);
+                    wsMultiExc['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 11 } }];
+                    applyExcelStyles(wsMultiExc, 2);
+                    XLSX.utils.book_append_sheet(wb, wsMultiExc, "Combined Exceedances");
+                }
+            }
+
+            if (wb.SheetNames.length === 0) {
+                return showToast("No valid data available for the selected parameters.", "error");
+            }
+
+            XLSX.writeFile(wb, `Compliance_Report_MultiParam_${new Date().getTime()}.xlsx`);
+            showToast("Report exported successfully with Sub-sheets!", "success");
         }
     </script>
 </body>

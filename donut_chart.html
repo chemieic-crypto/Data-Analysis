@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>3D Groundwater Donut - Professional Styling</title>
-    <!-- Dependencies -->
-    <script src="https://code.highcharts.com/highcharts.js"></script>
-    <script src="https://code.highcharts.com/highcharts-3d.js"></script>
-    <script src="https://code.highcharts.com/modules/exporting.js"></script>
-    <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+    <title>3D Groundwater Charts - Advanced Grapher Styling</title>
+    <!-- Dependencies using CDNJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/highcharts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/highcharts-3d.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/modules/cylinder.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/modules/exporting.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/modules/offline-exporting.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -15,8 +16,8 @@
             min-height: 100vh;
             padding: 1.5rem;
         }
-        #chart-container { 
-            height: 550px; 
+        .chart-container { 
+            height: 600px; 
             width: 100%; 
         }
         input[type=number]::-webkit-inner-spin-button, 
@@ -42,379 +43,578 @@
             align-items: center;
             gap: 0.5rem;
         }
-        .limit-error {
-            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-        }
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-1px, 0, 0); }
-            20%, 80% { transform: translate3d(2px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-            40%, 60% { transform: translate3d(4px, 0, 0); }
-        }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Specific input styling for color pickers to make them neat */
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            border-radius: 4px;
+            padding: 0;
+            overflow: hidden;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-<div class="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
-    <!-- Sidebar -->
-    <div class="lg:col-span-1 space-y-4 max-h-[90vh] overflow-y-auto pr-2 custom-scrollbar">
-        
-        <!-- Visibility Toggles -->
-        <div class="control-card border-l-4 border-amber-500">
-            <h3 class="section-title">👁️ Visibility Controls</h3>
-            <div class="grid grid-cols-2 gap-2">
-                <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
-                    <input type="checkbox" id="showTitle" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-amber-600">
-                    <span class="text-[10px] font-bold text-slate-600 uppercase">Title</span>
-                </label>
-                <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
-                    <input type="checkbox" id="showN" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-amber-600">
-                    <span class="text-[10px] font-bold text-slate-600 uppercase">Total (N)</span>
-                </label>
-                <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
-                    <input type="checkbox" id="showSmallN" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-amber-600">
-                    <span class="text-[10px] font-bold text-slate-600 uppercase">Count (n)</span>
-                </label>
-                <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
-                    <input type="checkbox" id="showLegend" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-amber-600">
-                    <span class="text-[10px] font-bold text-slate-600 uppercase">Legends</span>
-                </label>
-            </div>
-        </div>
+<div class="max-w-[1700px] mx-auto">
 
-        <!-- 0. Parameter Details -->
-        <div class="control-card border-l-4 border-indigo-500">
-            <h3 class="section-title">🧪 Parameter Details</h3>
-            <div class="space-y-3">
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Parameter</label>
-                        <input type="text" id="paramName" value="Fluoride" oninput="updateChartFromUI()" 
-                            class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Unit</label>
-                        <input type="text" id="paramUnit" value="mg/L" oninput="updateChartFromUI()" 
-                            class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Acc. Limit</label>
-                        <input type="text" id="limitAcc" value="1.0" oninput="updateChartFromUI()" 
-                            class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Perm. Limit</label>
-                        <input type="text" id="limitPerm" value="1.5" oninput="updateChartFromUI()" 
-                            class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 1. Content & Data -->
-        <div class="control-card">
-            <h3 class="section-title">📊 Sample Analysis & Data</h3>
-            <div class="space-y-3">
-                <div class="mb-4">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Chart Title Text</label>
-                    <input type="text" id="chartTitleInput" value="Groundwater Quality Analysis" oninput="updateChartFromUI()" 
-                        class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 ring-indigo-500 outline-none font-medium">
-                </div>
-
-                <div class="mb-4 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
-                    <label class="text-[10px] font-bold text-indigo-600 uppercase block mb-1">Total Samples (N)</label>
-                    <input type="number" id="totalSamplesN" value="100" oninput="updateChartFromUI()" 
-                        class="w-full bg-white border border-indigo-200 rounded-md p-1.5 text-sm font-bold focus:ring-2 ring-indigo-400 outline-none">
-                </div>
-                
-                <div class="space-y-3">
-                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        <div class="flex justify-between items-center mb-1">
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" id="checkAcc" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-indigo-600">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase">Acceptable</span>
-                            </div>
-                            <input type="color" id="colAcc" value="#10b981" oninput="updateChartFromUI()" class="h-4 w-8 cursor-pointer">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="number" id="valAcc" value="60" min="0" max="100" oninput="handleValueChange(this)" class="w-1/2 bg-white border border-slate-200 rounded p-1 text-right text-xs font-bold" placeholder="%">
-                            <span class="text-[10px] text-slate-400 font-bold">n=<span id="countAcc">60</span></span>
-                        </div>
-                    </div>
-                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        <div class="flex justify-between items-center mb-1">
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" id="checkPerm" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-indigo-600">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase">Permissible</span>
-                            </div>
-                            <input type="color" id="colPerm" value="#f59e0b" oninput="updateChartFromUI()" class="h-4 w-8 cursor-pointer">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="number" id="valPerm" value="25" min="0" max="100" oninput="handleValueChange(this)" class="w-1/2 bg-white border border-slate-200 rounded p-1 text-right text-xs font-bold" placeholder="%">
-                            <span class="text-[10px] text-slate-400 font-bold">n=<span id="countPerm">25</span></span>
-                        </div>
-                    </div>
-                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        <div class="flex justify-between items-center mb-1">
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" id="checkFail" checked onchange="updateChartFromUI()" class="w-3 h-3 accent-indigo-600">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase">Beyond Limit</span>
-                            </div>
-                            <input type="color" id="colFail" value="#f43f5e" oninput="updateChartFromUI()" class="h-4 w-8 cursor-pointer">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="number" id="valFail" value="15" min="0" max="100" oninput="handleValueChange(this)" class="w-1/2 bg-white border border-slate-200 rounded p-1 text-right text-xs font-bold" placeholder="%">
-                            <span class="text-[10px] text-slate-400 font-bold">n=<span id="countFail">15</span></span>
-                        </div>
-                    </div>
-                </div>
-                <div id="totalBadge" class="text-center text-[10px] font-black mt-2 py-1 rounded bg-slate-100 transition-colors duration-300">Total: 100%</div>
-                <div id="limitWarning" class="hidden text-[9px] text-rose-500 font-bold text-center mt-1 uppercase">⚠️ Total cannot exceed 100%</div>
-            </div>
-        </div>
-
-        <!-- 2. Typography & Style -->
-        <div class="control-card">
-            <h3 class="section-title">🖋️ Typography & Style</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase">Font Family</label>
-                    <select id="fontFamily" onchange="updateChartFromUI()" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none">
-                        <option value="'Segoe UI', sans-serif">Segoe UI (Modern)</option>
-                        <option value="'Georgia', serif">Georgia (Serif)</option>
-                        <option value="'Courier New', monospace">Courier (Monospace)</option>
-                        <option value="'Verdana', sans-serif">Verdana (Clean)</option>
-                        <option value="'Impact', sans-serif">Impact (Bold)</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase">Title Size</label>
-                        <input type="number" id="titleSize" value="24" oninput="updateChartFromUI()" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase">Label Size</label>
-                        <input type="number" id="labelSize" value="14" oninput="updateChartFromUI()" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Title Color</label>
-                        <input type="color" id="titleColor" value="#1e293b" oninput="updateChartFromUI()" class="h-8 w-full cursor-pointer bg-transparent">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Label Color</label>
-                        <input type="color" id="labelColor" value="#334155" oninput="updateChartFromUI()" class="h-8 w-full cursor-pointer bg-transparent">
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button id="btnBold" onclick="toggleStyle('bold')" class="flex-1 py-2 text-[10px] font-black border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">BOLD</button>
-                    <button id="btnItalic" onclick="toggleStyle('italic')" class="flex-1 py-2 text-[10px] font-black border border-slate-200 rounded-lg italic hover:bg-slate-50 transition-colors">ITALIC</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. 3D & Layout -->
-        <div class="control-card">
-            <h3 class="section-title">🎡 3D & Layout</h3>
-            <div class="space-y-4">
-                <div>
-                    <div class="range-label mb-1 flex justify-between">
-                        <label class="text-[10px] uppercase font-bold text-slate-400">Rotation (Beta)</label>
-                        <span id="txtBeta" class="text-[10px] font-bold text-indigo-600">0°</span>
-                    </div>
-                    <input type="range" id="optBeta" min="0" max="360" value="0" oninput="updateChartFromUI()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                </div>
-                <div>
-                    <div class="range-label mb-1 flex justify-between">
-                        <label class="text-[10px] uppercase font-bold text-slate-400">Tilt X (Alpha)</label>
-                        <span id="txtAlpha" class="text-[10px] font-bold text-indigo-600">45°</span>
-                    </div>
-                    <input type="range" id="optAlpha" min="0" max="90" value="45" oninput="updateChartFromUI()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                </div>
-                <div>
-                    <div class="range-label mb-1 flex justify-between">
-                        <label class="text-[10px] uppercase font-bold text-slate-400">Depth (Z)</label>
-                        <span id="txtDepth" class="text-[10px] font-bold text-indigo-600">55px</span>
-                    </div>
-                    <input type="range" id="optDepth" min="0" max="150" value="55" oninput="updateChartFromUI()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                </div>
-                <div>
-                    <div class="range-label mb-1 flex justify-between">
-                        <label class="text-[10px] uppercase font-bold text-slate-400">Inner Size</label>
-                        <span id="txtInner" class="text-[10px] font-bold text-indigo-600">60%</span>
-                    </div>
-                    <input type="range" id="optInner" min="0" max="85" value="60" oninput="updateChartFromUI()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                </div>
-            </div>
-        </div>
-
-        <!-- 4. Export -->
-        <div class="control-card bg-slate-50 border-slate-200">
-            <h3 class="section-title text-slate-900">📸 HD Export Settings</h3>
-            <div class="mb-3">
-                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Export BG Color</label>
-                <div class="flex items-center gap-2">
-                    <input type="color" id="exportBgColor" value="#ffffff" class="h-8 w-12 cursor-pointer bg-transparent">
-                    <span class="text-[10px] text-slate-500 font-medium">JPEG Background</span>
-                </div>
-            </div>
-            <button id="downloadBtn" onclick="downloadAsJPEG()" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
-                💾 Download HD JPEG
-            </button>
-        </div>
+    <!-- Top Tab Navigation -->
+    <div class="mb-6 flex space-x-2 bg-white p-2 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto">
+        <button id="tab-btn-donut" onclick="switchTab('donut')" class="flex-1 py-2.5 bg-indigo-50 text-indigo-700 rounded-xl font-black text-sm transition-all shadow-sm">
+            🍩 3D Donut Chart
+        </button>
+        <button id="tab-btn-cylinder" onclick="switchTab('cylinder')" class="flex-1 py-2.5 text-slate-500 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all">
+            📊 Adv. Cylinder Grapher
+        </button>
     </div>
 
-    <!-- Main Chart View -->
-    <div class="lg:col-span-3">
-        <div id="chart-wrapper" class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center min-h-[700px]">
-            <div id="chart-container"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        
+        <!-- ================= SIDEBAR CONTROLS ================= -->
+        <div class="lg:col-span-1 xl:col-span-1 space-y-4 max-h-[88vh] overflow-y-auto pr-2 custom-scrollbar">
+            
+            <!-- ================= DONUT CONTROLS (Existing) ================= -->
+            <div id="controls-donut" class="tab-content active space-y-4">
+                <div class="control-card border-l-4 border-amber-500">
+                    <h3 class="section-title">👁️ Visibility Controls</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" id="showTitle" checked onchange="updateDonutChart()" class="w-3 h-3 accent-amber-600">
+                            <span class="text-[10px] font-bold text-slate-600 uppercase">Title</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" id="showN" checked onchange="updateDonutChart()" class="w-3 h-3 accent-amber-600">
+                            <span class="text-[10px] font-bold text-slate-600 uppercase">Total (N)</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" id="showSmallN" checked onchange="updateDonutChart()" class="w-3 h-3 accent-amber-600">
+                            <span class="text-[10px] font-bold text-slate-600 uppercase">Count (n)</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 bg-slate-50 rounded cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" id="showLegend" checked onchange="updateDonutChart()" class="w-3 h-3 accent-amber-600">
+                            <span class="text-[10px] font-bold text-slate-600 uppercase">Legends</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-card border-l-4 border-indigo-500">
+                    <h3 class="section-title">🧪 Parameter Details</h3>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Parameter</label>
+                                <input type="text" id="paramName" value="Fluoride" oninput="updateDonutChart()" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Unit</label>
+                                <input type="text" id="paramUnit" value="mg/L" oninput="updateDonutChart()" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Acc. Limit</label>
+                                <input type="text" id="limitAcc" value="1.0" oninput="updateDonutChart()" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Perm. Limit</label>
+                                <input type="text" id="limitPerm" value="1.5" oninput="updateDonutChart()" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-indigo-500 outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-card">
+                    <h3 class="section-title">📊 Sample Analysis & Data</h3>
+                    <div class="space-y-3">
+                        <div class="mb-4">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Chart Title Text</label>
+                            <input type="text" id="chartTitleInput" value="Groundwater Quality Analysis" oninput="updateDonutChart()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 ring-indigo-500 outline-none font-medium">
+                        </div>
+                        <div class="mb-4 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                            <label class="text-[10px] font-bold text-indigo-600 uppercase block mb-1">Total Samples (N)</label>
+                            <input type="number" id="totalSamplesN" value="100" oninput="updateDonutChart()" class="w-full bg-white border border-indigo-200 rounded-md p-1.5 text-sm font-bold focus:ring-2 ring-indigo-400 outline-none">
+                        </div>
+                        <div class="space-y-3">
+                            <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                <div class="flex justify-between items-center mb-1">
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox" id="checkAcc" checked onchange="updateDonutChart()" class="w-3 h-3 accent-indigo-600">
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase">Acceptable</span>
+                                    </div>
+                                    <input type="color" id="colAcc" value="#10b981" oninput="updateDonutChart()" class="h-4 w-8 cursor-pointer">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" id="valAcc" value="60" min="0" max="100" step="0.1" oninput="handleDonutValueChange()" class="w-1/2 bg-white border border-slate-200 rounded p-1 text-right text-xs font-bold" placeholder="%">
+                                    <span class="text-[10px] text-slate-400 font-bold">n=<span id="countAcc">60</span></span>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                <div class="flex justify-between items-center mb-1">
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox" id="checkPerm" checked onchange="updateDonutChart()" class="w-3 h-3 accent-indigo-600">
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase">Permissible</span>
+                                    </div>
+                                    <input type="color" id="colPerm" value="#f59e0b" oninput="updateDonutChart()" class="h-4 w-8 cursor-pointer">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" id="valPerm" value="25" min="0" max="100" step="0.1" oninput="handleDonutValueChange()" class="w-1/2 bg-white border border-slate-200 rounded p-1 text-right text-xs font-bold" placeholder="%">
+                                    <span class="text-[10px] text-slate-400 font-bold">n=<span id="countPerm">25</span></span>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                <div class="flex justify-between items-center mb-1">
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox" id="checkFail" checked onchange="updateDonutChart()" class="w-3 h-3 accent-indigo-600">
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase">Beyond Limit</span>
+                                    </div>
+                                    <input type="color" id="colFail" value="#f43f5e" oninput="updateDonutChart()" class="h-4 w-8 cursor-pointer">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" id="valFail" value="15" min="0" max="100" step="0.1" oninput="handleDonutValueChange()" class="w-1/2 bg-white border border-slate-200 rounded p-1 text-right text-xs font-bold" placeholder="%">
+                                    <span class="text-[10px] text-slate-400 font-bold">n=<span id="countFail">15</span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="totalBadge" class="text-center text-[10px] font-black mt-2 py-1 rounded transition-colors duration-300">Total: 100%</div>
+                    </div>
+                </div>
+
+                <div class="control-card">
+                    <h3 class="section-title">🖋️ Typography & Style</h3>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase">Title Size</label>
+                                <input type="number" id="dTitleSize" value="24" oninput="updateDonutChart()" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase">Label Size</label>
+                                <input type="number" id="dLabelSize" value="14" oninput="updateDonutChart()" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Title Color</label>
+                                <input type="color" id="dTitleColor" value="#1e293b" oninput="updateDonutChart()" class="h-8 w-full cursor-pointer bg-transparent">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Label Color</label>
+                                <input type="color" id="dLabelColor" value="#334155" oninput="updateDonutChart()" class="h-8 w-full cursor-pointer bg-transparent">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-card">
+                    <h3 class="section-title">🎡 3D & Layout</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="range-label mb-1 flex justify-between">
+                                <label class="text-[10px] uppercase font-bold text-slate-400">Tilt X (Alpha)</label>
+                                <span id="txtDAlpha" class="text-[10px] font-bold text-indigo-600">45°</span>
+                            </div>
+                            <input type="range" id="optDAlpha" min="0" max="90" value="45" oninput="updateDonutChart()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                        </div>
+                        <div>
+                            <div class="range-label mb-1 flex justify-between">
+                                <label class="text-[10px] uppercase font-bold text-slate-400">Rotation (Beta)</label>
+                                <span id="txtDBeta" class="text-[10px] font-bold text-indigo-600">0°</span>
+                            </div>
+                            <input type="range" id="optDBeta" min="0" max="360" value="0" oninput="updateDonutChart()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                        </div>
+                        <div>
+                            <div class="range-label mb-1 flex justify-between">
+                                <label class="text-[10px] uppercase font-bold text-slate-400">Depth (Z)</label>
+                                <span id="txtDDepth" class="text-[10px] font-bold text-indigo-600">55px</span>
+                            </div>
+                            <input type="range" id="optDDepth" min="0" max="150" value="55" oninput="updateDonutChart()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                        </div>
+                        <div>
+                            <div class="range-label mb-1 flex justify-between">
+                                <label class="text-[10px] uppercase font-bold text-slate-400">Inner Size</label>
+                                <span id="txtDInner" class="text-[10px] font-bold text-indigo-600">60%</span>
+                            </div>
+                            <input type="range" id="optDInner" min="0" max="85" value="60" oninput="updateDonutChart()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= ADVANCED CYLINDER CONTROLS (Grapher-Style) ================= -->
+            <div id="controls-cylinder" class="tab-content space-y-4">
+                
+                <!-- 1. Titles & Headers -->
+                <div class="control-card border-l-4 border-slate-800">
+                    <h3 class="section-title">📝 Chart Titles</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <input type="text" id="cylTitle1" value="Beyond Permissible Limit(BIS,10500)" oninput="updateCylinderChart()" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-slate-800 outline-none mb-1">
+                            <input type="text" id="cylTitle2" value="Pre-Monsoon, 2025" oninput="updateCylinderChart()" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-slate-800 outline-none mb-1">
+                            <input type="text" id="cylTitle3" value="n=23,601" oninput="updateCylinderChart()" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:ring-2 ring-slate-800 outline-none">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Font Color</label>
+                                <input type="color" id="cylTextColor" value="#27272a" oninput="updateCylinderChart()" class="h-6 w-full cursor-pointer bg-transparent">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Font Size (px)</label>
+                                <input type="number" id="cylTitleSize" value="18" oninput="updateCylinderChart()" class="w-full text-xs p-1.5 bg-slate-50 border border-slate-200 rounded outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Data Series Customization -->
+                <div class="control-card border-l-4 border-indigo-500">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="section-title mb-0">📊 Data & Bar Colors</h3>
+                        <button onclick="addCylinderRow()" class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-1 rounded font-bold hover:bg-indigo-200 transition-colors shadow-sm">+ Add Data</button>
+                    </div>
+                    
+                    <div id="cylinder-data-container" class="space-y-3">
+                        <div class="flex gap-2 items-end cylinder-row">
+                            <div class="flex-1">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Label</label>
+                                <input type="text" value="As" oninput="updateCylinderChart()" class="cyl-label-input w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs outline-none">
+                            </div>
+                            <div class="flex-1">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Value</label>
+                                <input type="number" value="2.00" step="0.01" oninput="updateCylinderChart()" class="cyl-val-input w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs outline-none font-bold text-right">
+                            </div>
+                            <div class="w-[34px]">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Col</label>
+                                <input type="color" value="#0ea5e9" oninput="updateCylinderChart()" class="cyl-color-input h-[30px] w-full cursor-pointer">
+                            </div>
+                            <button onclick="removeCylinderRow(this)" class="bg-rose-50 text-rose-500 rounded border border-rose-100 hover:bg-rose-100 transition-colors h-[30px] w-[30px] flex items-center justify-center font-black" title="Remove">✕</button>
+                        </div>
+                        <div class="flex gap-2 items-end cylinder-row">
+                            <div class="flex-1">
+                                <input type="text" value="U" oninput="updateCylinderChart()" class="cyl-label-input w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs outline-none">
+                            </div>
+                            <div class="flex-1">
+                                <input type="number" value="5.79" step="0.01" oninput="updateCylinderChart()" class="cyl-val-input w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs outline-none font-bold text-right">
+                            </div>
+                            <div class="w-[34px]">
+                                <input type="color" value="#f59e0b" oninput="updateCylinderChart()" class="cyl-color-input h-[30px] w-full cursor-pointer">
+                            </div>
+                            <button onclick="removeCylinderRow(this)" class="bg-rose-50 text-rose-500 rounded border border-rose-100 hover:bg-rose-100 transition-colors h-[30px] w-[30px] flex items-center justify-center font-black" title="Remove">✕</button>
+                        </div>
+                        <div class="flex gap-2 items-end cylinder-row">
+                            <div class="flex-1">
+                                <input type="text" value="Fe" oninput="updateCylinderChart()" class="cyl-label-input w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs outline-none">
+                            </div>
+                            <div class="flex-1">
+                                <input type="number" value="9.15" step="0.01" oninput="updateCylinderChart()" class="cyl-val-input w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs outline-none font-bold text-right">
+                            </div>
+                            <div class="w-[34px]">
+                                <input type="color" value="#10b981" oninput="updateCylinderChart()" class="cyl-color-input h-[30px] w-full cursor-pointer">
+                            </div>
+                            <button onclick="removeCylinderRow(this)" class="bg-rose-50 text-rose-500 rounded border border-rose-100 hover:bg-rose-100 transition-colors h-[30px] w-[30px] flex items-center justify-center font-black" title="Remove">✕</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Y-Axis Properties -->
+                <div class="control-card border-l-4 border-fuchsia-500">
+                    <h3 class="section-title">📏 Y-Axis Customization</h3>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Y-Axis Title</label>
+                                <input type="text" id="yAxisTitle" value="Percentage (%)" oninput="updateCylinderChart()" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Title Color / Size</label>
+                                <div class="flex gap-2">
+                                    <input type="color" id="yAxisTitleColor" value="#64748b" oninput="updateCylinderChart()" class="h-7 w-full cursor-pointer">
+                                    <input type="number" id="yAxisTitleSize" value="12" oninput="updateCylinderChart()" class="w-full text-xs p-1 bg-slate-50 border border-slate-200 rounded outline-none">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Min Val</label>
+                                <input type="number" id="yMin" value="" placeholder="Auto" oninput="updateCylinderChart()" class="w-full text-xs p-1.5 bg-slate-50 border border-slate-200 rounded outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Max Val</label>
+                                <input type="number" id="yMax" value="" placeholder="Auto" oninput="updateCylinderChart()" class="w-full text-xs p-1.5 bg-slate-50 border border-slate-200 rounded outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Interval</label>
+                                <input type="number" id="yTick" value="" placeholder="Auto" oninput="updateCylinderChart()" class="w-full text-xs p-1.5 bg-slate-50 border border-slate-200 rounded outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 border-t border-slate-100 pt-2">
+                            <div>
+                                <label class="flex items-center gap-2 mb-1">
+                                    <input type="checkbox" id="showYLabels" checked onchange="updateCylinderChart()" class="w-3 h-3 accent-fuchsia-600">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase">Show Tick Labels</span>
+                                </label>
+                                <div class="flex gap-2">
+                                    <input type="color" id="yLabelColor" value="#94a3b8" oninput="updateCylinderChart()" class="h-7 w-full cursor-pointer">
+                                    <input type="number" id="yLabelSize" value="11" oninput="updateCylinderChart()" class="w-full text-xs p-1 bg-slate-50 border border-slate-200 rounded outline-none">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Grid Line Wd / Color</label>
+                                <div class="flex gap-2">
+                                    <input type="number" id="yGridWidth" value="1" min="0" oninput="updateCylinderChart()" class="w-full text-xs p-1 bg-slate-50 border border-slate-200 rounded outline-none">
+                                    <input type="color" id="yGridColor" value="#e2e8f0" oninput="updateCylinderChart()" class="h-7 w-full cursor-pointer">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. X-Axis Properties -->
+                <div class="control-card border-l-4 border-teal-500">
+                    <h3 class="section-title">➖ X-Axis Customization</h3>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-2 mb-1 cursor-pointer hover:opacity-80">
+                            <input type="checkbox" id="showXLabels" checked onchange="updateCylinderChart()" class="w-3 h-3 accent-teal-600">
+                            <span class="text-[10px] font-bold text-slate-600 uppercase">Show Bottom Category Labels</span>
+                        </label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Axis Line Color</label>
+                                <input type="color" id="xAxisLineColor" value="#94a3b8" oninput="updateCylinderChart()" class="h-7 w-full cursor-pointer bg-transparent">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Axis Line Width</label>
+                                <input type="number" id="xAxisLineWidth" value="2" min="0" oninput="updateCylinderChart()" class="w-full text-xs p-1.5 bg-slate-50 border border-slate-200 rounded outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Category Label Color</label>
+                                <input type="color" id="xAxisLabelColor" value="#1e293b" oninput="updateCylinderChart()" class="h-7 w-full cursor-pointer bg-transparent">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Category Label Size</label>
+                                <input type="number" id="xAxisLabelSize" value="18" oninput="updateCylinderChart()" class="w-full text-xs p-1.5 bg-slate-50 border border-slate-200 rounded outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Data Labels & Bar Styling -->
+                <div class="control-card border-l-4 border-rose-500">
+                    <h3 class="section-title">🏷️ Data Labels & Bar Sizing</h3>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-2 mb-1 cursor-pointer hover:opacity-80">
+                            <input type="checkbox" id="showBarValue" checked onchange="updateCylinderChart()" class="w-3 h-3 accent-rose-600">
+                            <span class="text-[10px] font-bold text-slate-600 uppercase">Show Value Top Label</span>
+                        </label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Prefix</label>
+                                <input type="text" id="lblPrefix" value="" placeholder="e.g. $" oninput="updateCylinderChart()" class="w-full text-xs p-1.5 bg-slate-50 border border-slate-200 rounded outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Suffix</label>
+                                <input type="text" id="lblSuffix" value="%" placeholder="e.g. %" oninput="updateCylinderChart()" class="w-full text-xs p-1.5 bg-slate-50 border border-slate-200 rounded outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Y-Offset</label>
+                                <input type="number" id="lblOffset" value="-30" oninput="updateCylinderChart()" class="w-full text-xs p-1.5 bg-slate-50 border border-slate-200 rounded outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Value Label Color</label>
+                                <input type="color" id="lblColor" value="#0f172a" oninput="updateCylinderChart()" class="h-7 w-full cursor-pointer bg-transparent">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Value Label Size</label>
+                                <input type="number" id="lblSize" value="15" oninput="updateCylinderChart()" class="w-full text-xs p-1.5 bg-slate-50 border border-slate-200 rounded outline-none">
+                            </div>
+                        </div>
+                        
+                        <!-- NEW: Parameter Name Inside Bar -->
+                        <div class="pt-3 border-t border-slate-100 mt-2">
+                            <h4 class="text-[10px] font-bold text-slate-500 uppercase mb-2">✏️ Parameter Name on Bar</h4>
+                            <div class="grid grid-cols-2 gap-4 mb-2">
+                                <div>
+                                    <label class="flex items-center gap-2 mb-1">
+                                        <input type="checkbox" id="showBarName" checked onchange="updateCylinderChart()" class="w-3 h-3 accent-rose-600">
+                                        <span class="text-[10px] font-bold text-slate-400 uppercase">Show Name</span>
+                                    </label>
+                                    <div class="flex gap-2">
+                                        <input type="color" id="barNameColor" value="#ffffff" title="Color" oninput="updateCylinderChart()" class="h-7 w-full cursor-pointer bg-transparent">
+                                        <input type="number" id="barNameSize" value="16" title="Size (px)" oninput="updateCylinderChart()" class="w-full text-xs p-1 bg-slate-50 border border-slate-200 rounded outline-none">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="range-label mb-1 flex justify-between">
+                                        <label class="text-[10px] uppercase font-bold text-slate-400">Rotation</label>
+                                        <span id="txtBarNameRot" class="text-[10px] font-bold text-rose-600">-90°</span>
+                                    </div>
+                                    <input type="range" id="barNameRot" min="-90" max="90" value="-90" step="1" oninput="updateCylinderChart()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-rose-600">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-100">
+                            <div class="range-label mb-1 flex justify-between">
+                                <label class="text-[10px] uppercase font-bold text-slate-400">Bar Thickness (Width)</label>
+                                <span id="txtCWidth" class="text-[10px] font-bold text-rose-600">45px</span>
+                            </div>
+                            <input type="range" id="optCWidth" min="15" max="150" step="1" value="45" oninput="updateCylinderChart()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-rose-600 mb-3">
+                            
+                            <div class="range-label mb-1 flex justify-between">
+                                <label class="text-[10px] uppercase font-bold text-slate-400">Bar Distance Gap</label>
+                                <span id="txtCSpread" class="text-[10px] font-bold text-rose-600">150</span>
+                            </div>
+                            <input type="range" id="optCSpread" min="10" max="250" step="10" value="150" oninput="updateCylinderChart()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-rose-600">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. 3D Environment / Frame -->
+                <div class="control-card border-l-4 border-emerald-500">
+                    <h3 class="section-title">🧱 3D Scene & Frame Background</h3>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                            <!-- Bottom Plate -->
+                            <div class="col-span-2 flex items-center justify-between border-b border-slate-50 pb-2">
+                                <label class="text-[10px] font-bold text-slate-500 uppercase">Bottom Floor</label>
+                                <div class="flex gap-2 w-1/2">
+                                    <input type="number" id="frameBotSize" value="12" title="Thickness" oninput="updateCylinderChart()" class="w-full text-xs p-1 bg-slate-50 border border-slate-200 rounded outline-none">
+                                    <input type="color" id="frameBotColor" value="#e2e8f0" title="Color" oninput="updateCylinderChart()" class="h-6 w-full cursor-pointer">
+                                </div>
+                            </div>
+                            <!-- Back Wall -->
+                            <div class="col-span-2 flex items-center justify-between border-b border-slate-50 pb-2">
+                                <label class="text-[10px] font-bold text-slate-500 uppercase">Back Wall</label>
+                                <div class="flex gap-2 w-1/2">
+                                    <input type="number" id="frameBackSize" value="1" title="Thickness" oninput="updateCylinderChart()" class="w-full text-xs p-1 bg-slate-50 border border-slate-200 rounded outline-none">
+                                    <input type="color" id="frameBackColor" value="#f8fafc" title="Color" oninput="updateCylinderChart()" class="h-6 w-full cursor-pointer">
+                                </div>
+                            </div>
+                            <!-- Side Wall -->
+                            <div class="col-span-2 flex items-center justify-between">
+                                <label class="text-[10px] font-bold text-slate-500 uppercase">Side Wall</label>
+                                <div class="flex gap-2 w-1/2">
+                                    <input type="number" id="frameSideSize" value="1" title="Thickness" oninput="updateCylinderChart()" class="w-full text-xs p-1 bg-slate-50 border border-slate-200 rounded outline-none">
+                                    <input type="color" id="frameSideColor" value="#f1f5f9" title="Color" oninput="updateCylinderChart()" class="h-6 w-full cursor-pointer">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-100">
+                            <div class="range-label mb-1 flex justify-between">
+                                <label class="text-[10px] uppercase font-bold text-slate-400">View Tilt (Alpha)</label>
+                                <span id="txtCAlpha" class="text-[10px] font-bold text-emerald-600">15°</span>
+                            </div>
+                            <input type="range" id="optCAlpha" min="0" max="60" value="15" oninput="updateCylinderChart()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600 mb-3">
+                            
+                            <div class="range-label mb-1 flex justify-between">
+                                <label class="text-[10px] uppercase font-bold text-slate-400">View Rotation (Beta)</label>
+                                <span id="txtCBeta" class="text-[10px] font-bold text-emerald-600">20°</span>
+                            </div>
+                            <input type="range" id="optCBeta" min="-45" max="90" value="20" oninput="updateCylinderChart()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600 mb-3">
+
+                            <div class="range-label mb-1 flex justify-between">
+                                <label class="text-[10px] uppercase font-bold text-slate-400">Scene Depth</label>
+                                <span id="txtCDepth" class="text-[10px] font-bold text-emerald-600">80px</span>
+                            </div>
+                            <input type="range" id="optCDepth" min="20" max="250" value="80" oninput="updateCylinderChart()" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ================= GLOBAL EXPORT ================= -->
+            <div class="control-card bg-slate-50 border-slate-200 mt-4">
+                <h3 class="section-title text-slate-900">📸 HD Export Settings</h3>
+                <div class="mb-3 space-y-2">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Export BG Color</label>
+                        <div class="flex items-center gap-2" id="bgColorWrapper">
+                            <input type="color" id="exportBgColor" value="#ffffff" class="h-8 w-12 cursor-pointer bg-transparent">
+                            <span class="text-[10px] text-slate-500 font-medium">Solid Background</span>
+                        </div>
+                    </div>
+                    <label class="flex items-center gap-2 p-2 bg-slate-100 rounded cursor-pointer hover:bg-slate-200 transition-colors">
+                        <input type="checkbox" id="exportTransparent" onchange="toggleExportBg()" class="w-3 h-3 accent-slate-800">
+                        <span class="text-[10px] font-bold text-slate-700 uppercase">Transparent BG (PNG)</span>
+                    </label>
+                </div>
+                <button id="downloadBtn" onclick="downloadChart()" class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-slate-900 transition-all flex items-center justify-center gap-2">
+                    💾 Download Current Chart
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= MAIN CHART VIEWS ================= -->
+        <div class="lg:col-span-3 xl:col-span-4">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center min-h-[700px]">
+                
+                <!-- Donut Chart Canvas -->
+                <div id="view-donut" class="tab-content active w-full">
+                    <div id="donut-container" class="chart-container flex items-center justify-center text-slate-400 font-bold">
+                        <span id="loading-text">⌛ Loading Chart Engine...</span>
+                    </div>
+                </div>
+
+                <!-- Cylinder Chart Canvas -->
+                <div id="view-cylinder" class="tab-content w-full h-full">
+                    <!-- Grapher Style Output Frame -->
+                    <div class="border-[2px] border-slate-300 bg-[#ffffff] shadow-sm mx-auto w-full max-w-5xl relative rounded-xl overflow-hidden">
+                        <!-- Chart container fills frame perfectly -->
+                        <div id="cylinder-container" class="chart-container flex items-center justify-center text-slate-400 font-bold"></div>
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-let activeChart = null;
-let isBold = true;
-let isItalic = false;
+let currentTab = 'donut';
+let activeDonutChart = null;
+let activeCylinderChart = null;
 
-function handleValueChange(input) {
-    let val = parseFloat(input.value) || 0;
-    if (val < 0) input.value = 0;
-    if (val > 100) input.value = 100;
-    const vAcc = parseFloat(document.getElementById('valAcc').value) || 0;
-    const vPerm = parseFloat(document.getElementById('valPerm').value) || 0;
-    const vFail = parseFloat(document.getElementById('valFail').value) || 0;
-    const total = vAcc + vPerm + vFail;
-    if (total > 100) {
-        const excess = total - 100;
-        input.value = Math.max(0, parseFloat(input.value) - excess).toFixed(1);
-        const badge = document.getElementById('totalBadge');
-        badge.classList.add('limit-error', 'bg-rose-100', 'text-rose-600');
-        document.getElementById('limitWarning').classList.remove('hidden');
-        setTimeout(() => { badge.classList.remove('limit-error'); }, 500);
-    } else {
-        document.getElementById('totalBadge').classList.remove('bg-rose-100', 'text-rose-600');
-        document.getElementById('limitWarning').classList.add('hidden');
-    }
-    updateChartFromUI();
+// Tab Switching
+function switchTab(tab) {
+    currentTab = tab;
+    
+    document.getElementById('tab-btn-donut').className = tab === 'donut' 
+        ? 'flex-1 py-2.5 bg-indigo-50 text-indigo-700 rounded-xl font-black text-sm transition-all shadow-sm'
+        : 'flex-1 py-2.5 text-slate-500 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all';
+        
+    document.getElementById('tab-btn-cylinder').className = tab === 'cylinder' 
+        ? 'flex-1 py-2.5 bg-slate-800 text-white rounded-xl font-black text-sm transition-all shadow-sm'
+        : 'flex-1 py-2.5 text-slate-500 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all';
+
+    document.getElementById('controls-donut').classList.toggle('active', tab === 'donut');
+    document.getElementById('controls-cylinder').classList.toggle('active', tab === 'cylinder');
+
+    document.getElementById('view-donut').classList.toggle('active', tab === 'donut');
+    document.getElementById('view-cylinder').classList.toggle('active', tab === 'cylinder');
+
+    if(tab === 'donut' && activeDonutChart) activeDonutChart.reflow();
+    if(tab === 'cylinder' && activeCylinderChart) activeCylinderChart.reflow();
 }
 
-function toggleStyle(type) {
-    if(type === 'bold') {
-        isBold = !isBold;
-        document.getElementById('btnBold').classList.toggle('bg-slate-900', isBold);
-        document.getElementById('btnBold').classList.toggle('text-white', isBold);
-    } else {
-        isItalic = !isItalic;
-        document.getElementById('btnItalic').classList.toggle('bg-slate-900', isItalic);
-        document.getElementById('btnItalic').classList.toggle('text-white', isItalic);
-    }
-    updateChartFromUI();
-}
+// ====================================================
+// DONUT CHART LOGIC (Kept exactly as requested)
+// ====================================================
+function handleDonutValueChange() { updateDonutChart(); }
 
-function renderComplianceDonut(data, options = {}) {
-    const config = {
-        containerId: 'chart-container',
-        title: '',
-        subtitle: '',
-        showTitle: true,
-        showLegend: true,
-        showSmallN: true,
-        fontFamily: "'Segoe UI', sans-serif",
-        titleSize: 24,
-        labelSize: 14,
-        titleColor: '#1e293b',
-        labelColor: '#334155',
-        fontWeight: 'bold',
-        fontStyle: 'normal',
-        depth: 55,
-        innerSize: '60%',
-        alpha: 45,
-        beta: 0,
-        ...options
-    };
-
-    activeChart = Highcharts.chart(config.containerId, {
-        chart: {
-            type: 'pie',
-            options3d: { 
-                enabled: true, 
-                alpha: config.alpha, 
-                beta: config.beta 
-            },
-            backgroundColor: 'transparent',
-            margin: [80, 20, 80, 20]
-        },
-        title: {
-            text: config.showTitle ? config.title : null,
-            style: {
-                fontFamily: config.fontFamily,
-                fontSize: config.titleSize + 'px',
-                fontWeight: config.fontWeight,
-                fontStyle: config.fontStyle,
-                color: config.titleColor
-            }
-        },
-        subtitle: {
-            text: config.showTitle ? config.subtitle : null,
-            style: {
-                fontFamily: config.fontFamily,
-                fontSize: (config.titleSize * 0.6) + 'px',
-                color: '#64748b'
-            }
-        },
-        tooltip: {
-            headerFormat: '<span style="font-size: 12px; font-weight:bold">{point.key}</span><br/>',
-            pointFormat: 'Percentage: <b>{point.y:.1f}%</b><br/>Samples: <b>{point.count}</b>'
-        },
-        plotOptions: {
-            pie: {
-                innerSize: config.innerSize,
-                depth: config.depth,
-                dataLabels: {
-                    enabled: true,
-                    format: config.showSmallN 
-                        ? '<b>{point.name}</b><br>{point.y}% (n={point.count})' 
-                        : '<b>{point.name}</b><br>{point.y}%',
-                    style: { 
-                        textOutline: 'none',
-                        fontFamily: config.fontFamily,
-                        fontSize: config.labelSize + 'px',
-                        fontWeight: config.fontWeight,
-                        fontStyle: config.fontStyle,
-                        color: config.labelColor
-                    },
-                    connectorWidth: 1.5,
-                    distance: 35
-                },
-                showInLegend: config.showLegend
-            }
-        },
-        legend: {
-            enabled: config.showLegend,
-            itemStyle: {
-                fontFamily: config.fontFamily,
-                fontWeight: config.fontWeight,
-                color: config.labelColor
-            }
-        },
-        series: [{
-            name: 'Compliance',
-            data: data
-        }],
-        credits: { enabled: false },
-        exporting: {
-            enabled: false // Custom download button used instead
-        }
-    });
-}
-
-function updateChartFromUI() {
+function updateDonutChart() {
     const N = parseFloat(document.getElementById('totalSamplesN').value) || 0;
     const v1 = parseFloat(document.getElementById('valAcc').value) || 0;
     const v2 = parseFloat(document.getElementById('valPerm').value) || 0;
@@ -428,119 +628,339 @@ function updateChartFromUI() {
     document.getElementById('countPerm').innerText = count2;
     document.getElementById('countFail').innerText = count3;
 
-    const showTitle = document.getElementById('showTitle').checked;
-    const showN = document.getElementById('showN').checked;
-    const showSmallN = document.getElementById('showSmallN').checked;
-    const showLegend = document.getElementById('showLegend').checked;
+    const total = v1 + v2 + v3;
+    const badge = document.getElementById('totalBadge');
+    badge.innerText = `Total: ${total.toFixed(2)}%`;
+    
+    badge.classList.remove('bg-slate-100', 'bg-emerald-100', 'text-emerald-700', 'bg-rose-100', 'text-rose-700');
+    if (Math.abs(total - 100) < 0.01) { badge.classList.add('bg-emerald-100', 'text-emerald-700'); } 
+    else if (total > 100.01) { badge.classList.add('bg-rose-100', 'text-rose-700'); } 
+    else { badge.classList.add('bg-slate-100', 'text-slate-500'); }
 
     const pName = document.getElementById('paramName').value;
     const pUnit = document.getElementById('paramUnit').value;
     const lAcc = document.getElementById('limitAcc').value;
     const lPerm = document.getElementById('limitPerm').value;
 
-    const fFamily = document.getElementById('fontFamily').value;
-    const tSize = document.getElementById('titleSize').value;
-    const lSize = document.getElementById('labelSize').value;
-    const tColor = document.getElementById('titleColor').value;
-    const lColor = document.getElementById('labelColor').value;
-    const customTitle = document.getElementById('chartTitleInput').value || '';
-    
-    const alphaVal = parseInt(document.getElementById('optAlpha').value);
-    const betaVal = parseInt(document.getElementById('optBeta').value);
-    const depthVal = parseInt(document.getElementById('optDepth').value);
-    const innerVal = parseInt(document.getElementById('optInner').value);
-
-    document.getElementById('txtAlpha').innerText = alphaVal + '°';
-    document.getElementById('txtBeta').innerText = betaVal + '°';
-    document.getElementById('txtDepth').innerText = depthVal + 'px';
-    document.getElementById('txtInner').innerText = innerVal + '%';
-    
-    const total = v1 + v2 + v3;
-    const badge = document.getElementById('totalBadge');
-    badge.innerText = `Total: ${total.toFixed(1)}%`;
-    
-    if (total > 100.05) {
-        badge.classList.add('bg-rose-100', 'text-rose-700');
-    } else if (Math.abs(total - 100) < 0.1) {
-        badge.classList.remove('bg-rose-100', 'text-rose-700');
-        badge.classList.add('bg-emerald-100', 'text-emerald-700');
-    } else {
-        badge.classList.remove('bg-rose-100', 'text-rose-700', 'bg-emerald-100', 'text-emerald-700');
-    }
-
     const data = [];
-    if(document.getElementById('checkAcc').checked) {
-        data.push({ name: `Acceptable (≤${lAcc} ${pUnit})`, y: v1, count: count1, color: document.getElementById('colAcc').value });
-    }
-    if(document.getElementById('checkPerm').checked) {
-        data.push({ name: `Permissible (${lAcc}-${lPerm} ${pUnit})`, y: v2, count: count2, color: document.getElementById('colPerm').value });
-    }
-    if(document.getElementById('checkFail').checked) {
-        data.push({ name: `Beyond Limit (>${lPerm} ${pUnit})`, y: v3, count: count3, color: document.getElementById('colFail').value });
-    }
+    if(document.getElementById('checkAcc').checked) data.push({ name: `Acceptable (≤${lAcc} ${pUnit})`, y: v1, count: count1, color: document.getElementById('colAcc').value });
+    if(document.getElementById('checkPerm').checked) data.push({ name: `Permissible (${lAcc}-${lPerm} ${pUnit})`, y: v2, count: count2, color: document.getElementById('colPerm').value });
+    if(document.getElementById('checkFail').checked) data.push({ name: `Beyond Limit (>${lPerm} ${pUnit})`, y: v3, count: count3, color: document.getElementById('colFail').value });
 
-    renderComplianceDonut(data, {
-        title: customTitle + (showN && N > 0 ? ` (N=${N})` : ''),
-        subtitle: pName ? `Analysis of ${pName} (${pUnit})` : '',
-        showTitle: showTitle,
-        showLegend: showLegend,
-        showSmallN: showSmallN,
-        fontFamily: fFamily,
-        titleSize: tSize,
-        labelSize: lSize,
-        titleColor: tColor,
-        labelColor: lColor,
-        fontWeight: isBold ? 'bold' : 'normal',
-        fontStyle: isItalic ? 'italic' : 'normal',
-        alpha: alphaVal,
-        beta: betaVal,
-        depth: depthVal,
-        innerSize: innerVal + '%'
+    const alphaVal = parseInt(document.getElementById('optDAlpha').value);
+    const betaVal = parseInt(document.getElementById('optDBeta').value);
+    const depthVal = parseInt(document.getElementById('optDDepth').value);
+    const innerVal = parseInt(document.getElementById('optDInner').value);
+
+    document.getElementById('txtDAlpha').innerText = alphaVal + '°';
+    document.getElementById('txtDBeta').innerText = betaVal + '°';
+    document.getElementById('txtDDepth').innerText = depthVal + 'px';
+    document.getElementById('txtDInner').innerText = innerVal + '%';
+
+    if (activeDonutChart) activeDonutChart.destroy();
+
+    activeDonutChart = Highcharts.chart('donut-container', {
+        chart: { type: 'pie', options3d: { enabled: true, alpha: alphaVal, beta: betaVal }, backgroundColor: 'transparent' },
+        title: {
+            text: document.getElementById('showTitle').checked ? document.getElementById('chartTitleInput').value + (document.getElementById('showN').checked && N > 0 ? ` (N=${N})` : '') : null,
+            style: { fontSize: document.getElementById('dTitleSize').value + 'px', fontWeight: 'bold', color: document.getElementById('dTitleColor').value, fontFamily: 'sans-serif' }
+        },
+        subtitle: {
+            text: document.getElementById('showTitle').checked && pName ? `Analysis of ${pName} (${pUnit})` : null,
+            style: { color: '#64748b' }
+        },
+        tooltip: { pointFormat: 'Percentage: <b>{point.y:.2f}%</b><br/>Samples: <b>{point.count}</b>' },
+        plotOptions: {
+            pie: {
+                innerSize: innerVal + '%', depth: depthVal,
+                dataLabels: {
+                    enabled: true,
+                    format: document.getElementById('showSmallN').checked ? '<b>{point.name}</b><br>{point.y:.1f}% (n={point.count})' : '<b>{point.name}</b><br>{point.y:.1f}%',
+                    style: { fontSize: document.getElementById('dLabelSize').value + 'px', fontWeight: 'bold', color: document.getElementById('dLabelColor').value, textOutline: 'none' },
+                    connectorWidth: 1.5, distance: 35
+                },
+                showInLegend: document.getElementById('showLegend').checked
+            }
+        },
+        legend: { enabled: document.getElementById('showLegend').checked },
+        series: [{ name: 'Compliance', data: data }],
+        credits: { enabled: false }, exporting: { enabled: false }
     });
 }
 
-function downloadAsJPEG() {
-    if (!activeChart) return;
+// ====================================================
+// ADVANCED CYLINDER CHART LOGIC (Grapher Style)
+// ====================================================
 
+function addCylinderRow() {
+    const container = document.getElementById('cylinder-data-container');
+    const row = document.createElement('div');
+    row.className = 'flex gap-2 items-end cylinder-row';
+    row.innerHTML = `
+        <div class="flex-1">
+            <input type="text" value="New" oninput="updateCylinderChart()" class="cyl-label-input w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs outline-none">
+        </div>
+        <div class="flex-1">
+            <input type="number" value="5.00" step="0.01" oninput="updateCylinderChart()" class="cyl-val-input w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs outline-none font-bold text-right">
+        </div>
+        <div class="w-[34px]">
+            <input type="color" value="#8b5cf6" oninput="updateCylinderChart()" class="cyl-color-input h-[30px] w-full cursor-pointer">
+        </div>
+        <button onclick="removeCylinderRow(this)" class="bg-rose-50 text-rose-500 rounded border border-rose-100 hover:bg-rose-100 transition-colors h-[30px] w-[30px] flex items-center justify-center font-black" title="Remove">✕</button>
+    `;
+    container.appendChild(row);
+    updateCylinderChart();
+}
+
+function removeCylinderRow(btn) {
+    const container = document.getElementById('cylinder-data-container');
+    if (container.children.length > 1) { 
+        btn.closest('.cylinder-row').remove();
+        updateCylinderChart();
+    }
+}
+
+// Helper to generate a realistic 3D cylinder gradient for ANY hex color
+function getGlossyColor(hexCode) {
+    return {
+        linearGradient: { x1: 0, x2: 1, y1: 0, y2: 0 },
+        stops: [
+            [0, Highcharts.color(hexCode).brighten(-0.25).get()],   
+            [0.25, Highcharts.color(hexCode).brighten(0.5).get()],  
+            [0.55, hexCode],                                        
+            [0.85, Highcharts.color(hexCode).brighten(-0.15).get()],
+            [1, Highcharts.color(hexCode).brighten(-0.4).get()]     
+        ]
+    };
+}
+
+function updateCylinderChart() {
+    // 1. Chart Titles
+    const t1 = document.getElementById('cylTitle1').value;
+    const t2 = document.getElementById('cylTitle2').value;
+    const t3 = document.getElementById('cylTitle3').value;
+    const textColor = document.getElementById('cylTextColor').value;
+    const titleSize = document.getElementById('cylTitleSize').value + 'px';
+
+    // 2. Data & Colors
+    const rows = document.querySelectorAll('.cylinder-row');
+    const categories = [];
+    const seriesData = [];
+
+    rows.forEach(row => {
+        const label = row.querySelector('.cyl-label-input').value;
+        const val = parseFloat(row.querySelector('.cyl-val-input').value) || 0;
+        const hexColor = row.querySelector('.cyl-color-input').value;
+        
+        categories.push(label);
+        seriesData.push({
+            name: label,
+            y: val,
+            color: getGlossyColor(hexColor) // Apply individual glossy gradient
+        });
+    });
+
+    // 3. Y-Axis Properties
+    const yAxisTitle = document.getElementById('yAxisTitle').value;
+    const yAxisTitleColor = document.getElementById('yAxisTitleColor').value;
+    const yAxisTitleSize = document.getElementById('yAxisTitleSize').value + 'px';
+    const yMin = document.getElementById('yMin').value;
+    const yMax = document.getElementById('yMax').value;
+    const yTick = document.getElementById('yTick').value;
+    const showYLabels = document.getElementById('showYLabels').checked;
+    const yLabelColor = document.getElementById('yLabelColor').value;
+    const yLabelSize = document.getElementById('yLabelSize').value + 'px';
+    const yGridWidth = parseInt(document.getElementById('yGridWidth').value);
+    const yGridColor = document.getElementById('yGridColor').value;
+
+    // 4. X-Axis Properties
+    const showXLabels = document.getElementById('showXLabels').checked;
+    const xAxisLineColor = document.getElementById('xAxisLineColor').value;
+    const xAxisLineWidth = parseInt(document.getElementById('xAxisLineWidth').value);
+    const xAxisLabelColor = document.getElementById('xAxisLabelColor').value;
+    const xAxisLabelSize = document.getElementById('xAxisLabelSize').value + 'px';
+
+    // 5. Data Labels & Sizing
+    const showBarValue = document.getElementById('showBarValue').checked;
+    const lblPrefix = document.getElementById('lblPrefix').value;
+    const lblSuffix = document.getElementById('lblSuffix').value;
+    const lblOffset = parseInt(document.getElementById('lblOffset').value);
+    const lblColor = document.getElementById('lblColor').value;
+    const lblSize = document.getElementById('lblSize').value + 'px';
+    
+    // 5.1 Parameter Name on Bar
+    const showBarName = document.getElementById('showBarName').checked;
+    const barNameColor = document.getElementById('barNameColor').value;
+    const barNameSize = document.getElementById('barNameSize').value + 'px';
+    const barNameRot = parseInt(document.getElementById('barNameRot').value);
+    document.getElementById('txtBarNameRot').innerText = barNameRot + '°';
+
+    const colWidth = parseInt(document.getElementById('optCWidth').value);
+    const colSpread = parseInt(document.getElementById('optCSpread').value);
+
+    document.getElementById('txtCWidth').innerText = colWidth + 'px';
+    document.getElementById('txtCSpread').innerText = colSpread;
+    const calculatedMargin = Math.max(10, 300 - colSpread); // Manipulates container width dynamically
+
+    // 6. 3D Environment & Frame
+    const fBotSize = parseInt(document.getElementById('frameBotSize').value);
+    const fBotColor = document.getElementById('frameBotColor').value;
+    const fBackSize = parseInt(document.getElementById('frameBackSize').value);
+    const fBackColor = document.getElementById('frameBackColor').value;
+    const fSideSize = parseInt(document.getElementById('frameSideSize').value);
+    const fSideColor = document.getElementById('frameSideColor').value;
+
+    const alpha = parseInt(document.getElementById('optCAlpha').value);
+    const beta = parseInt(document.getElementById('optCBeta').value);
+    const depth = parseInt(document.getElementById('optCDepth').value);
+
+    document.getElementById('txtCAlpha').innerText = alpha + '°';
+    document.getElementById('txtCBeta').innerText = beta + '°';
+    document.getElementById('txtCDepth').innerText = depth + 'px';
+
+    if (activeCylinderChart) activeCylinderChart.destroy();
+
+    activeCylinderChart = Highcharts.chart('cylinder-container', {
+        chart: {
+            type: 'cylinder',
+            backgroundColor: 'transparent',
+            margin: [100, calculatedMargin, 80, calculatedMargin], // Responsive margins
+            options3d: {
+                enabled: true,
+                alpha: alpha,
+                beta: beta,
+                depth: depth, 
+                viewDistance: 25,
+                frame: {
+                    bottom: { size: fBotSize, color: fBotColor },
+                    back: { size: fBackSize, color: fBackColor },
+                    side: { size: fSideSize, color: fSideColor }
+                }
+            }
+        },
+        title: {
+            text: `<div style="text-align: center; line-height: 1.4;">
+                      <span style="font-size: ${titleSize}; color: ${textColor}; font-weight: bold; font-family: Arial, sans-serif;">${t1}</span><br/>
+                      <span style="font-size: ${titleSize}; color: ${textColor}; font-weight: bold; font-family: Arial, sans-serif;">${t2}</span><br/>
+                      <span style="font-size: ${titleSize}; color: ${textColor}; font-weight: bold; font-family: Arial, sans-serif;">${t3}</span>
+                   </div>`,
+            useHTML: true,
+            y: 20
+        },
+        xAxis: {
+            categories: categories,
+            labels: {
+                enabled: showXLabels,
+                style: {
+                    fontSize: xAxisLabelSize,
+                    fontWeight: 'bold',
+                    color: xAxisLabelColor
+                },
+                y: 30
+            },
+            title: { text: null },
+            gridLineWidth: 0, // Vertical grids typically off for bar charts
+            lineColor: xAxisLineColor,
+            lineWidth: xAxisLineWidth,
+            tickWidth: xAxisLineWidth,
+            tickColor: xAxisLineColor,
+            offset: 5
+        },
+        yAxis: {
+            title: { 
+                text: yAxisTitle,
+                style: { color: yAxisTitleColor, fontSize: yAxisTitleSize, fontWeight: 'bold' },
+                margin: 20
+            },
+            labels: { 
+                enabled: showYLabels,
+                style: { color: yLabelColor, fontSize: yLabelSize, fontWeight: 'bold' }
+            },
+            gridLineWidth: yGridWidth,
+            gridLineColor: yGridColor,
+            min: yMin !== '' ? parseFloat(yMin) : undefined,
+            max: yMax !== '' ? parseFloat(yMax) : undefined,
+            tickInterval: yTick !== '' ? parseFloat(yTick) : undefined
+        },
+        plotOptions: {
+            cylinder: {
+                depth: depth,
+                pointWidth: colWidth,
+                colorByPoint: true, // Crucial: Allows individual colors mapped in seriesData
+                dataLabels: [
+                    {
+                        enabled: showBarValue,
+                        format: `${lblPrefix}{y:.2f}${lblSuffix}`,
+                        style: {
+                            color: lblColor,
+                            fontSize: lblSize,
+                            fontWeight: 'bold',
+                            textOutline: 'none'
+                        },
+                        y: lblOffset,
+                        verticalAlign: 'bottom'
+                    },
+                    {
+                        enabled: showBarName,
+                        format: '{point.name}',
+                        inside: true, // Puts it inside the column
+                        rotation: barNameRot,
+                        align: 'center',
+                        verticalAlign: 'middle',
+                        style: {
+                            color: barNameColor,
+                            fontSize: barNameSize,
+                            fontWeight: 'bold',
+                            textOutline: 'none'
+                        }
+                    }
+                ]
+            }
+        },
+        series: [{
+            name: 'Value',
+            data: seriesData,
+            showInLegend: false
+        }],
+        credits: { enabled: false },
+        exporting: { enabled: false }
+    });
+}
+
+// ====================================================
+// EXPORT & INIT
+// ====================================================
+function toggleExportBg() {
+    const isTransparent = document.getElementById('exportTransparent').checked;
+    const colorInput = document.getElementById('exportBgColor');
+    const wrapper = document.getElementById('bgColorWrapper');
+    
+    colorInput.disabled = isTransparent;
+    wrapper.style.opacity = isTransparent ? '0.4' : '1';
+    wrapper.style.pointerEvents = isTransparent ? 'none' : 'auto';
+}
+
+function downloadChart() {
+    const targetChart = currentTab === 'donut' ? activeDonutChart : activeCylinderChart;
+    if (!targetChart) return;
+    
     const btn = document.getElementById('downloadBtn');
     const originalText = btn.innerHTML;
     btn.innerHTML = '⌛ Generating...';
     btn.disabled = true;
 
-    const bgColor = document.getElementById('exportBgColor').value;
-    const titleColor = document.getElementById('titleColor').value;
-    const labelColor = document.getElementById('labelColor').value;
+    const isTransparent = document.getElementById('exportTransparent').checked;
+    const exportFormat = isTransparent ? 'image/png' : 'image/jpeg';
+    const bgColor = isTransparent ? 'rgba(0,0,0,0)' : document.getElementById('exportBgColor').value;
 
-    // We use exportChart with an explicit chartOptions block.
-    // This forces Highcharts to create a temporary instance for rendering
-    // with these specific hardcoded background values.
-    activeChart.exportChart({
-        type: 'image/jpeg',
-        filename: 'groundwater_analysis_report',
-        sourceWidth: 1200,
-        sourceHeight: 800,
-        scale: 2 // High Quality
+    targetChart.exportChart({
+        type: exportFormat,
+        filename: currentTab === 'donut' ? 'groundwater_donut' : 'groundwater_grapher_cylinder',
+        sourceWidth: 1400, // Higher res export for Grapher style
+        sourceHeight: 900,
+        scale: 2
     }, {
-        chart: {
-            backgroundColor: bgColor,
-            plotBackgroundColor: bgColor,
-            style: {
-                fontFamily: document.getElementById('fontFamily').value
-            }
-        },
-        title: {
-            style: { color: titleColor }
-        },
-        legend: {
-            itemStyle: { color: labelColor }
-        },
-        plotOptions: {
-            pie: {
-                dataLabels: {
-                    style: { color: labelColor }
-                }
-            }
-        }
+        chart: { backgroundColor: bgColor }
     });
 
     setTimeout(() => {
@@ -549,10 +969,31 @@ function downloadAsJPEG() {
     }, 2000);
 }
 
-window.onload = () => {
-    document.getElementById('btnBold').classList.add('bg-slate-900', 'text-white');
-    updateChartFromUI();
-};
+// Initialization Loop
+let attempts = 0;
+const initChart = setInterval(() => {
+    if (typeof Highcharts !== 'undefined' && Highcharts.chart && Highcharts.seriesTypes.cylinder) {
+        clearInterval(initChart);
+        updateDonutChart();
+        updateCylinderChart();
+        // Force reflow after a slight delay to ensure UI mounts correctly
+        setTimeout(() => {
+            if(activeDonutChart) activeDonutChart.reflow();
+            if(activeCylinderChart) activeCylinderChart.reflow();
+        }, 300);
+    }
+    
+    attempts++;
+    if (attempts > 200) { 
+        clearInterval(initChart);
+        const loader = document.getElementById('loading-text');
+        if (loader) {
+            loader.innerHTML = '⚠️ Still failing to load Highcharts.<br><span class="text-xs font-normal">Check ad-blockers or try incognito.</span>';
+            loader.classList.remove('text-slate-400');
+            loader.classList.add('text-rose-500', 'text-center');
+        }
+    }
+}, 50);
 </script>
 </body>
 </html>

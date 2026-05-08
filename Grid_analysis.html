@@ -1,16 +1,17 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Groundwater Grid Analyst Pro</title>
+    <title>Groundwater Grid Analyst Pro - Advanced</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
@@ -18,7 +19,7 @@
         #map { height: 100vh; width: 100vw; z-index: 1; background: #0f172a; }
         
         .floating-sidebar {
-            position: absolute; top: 20px; left: 20px; width: 400px;
+            position: absolute; top: 20px; left: 20px; width: 440px;
             max-height: calc(100vh - 40px); z-index: 1000;
             background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px);
             border-radius: 1.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
@@ -29,6 +30,7 @@
             position: absolute; bottom: 30px; right: 30px; z-index: 1000;
             background: white; padding: 12px; border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid #e2e8f0;
+            min-width: 180px;
         }
 
         .north-arrow-container {
@@ -40,20 +42,20 @@
         }
 
         .analysis-label {
-            background: rgba(255, 255, 255, 0.85); 
+            background: rgba(255, 255, 255, 0.95); 
             backdrop-filter: blur(4px);
-            color: #1e293b; 
-            padding: 4px 8px;
-            border-radius: 6px; 
-            font-size: 10px; 
-            text-align: left; 
-            font-weight: 800;
+            color: #0f172a; 
+            padding: 6px 10px;
+            border-radius: 8px; 
+            font-size: 9px; 
+            text-align: center; 
+            font-weight: 700;
             pointer-events: none; 
-            border: 1px solid rgba(0,0,0,0.1);
+            border: 1px solid rgba(79, 70, 229, 0.3);
             white-space: nowrap; 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            line-height: 1.4;
             transform: translate(-50%, -50%);
-            line-height: 1.2; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
@@ -71,6 +73,18 @@
             display: none; align-items: center; gap: 10px;
             border: 1px solid #4f46e5;
         }
+
+        .range-item:hover .remove-range-btn { opacity: 1; }
+
+        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 0; overflow: hidden; }
+        .leaflet-popup-content { margin: 0; width: 260px !important; }
+        .stats-popup-header { background: #1e293b; color: white; padding: 10px 14px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stats-popup-body { padding: 12px; background: white; }
+        .stat-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+        .stat-row:last-child { border-bottom: none; }
+        
+        .leaflet-control-layers { border-radius: 12px !important; border: 1px solid #e2e8f0 !important; box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important; padding: 5px !important; }
+        .leaflet-control-layers-list { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; font-weight: 600; color: #1e293b; }
     </style>
 </head>
 <body id="mainBody">
@@ -98,156 +112,326 @@
             </div>
             <div>
                 <h1 class="text-sm font-extrabold text-slate-800 uppercase tracking-tight">Grid Analyst Pro</h1>
-                <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Hydrological Analysis System</p>
+                <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Advanced Spatial Hydrology</p>
             </div>
         </div>
 
         <div class="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
-            <label class="w-full cursor-pointer bg-slate-900 text-white px-4 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-black transition-all group">
-                <i data-lucide="upload-cloud" class="w-4 h-4 group-hover:-translate-y-1 transition-transform"></i> 
-                Upload Well Data (.xlsx)
-                <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls">
-            </label>
-
-            <div class="grid grid-cols-2 gap-2">
-                <div class="bg-indigo-50 border-2 border-indigo-200 p-3 rounded-2xl col-span-2">
-                    <button id="drawBtn" onclick="toggleDrawingMode()" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all">
-                        <i data-lucide="map-pin" class="w-4 h-4"></i> Define Boundary
-                    </button>
+            <!-- STEP 1: DATA PREP -->
+            <div class="space-y-3">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Step 1: Data Preparation</label>
+                
+                <div class="flex gap-2">
+                    <label class="flex-1 cursor-pointer bg-slate-900 text-white px-3 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-black transition-all group">
+                        <i data-lucide="file-up" class="w-4 h-4 group-hover:-translate-y-1 transition-transform"></i> 
+                        Excel
+                        <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls">
+                    </label>
+                    <label class="flex-1 cursor-pointer bg-slate-700 text-white px-3 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-slate-800 transition-all group" title="Upload shapefile (.zip/.geojson) to clip grids">
+                        <i data-lucide="map" class="w-4 h-4 group-hover:-translate-y-1 transition-transform"></i> 
+                        Boundary
+                        <input type="file" id="shapeInput" class="hidden" accept=".zip,.geojson,.json,.shp,.shx,.dbf,.prj" multiple>
+                    </label>
                 </div>
-                <button onclick="toggleMeasureMode()" class="bg-slate-100 border border-slate-300 text-slate-700 py-2.5 rounded-xl font-bold text-[10px] uppercase flex items-center justify-center gap-2 hover:bg-slate-200 transition-all">
-                    <i data-lucide="ruler" class="w-4 h-4"></i> Measure
-                </button>
-                <button onclick="clearMeasure()" class="bg-slate-100 border border-slate-300 text-slate-700 py-2.5 rounded-xl font-bold text-[10px] uppercase flex items-center justify-center gap-2 hover:bg-slate-200 transition-all">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i> Clear
-                </button>
+
+                <div id="boundaryListContainer" class="space-y-1.5 mt-2 empty:hidden"></div>
             </div>
 
-            <div class="bg-slate-800 text-white p-4 rounded-2xl shadow-lg space-y-3">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="maximize" class="w-4 h-4 text-indigo-400"></i>
-                        <span class="text-[10px] font-black uppercase tracking-wider">Analysis Area</span>
+            <!-- STEP 2: MAP COLUMNS -->
+            <div id="mappingSection" class="hidden bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3 shadow-inner">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Step 2: Map Columns</label>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-[9px] font-bold text-slate-500 uppercase">Latitude</label>
+                        <select id="latMap" onchange="updateLatLonMap()" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-bold outline-none shadow-sm"></select>
                     </div>
-                    <div id="mainAreaDisplay" class="bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded text-[10px] font-black border border-indigo-500/30">
+                    <div class="space-y-1">
+                        <label class="text-[9px] font-bold text-slate-500 uppercase">Longitude</label>
+                        <select id="lonMap" onchange="updateLatLonMap()" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-bold outline-none shadow-sm"></select>
+                    </div>
+                </div>
+                <div class="space-y-1 border-t border-slate-200 pt-2 mt-2">
+                    <label class="text-[9px] font-bold text-slate-500 uppercase">Data Column for <span id="mapParamName" class="text-indigo-600 font-black">pH</span></label>
+                    <select id="valMap" onchange="updateValMap()" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-bold outline-none shadow-sm"></select>
+                </div>
+            </div>
+
+            <!-- STEP 3: GRID AREA -->
+            <div class="bg-indigo-600 text-white p-4 rounded-2xl shadow-lg space-y-3">
+                <div class="flex items-center justify-between">
+                    <label class="text-[10px] font-black text-white/70 uppercase tracking-widest block">Step 3: Define Region</label>
+                    <div id="mainAreaDisplay" class="bg-indigo-900/50 text-indigo-100 px-2 py-0.5 rounded text-[10px] font-black border border-indigo-400/30">
                         0 sq.km
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="space-y-1">
-                        <label class="text-[9px] font-bold text-slate-400 uppercase">Min Lng</label>
-                        <input id="minLng" type="number" step="0.0001" class="w-full bg-slate-700 rounded px-2 py-1.5 text-[11px] font-bold outline-none" onchange="runAnalysis()">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[9px] font-bold text-slate-400 uppercase">Max Lng</label>
-                        <input id="maxLng" type="number" step="0.0001" class="w-full bg-slate-700 rounded px-2 py-1.5 text-[11px] font-bold outline-none" onchange="runAnalysis()">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[9px] font-bold text-slate-400 uppercase">Min Lat</label>
-                        <input id="minLat" type="number" step="0.0001" class="w-full bg-slate-700 rounded px-2 py-1.5 text-[11px] font-bold outline-none" onchange="runAnalysis()">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[9px] font-bold text-slate-400 uppercase">Max Lat</label>
-                        <input id="maxLat" type="number" step="0.0001" class="w-full bg-slate-700 rounded px-2 py-1.5 text-[11px] font-bold outline-none" onchange="runAnalysis()">
-                    </div>
+
+                <div class="flex gap-2">
+                    <button id="drawBtn" onclick="toggleDrawingMode()" class="flex-1 bg-white text-indigo-600 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-50 transition-all">
+                        <i data-lucide="map-pin" class="w-4 h-4"></i> Pick Area
+                    </button>
+                    <button onclick="toggleMeasureMode()" class="bg-indigo-500 text-white px-3 py-2 rounded-xl font-bold text-[10px] uppercase flex items-center justify-center hover:bg-indigo-400 transition-all" title="Measure Tool">
+                        <i data-lucide="ruler" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="clearMeasure()" class="bg-indigo-500 text-white px-3 py-2 rounded-xl font-bold text-[10px] uppercase flex items-center justify-center hover:bg-indigo-400 transition-all" title="Clear Measurement">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-[10px]">
+                    <div class="flex items-center bg-white/10 rounded px-2 py-1"><span class="w-10 font-bold opacity-70">Lat 1</span><input id="minLat" type="number" step="0.0001" class="w-full bg-transparent outline-none font-bold text-right" onchange="runAnalysis()"></div>
+                    <div class="flex items-center bg-white/10 rounded px-2 py-1"><span class="w-10 font-bold opacity-70">Lat 2</span><input id="maxLat" type="number" step="0.0001" class="w-full bg-transparent outline-none font-bold text-right" onchange="runAnalysis()"></div>
+                    <div class="flex items-center bg-white/10 rounded px-2 py-1"><span class="w-10 font-bold opacity-70">Lng 1</span><input id="minLng" type="number" step="0.0001" class="w-full bg-transparent outline-none font-bold text-right" onchange="runAnalysis()"></div>
+                    <div class="flex items-center bg-white/10 rounded px-2 py-1"><span class="w-10 font-bold opacity-70">Lng 2</span><input id="maxLng" type="number" step="0.0001" class="w-full bg-transparent outline-none font-bold text-right" onchange="runAnalysis()"></div>
                 </div>
             </div>
 
-            <!-- Param and Unit -->
-            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <label class="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-wider">Target Parameter</label>
-                <div class="flex gap-2 mb-3">
-                    <select id="activeParam" onchange="syncLimits(); runAnalysis()" class="flex-1 bg-white border rounded-lg px-2 py-2 text-xs font-bold outline-none shadow-sm"></select>
-                    <input id="activeUnit" type="text" placeholder="Unit" class="w-20 bg-white border rounded-lg px-2 py-2 text-xs font-bold outline-none shadow-sm" onchange="runAnalysis()">
-                </div>
+            <!-- STEP 4: GRID CONFIG -->
+            <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Step 4: Scale & Config</label>
                 
-                <!-- Range Editor -->
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center">
-                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Defined Ranges</label>
-                        <button onclick="addRangeRow()" class="p-1 bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200 transition-colors">
-                            <i data-lucide="plus" class="w-3 h-3"></i>
-                        </button>
+                <div class="grid grid-cols-2 gap-3 pb-2">
+                    <div class="space-y-1">
+                        <label class="text-[9px] font-bold text-slate-500 uppercase">Target Parameter</label>
+                        <select id="activeParam" onchange="syncLimits(); runAnalysis()" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none shadow-sm"></select>
                     </div>
-                    <div id="rangeEditor" class="space-y-1"></div>
+                    <div class="space-y-1">
+                         <label class="text-[9px] font-bold text-slate-500 uppercase">Cell Size (sq. km)</label>
+                         <input id="gridKm" type="number" value="20" min="1" max="5000" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none shadow-sm" onchange="runAnalysis()">
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-200 space-y-3">
+                    <div class="flex flex-wrap gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <input type="checkbox" id="hideEmpty" onchange="runAnalysis()" class="w-4 h-4 accent-indigo-600 rounded">
+                            <span class="text-[10px] font-bold text-slate-600 uppercase group-hover:text-indigo-600 transition-colors">Hide Empty Cells</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer group" title="Hide locations missing data for this parameter">
+                            <input type="checkbox" id="hideMissingData" onchange="plotAllPoints()" checked class="w-4 h-4 accent-indigo-600 rounded">
+                            <span class="text-[10px] font-bold text-slate-600 uppercase group-hover:text-indigo-600 transition-colors">Hide Missing Data</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer group" title="Crop grids so they do not go outside the uploaded shapefile boundary">
+                            <input type="checkbox" id="clipToBoundary" onchange="runAnalysis()" checked class="w-4 h-4 accent-indigo-600 rounded">
+                            <span class="text-[10px] font-bold text-slate-600 uppercase group-hover:text-indigo-600 transition-colors">Clip to Boundary</span>
+                        </label>
+                    </div>
+
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Cell Stats to Display</label>
+                            <button onclick="document.getElementById('labelFormatPanel').classList.toggle('hidden')" class="text-[8px] font-black text-indigo-500 hover:text-indigo-700 hover:underline flex items-center gap-1 transition-colors">
+                                <i data-lucide="palette" class="w-3 h-3"></i> Format
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-y-2 gap-x-1">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="showLabelId" onchange="runAnalysis()" checked class="w-3.5 h-3.5 accent-indigo-600 rounded">
+                                <span class="text-[9px] font-bold text-slate-500 uppercase">Grid ID</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="showLabelAvg" onchange="runAnalysis()" checked class="w-3.5 h-3.5 accent-indigo-600 rounded">
+                                <span class="text-[9px] font-bold text-slate-500 uppercase">Avg Value</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="showLabelCount" onchange="runAnalysis()" checked class="w-3.5 h-3.5 accent-indigo-600 rounded">
+                                <span class="text-[9px] font-bold text-slate-500 uppercase">Samples</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="showLabelArea" onchange="runAnalysis()" checked class="w-3.5 h-3.5 accent-indigo-600 rounded">
+                                <span class="text-[9px] font-bold text-slate-500 uppercase">Area (km²)</span>
+                            </label>
+                        </div>
+                        
+                        <!-- Label Formatting Panel -->
+                        <div id="labelFormatPanel" class="hidden mt-2 pt-2 border-t border-slate-100 bg-slate-50 p-2 rounded">
+                            <div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">
+                                <span>Label Type</span><span>Color</span><span>Size (px)</span>
+                            </div>
+                            <div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center text-[9px] font-bold text-slate-600 mb-1">
+                                <span>Grid ID</span>
+                                <input type="color" id="fmtColorId" value="#4f46e5" onchange="updateLabelFormat()" class="w-4 h-4 rounded cursor-pointer border-none bg-transparent p-0">
+                                <input type="number" id="fmtSizeId" value="7" min="4" max="24" onchange="updateLabelFormat()" class="w-12 border border-slate-200 rounded px-1 py-0.5 text-center bg-white">
+                            </div>
+                            <div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center text-[9px] font-bold text-slate-600 mb-1">
+                                <span>Avg Value</span>
+                                <input type="color" id="fmtColorAvg" value="#0f172a" onchange="updateLabelFormat()" class="w-4 h-4 rounded cursor-pointer border-none bg-transparent p-0">
+                                <input type="number" id="fmtSizeAvg" value="9" min="4" max="24" onchange="updateLabelFormat()" class="w-12 border border-slate-200 rounded px-1 py-0.5 text-center bg-white">
+                            </div>
+                            <div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center text-[9px] font-bold text-slate-600 mb-1">
+                                <span>Samples</span>
+                                <input type="color" id="fmtColorCount" value="#0f172a" onchange="updateLabelFormat()" class="w-4 h-4 rounded cursor-pointer border-none bg-transparent p-0">
+                                <input type="number" id="fmtSizeCount" value="8" min="4" max="24" onchange="updateLabelFormat()" class="w-12 border border-slate-200 rounded px-1 py-0.5 text-center bg-white">
+                            </div>
+                            <div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center text-[9px] font-bold text-slate-600">
+                                <span>Area</span>
+                                <input type="color" id="fmtColorArea" value="#64748b" onchange="updateLabelFormat()" class="w-4 h-4 rounded cursor-pointer border-none bg-transparent p-0">
+                                <input type="number" id="fmtSizeArea" value="8" min="4" max="24" onchange="updateLabelFormat()" class="w-12 border border-slate-200 rounded px-1 py-0.5 text-center bg-white">
+                            </div>
+                            
+                            <div class="border-t border-slate-200 mt-2 pt-2">
+                                <div class="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">
+                                    <span>Grid Borders</span>
+                                    <span class="text-center" title="Match Fill Color">Match Fill</span>
+                                    <span>Color</span>
+                                    <span>Thick</span>
+                                </div>
+                                <div class="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-[9px] font-bold text-slate-600">
+                                    <span>Border Line</span>
+                                    <input type="checkbox" id="fmtMatchFill" checked onchange="updateLabelFormat()" class="w-3.5 h-3.5 accent-indigo-600 rounded mx-auto cursor-pointer" title="Match Fill Color">
+                                    <input type="color" id="fmtColorSectorBorder" value="#ffffff" onchange="updateLabelFormat()" class="w-4 h-4 rounded cursor-pointer border-none bg-transparent p-0 mx-auto" title="Border Color">
+                                    <input type="number" id="fmtWeightSectorBorder" value="1.5" step="0.5" min="0" max="10" onchange="updateLabelFormat()" class="w-12 border border-slate-200 rounded px-1 py-0.5 text-center bg-white" title="Border Thickness">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-200">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-[9px] font-bold text-slate-500 uppercase">Range Thresholds & Units</label>
+                        <button onclick="addNewRange()" class="text-[9px] font-black text-indigo-600 uppercase hover:underline">Add Tier</button>
+                    </div>
+                    <div id="rangeEditor" class="space-y-1.5"></div>
                 </div>
             </div>
 
-            <div class="bg-indigo-600 text-white p-4 rounded-2xl shadow-lg">
-                <div class="flex items-center gap-2 mb-3">
-                    <i data-lucide="grid-2x2" class="w-4 h-4"></i>
-                    <span class="text-[10px] font-black uppercase tracking-wider">Grid Scale</span>
-                </div>
-                <div class="flex items-center justify-between bg-white/10 p-2 rounded-lg">
-                    <label class="text-[11px] font-bold">Cell Size (sq. km)</label>
-                    <input id="gridKm" type="number" value="20" min="1" max="5000" class="w-16 bg-white text-indigo-900 rounded px-2 py-1 text-xs font-black text-center outline-none border-none" onchange="runAnalysis()">
-                </div>
-            </div>
-
-            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                <label class="text-[10px] font-black text-slate-400 uppercase block tracking-wider">Visual Preferences</label>
-                <div class="flex items-center justify-between">
-                    <span class="text-[11px] font-bold text-slate-600">Show Well Points</span>
-                    <input type="checkbox" id="togglePoints" checked onchange="runAnalysis()" class="w-4 h-4 accent-indigo-600">
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-[11px] font-bold text-slate-600">Show Subgrid Stats</span>
-                    <input type="checkbox" id="toggleLabels" checked onchange="runAnalysis()" class="w-4 h-4 accent-indigo-600">
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-[11px] font-bold text-indigo-600">Hide Empty Cells</span>
-                    <input type="checkbox" id="hideEmpty" onchange="runAnalysis()" class="w-4 h-4 accent-indigo-600">
-                </div>
-            </div>
-
-            <div class="space-y-3 pb-4">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Filters</h3>
-                    <button onclick="clearAllFilters()" class="text-[9px] font-bold text-indigo-500 uppercase">Clear All</button>
-                </div>
-                <div id="filterList" class="space-y-2">
-                    <div class="text-[10px] text-slate-400 italic text-center py-4 bg-slate-50 rounded-xl border border-dashed">Upload data to see filters</div>
-                </div>
-            </div>
+            <!-- FILTERS -->
+            <div id="filterList" class="space-y-2"></div>
         </div>
 
-        <div class="mt-4 flex flex-col gap-2">
-            <button id="exportExcelBtn" onclick="exportAnalysisReports()" class="hidden w-full bg-emerald-600 text-white py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-700 transition-all active:scale-[0.98]">
-                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Download Dual Reports
+        <div class="mt-4">
+            <button id="exportBtn" onclick="exportAnalysisReports()" class="hidden w-full bg-emerald-600 text-white py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-700 transition-all active:scale-[0.98]">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Export Detailed Reports
             </button>
         </div>
     </div>
 
     <script>
         const PARAM_CONFIG = {
-            'EC': { b1: 750, b2: 3000, unit: 'µS/cm', name: 'Electrical Conductivity' },
-            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate' },
-            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride' },
-            'TH': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Hardness' },
-            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride' },
-            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium' },
-            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium' },
-            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate' },
-            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron' },
-            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese' },
-            'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic' },
-            'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium' },
-            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc' },
-            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper' },
-            'Pb': { b1: 10, b2: 10, unit: 'ppb', name: 'Lead' },
-            'Cd': { b1: 3, b2: 3, unit: 'ppb', name: 'Cadmium' },
-            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium' },
-            'Hg': { b1: 1, b2: 1, unit: 'ppb', name: 'Mercury' },
-            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel' },
-            'Se': { b1: 10, b2: 10, unit: 'ppb', name: 'Selenium' },
-            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH Level' }
+            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH Level', keywords: ['ph', 'ph level', 'hydrogen'] },
+            'TDS': { b1: 500, b2: 2000, unit: 'mg/l', name: 'Total Dissolved Solids', keywords: ['tds', 'total dissolved solids'] },
+            'Turbidity': { b1: 1, b2: 5, unit: 'NTU', name: 'Turbidity', keywords: ['turbidity'] },
+            'Alkalinity': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Alkalinity', keywords: ['alkalinity', 'total alkalinity'] },
+            'TH': { b1: 200, b2: 600, unit: 'mg/l as CaCO3', name: 'Total Hardness', keywords: ['th', 'total hardness', 'hardness'] },
+            'EC': { b1: 750, b2: 3000, unit: 'µS/cm at 25°C  ', name: 'Electrical Conductivity', keywords: ['ec', 'cond', 'conductivity', 'electrical conductivity'] },
+            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride', keywords: ['cl', 'chloride'] },
+            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate', keywords: ['no3', 'nitrate'] },
+            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride', keywords: ['f', 'fluoride'] },
+            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron', keywords: ['fe', 'iron', 'total iron'] },
+            'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic', keywords: ['as', 'arsenic'] },
+            'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium', keywords: ['u', 'uranium'] },
+            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc', keywords: ['zn', 'zinc'] },
+            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper', keywords: ['cu', 'copper'] },
+            'Pb': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Lead', keywords: ['Pb', 'lead'] },
+            'Cd': { b1: 0.003, b2: 0.003, unit: 'mg/L', name: 'Cadmium', keywords: ['cd', 'cadmium'] },
+            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium', keywords: ['cr', 'chromium'] },
+            'Hg': { b1: 0.001, b2: 0.001, unit: 'mg/L', name: 'Mercury', keywords: ['hg', 'mercury'] },
+            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel', keywords: ['ni', 'nickel'] },
+            'Se': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Selenium', keywords: ['se', 'selenium'] },
+            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium', keywords: ['ca', 'calcium'] },
+            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium', keywords: ['mg', 'magnesium'] },
+            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate', keywords: ['so4', 'sulphate', 'sulfate'] },
+            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese', keywords: ['Mn', 'Manganese'] },
+            'Al': { b1: 0.03, b2: 0.2, unit: 'mg/l', name: 'Alluminium', keywords: ['Al', 'Alluminium'] },
+            'Ba': { b1: 0.7, b2: 0.7, unit: 'mg/l', name: 'Barium', keywords: ['Ba', 'Barium'] },
+            'B': { b1: 0.5, b2: 2.4, unit: 'mg/l', name: 'Boran', keywords: ['B', 'Boran'] },
         };
 
-
         let map, rawData = [], filters = {};
+        let filterMeta = [];
         let layers = { polys: null, labels: null, mainBox: null, pickers: null, wells: null, measure: null };
-        let customRanges = [], analysisResults = [];
+        let customRanges = [], activeGridData = [];
+        let availableColumns = [];
+        let columnMap = { lat: '', lon: '', params: {} };
         let isDrawing = false, isMeasuring = false, pickedPoints = [], measurePoints = [];
+        
+        let labelFormat = {
+            id: { color: '#4f46e5', size: 7 },
+            avg: { color: '#0f172a', size: 9 },
+            count: { color: '#0f172a', size: 8 },
+            area: { color: '#64748b', size: 8 },
+            sector: { borderColor: '#ffffff', weight: 1.5, matchFill: true }
+        };
+
+        let shapefileLayers = [];
+        const LAYER_COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
+        let colorIndex = 0;
+        let currentFilteredData = [];
+
+        function getRangeMatch(val) {
+            return customRanges.find((r, i) => 
+                (i === customRanges.length - 1) ? (val >= r.min && val <= r.max) : (val >= r.min && val < r.max)
+            );
+        }
+
+        function getFeatureName(feature, index) {
+            if (!feature.properties) return `Feature ${index}`;
+            const keys = Object.keys(feature.properties);
+            let nameKey = keys.find(k => /^(name|nam|dist|district|block|state|mandal|tehsil|aq|aquifer)$/i.test(k.trim()));
+            if (!nameKey) nameKey = keys.find(k => /name/i.test(k.trim()));
+            if (!nameKey) nameKey = keys.find(k => typeof feature.properties[k] === 'string' && feature.properties[k].length < 50);
+            if (nameKey && feature.properties[nameKey]) return String(feature.properties[nameKey]).trim();
+            return `Feature ${index}`;
+        }
+
+        function updateLabelFormat() {
+            labelFormat.id.color = document.getElementById('fmtColorId').value;
+            labelFormat.id.size = document.getElementById('fmtSizeId').value;
+            labelFormat.avg.color = document.getElementById('fmtColorAvg').value;
+            labelFormat.avg.size = document.getElementById('fmtSizeAvg').value;
+            labelFormat.count.color = document.getElementById('fmtColorCount').value;
+            labelFormat.count.size = document.getElementById('fmtSizeCount').value;
+            labelFormat.area.color = document.getElementById('fmtColorArea').value;
+            labelFormat.area.size = document.getElementById('fmtSizeArea').value;
+            labelFormat.sector.borderColor = document.getElementById('fmtColorSectorBorder').value;
+            labelFormat.sector.weight = parseFloat(document.getElementById('fmtWeightSectorBorder').value);
+            labelFormat.sector.matchFill = document.getElementById('fmtMatchFill').checked;
+            runAnalysis();
+        }
+
+        function refreshFilteredData() {
+            if (rawData.length === 0) {
+                currentFilteredData = [];
+                return;
+            }
+
+            const latKey = columnMap.lat;
+            const lonKey = columnMap.lon;
+            const activeFilters = shapefileLayers.filter(l => l.isFilter);
+
+            currentFilteredData = rawData.filter(d => {
+                const passesFilters = Object.entries(filters).every(([k, vSet]) => 
+                    vSet.size === 0 || vSet.has(String(d[k] || ''))
+                );
+                if (!passesFilters) return false;
+
+                if (activeFilters.length > 0 && latKey && lonKey) {
+                    const lat = parseFloat(d[latKey]);
+                    const lon = parseFloat(d[lonKey]);
+                    
+                    if (isNaN(lat) || isNaN(lon)) return false;
+                    const pt = turf.point([lon, lat]);
+
+                    for (let f = 0; f < activeFilters.length; f++) {
+                        const filterLayer = activeFilters[f];
+                        const activeFeatures = filterLayer.features.filter(feat => feat.isSelected);
+                        if (activeFeatures.length === 0) return false;
+
+                        if (lon < filterLayer.bbox[0] || lon > filterLayer.bbox[2] || lat < filterLayer.bbox[1] || lat > filterLayer.bbox[3]) return false; 
+
+                        let isInside = false;
+                        for (let i = 0; i < activeFeatures.length; i++) {
+                            const feat = activeFeatures[i];
+                            if (lon < feat.bbox[0] || lon > feat.bbox[2] || lat < feat.bbox[1] || lat > feat.bbox[3]) continue; 
+                            if (turf.booleanPointInPolygon(pt, feat.poly)) { isInside = true; break; }
+                        }
+                        if (!isInside) return false;
+                    }
+                }
+                return true;
+            });
+        }
 
         window.onload = () => {
             lucide.createIcons();
@@ -258,9 +442,30 @@
 
         function initMap() {
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([22.5, 82.5], 5);
-            L.tileLayer('https://{s}.google.com/vt/lyrs=y,h&x={x}&y={y}&z={z}', {
+            
+            const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y,h&x={x}&y={y}&z={z}', {
                 maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], crossOrigin: true
-            }).addTo(map);
+            });
+            const googleSatellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], crossOrigin: true
+            });
+            const googlePhysical = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+                maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], crossOrigin: true
+            });
+            const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], crossOrigin: true
+            });
+
+            googleHybrid.addTo(map);
+
+            const baseMaps = {
+                "Google Earth (Satellite + Names)": googleHybrid,
+                "Google Earth (No Names)": googleSatellite,
+                "Physical Map (Terrain)": googlePhysical,
+                "Standard Map (Streets)": googleStreets
+            };
+            
+            L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
             layers.polys = L.layerGroup().addTo(map);
             layers.labels = L.layerGroup().addTo(map);
@@ -274,119 +479,524 @@
 
         function populateParamList() {
             const sel = document.getElementById('activeParam');
-            Object.keys(PARAM_CONFIG).forEach(k => sel.add(new Option(`${PARAM_CONFIG[k].name} (${k})`, k)));
+            Object.keys(PARAM_CONFIG).forEach(k => sel.add(new Option(k, k)));
         }
 
         function syncLimits() {
             const pKey = document.getElementById('activeParam').value;
+            document.getElementById('mapParamName').innerText = pKey;
+            if (availableColumns.length > 0) {
+                document.getElementById('valMap').value = columnMap.params[pKey] || '';
+            }
+
             const config = PARAM_CONFIG[pKey];
-            document.getElementById('activeUnit').value = config.unit;
             customRanges = [
-                { min: 0, max: config.b1 * 0.5, label: 'Excellent', color: '#10b981' },
-                { min: (config.b1 * 0.5) + 0.001, max: config.b1, label: 'Desirable', color: '#84cc16' },
-                { min: config.b1 + 0.001, max: config.b2, label: 'Permissible', color: '#fbbf24' },
-                { min: config.b2 + 0.001, max: 99999, label: 'Unsuitable', color: '#ef4444' }
+                { min: 0, max: config.b1, label: 'Desirable', color: '#10b981', unit: config.unit, visible: true },
+                { min: config.b1, max: config.b2, label: 'Permissible', color: '#fbbf24', unit: config.unit, visible: true },
+                { min: config.b2, max: 100000, label: 'Unsuitable', color: '#ef4444', unit: config.unit, visible: true }
             ];
             renderRangeEditor();
-            updateMapLegend(); 
+            updateLegend();
+            plotAllPoints();
+            runAnalysis();
+        }
+
+        function addNewRange() {
+            const lastMax = customRanges.length > 0 ? customRanges[customRanges.length - 1].max : 0;
+            const lastUnit = customRanges.length > 0 ? customRanges[customRanges.length - 1].unit : '';
+            customRanges.push({ min: lastMax + 0.001, max: lastMax + 100, label: 'New Tier', color: '#6366f1', unit: lastUnit, visible: true });
+            renderRangeEditor();
+            updateLegend();
+            runAnalysis();
+        }
+
+        function removeRange(index) {
+            if (customRanges.length <= 1) return;
+            customRanges.splice(index, 1);
+            renderRangeEditor();
+            updateLegend();
+            plotAllPoints();
+            runAnalysis();
+        }
+
+        function toggleRangeVisibility(index, isVisible) {
+            customRanges[index].visible = isVisible;
+            renderRangeEditor();
+            updateLegend();
+            plotAllPoints();
             runAnalysis();
         }
 
         function renderRangeEditor() {
             const container = document.getElementById('rangeEditor');
             container.innerHTML = customRanges.map((r, i) => `
-                <div class="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200">
-                    <input type="color" value="${r.color}" onchange="updateRange(${i}, 'color', this.value)" class="w-4 h-4 rounded cursor-pointer border-none bg-transparent">
-                    <input type="text" value="${r.label}" onchange="updateRange(${i}, 'label', this.value)" placeholder="Label" class="w-16 text-[9px] font-bold border-none outline-none">
-                    <input type="number" value="${r.min}" onchange="updateRange(${i}, 'min', parseFloat(this.value))" class="w-10 text-[9px] bg-slate-50 rounded text-center">
-                    <span class="text-[8px]">-</span>
-                    <input type="number" value="${r.max}" onchange="updateRange(${i}, 'max', parseFloat(this.value))" class="w-10 text-[9px] bg-slate-50 rounded text-center">
-                    <button onclick="removeRangeRow(${i})" class="text-slate-300 hover:text-red-500 ml-auto"><i data-lucide="x" class="w-3 h-3"></i></button>
+                <div class="range-item flex flex-col bg-white p-2 rounded-xl border border-slate-200 transition-all shadow-sm ${r.visible === false ? 'opacity-50 grayscale' : ''}">
+                    <div class="flex items-center gap-1.5 mb-1.5">
+                        <input type="checkbox" ${r.visible !== false ? 'checked' : ''} onchange="toggleRangeVisibility(${i}, this.checked)" class="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer" title="Show/Hide Points">
+                        <input type="color" value="${r.color}" onchange="customRanges[${i}].color=this.value; updateLegend(); plotAllPoints(); runAnalysis()" class="w-4 h-4 rounded cursor-pointer border-none bg-transparent p-0">
+                        <input type="text" value="${r.label}" placeholder="Label" onchange="customRanges[${i}].label=this.value; updateLegend()" class="flex-1 text-[9px] font-extrabold outline-none text-slate-700 bg-slate-50 px-1 rounded">
+                        <input type="text" value="${r.unit}" placeholder="Unit" onchange="customRanges[${i}].unit=this.value; runAnalysis(); updateLegend()" class="w-14 text-[8px] font-black text-indigo-500 uppercase border-b border-indigo-100 outline-none">
+                        <button onclick="removeRange(${i})" class="remove-range-btn opacity-0 text-slate-300 hover:text-red-500 ml-auto">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-1 pl-5">
+                        <input type="number" step="0.01" value="${r.min}" onchange="customRanges[${i}].min=parseFloat(this.value); updateLegend(); runAnalysis(); plotAllPoints();" class="flex-1 text-[9px] font-bold bg-slate-100 text-center rounded py-0.5">
+                        <span class="text-[8px] text-slate-400 font-bold">TO</span>
+                        <input type="number" step="0.01" value="${r.max}" onchange="customRanges[${i}].max=parseFloat(this.value); updateLegend(); runAnalysis(); plotAllPoints();" class="flex-1 text-[9px] font-bold bg-slate-100 text-center rounded py-0.5">
+                    </div>
                 </div>
             `).join('');
             lucide.createIcons();
         }
 
-        function updateRange(index, field, value) {
-            customRanges[index][field] = value;
-            updateMapLegend();
+        document.getElementById('fileInput').onchange = (e) => {
+            const file = e.target.files[0]; if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const wb = XLSX.read(evt.target.result, { type: 'binary' });
+                rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+                
+                const allKeys = new Set();
+                rawData.forEach(row => Object.keys(row).forEach(k => allKeys.add(k)));
+                availableColumns = Array.from(allKeys).sort();
+
+                columnMap.lat = availableColumns.find(k => /^(lat|latitude|y)$/i.test(k.trim())) || availableColumns[0];
+                columnMap.lon = availableColumns.find(k => /^(lon|long|longitude|lng|x)$/i.test(k.trim())) || availableColumns[0];
+
+                Object.keys(PARAM_CONFIG).forEach(pKey => {
+                    const config = PARAM_CONFIG[pKey];
+                    const match = availableColumns.find(k => {
+                        const kl = k.toLowerCase().trim();
+                        const pl = pKey.toLowerCase().trim();
+                        if (kl === pl) return true;
+                        return config.keywords && config.keywords.some(kw => kl === kw.toLowerCase().trim());
+                    });
+                    columnMap.params[pKey] = match || ''; 
+                });
+
+                document.getElementById('mappingSection').classList.remove('hidden');
+                updateMappingDropdowns();
+                
+                setupFilters(); 
+                document.getElementById('exportBtn').classList.remove('hidden'); 
+                
+                refreshFilteredData();
+                plotAllPoints();
+                fitMapToPoints();
+            };
+            reader.readAsBinaryString(file);
+            e.target.value = '';
+        };
+
+        document.getElementById('shapeInput').onchange = async (e) => {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            
+            try {
+                let geojson;
+                let mainFileName = files[0].name;
+
+                if (files.length === 1) {
+                    const file = files[0];
+                    const fileName = file.name.toLowerCase();
+                    if (fileName.endsWith('.zip')) {
+                        const buffer = await file.arrayBuffer();
+                        geojson = await shp(buffer);
+                    } else if (fileName.endsWith('.geojson') || fileName.endsWith('.json')) {
+                        const text = await file.text();
+                        geojson = JSON.parse(text);
+                    } else {
+                        alert('Upload failed. Please provide a valid .zip or .geojson.');
+                        return;
+                    }
+                } else {
+                    const shpFile = Array.from(files).find(f => f.name.toLowerCase().endsWith('.shp'));
+                    if (shpFile) mainFileName = shpFile.name;
+
+                    const zip = new JSZip();
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        const arrayBuffer = await file.arrayBuffer();
+                        zip.file(file.name, arrayBuffer);
+                    }
+                    const zipBuffer = await zip.generateAsync({type: "arraybuffer"});
+                    geojson = await shp(zipBuffer);
+                }
+                
+                if (Array.isArray(geojson)) {
+                    geojson = turf.featureCollection(geojson.flatMap(g => g.features || [g]));
+                }
+
+                addBoundaryLayer(geojson, mainFileName);
+            } catch (err) {
+                console.error("Boundary parsing error:", err);
+                alert('Error processing boundary file. Ensure it contains valid geometry.');
+            }
+            e.target.value = '';
+        };
+
+        function addBoundaryLayer(geojson, name) {
+            const id = 'layer_' + Date.now();
+            const color = LAYER_COLORS[colorIndex % LAYER_COLORS.length];
+            colorIndex++;
+
+            const bbox = turf.bbox(geojson);
+            const features = [];
+            let fIndex = 0;
+
+            turf.flattenEach(geojson, function (currentFeature) {
+                if (currentFeature.geometry && (currentFeature.geometry.type === 'Polygon' || currentFeature.geometry.type === 'MultiPolygon')) {
+                    currentFeature.bbox = turf.bbox(currentFeature); 
+                    features.push({
+                        poly: currentFeature,
+                        name: getFeatureName(currentFeature, ++fIndex),
+                        bbox: currentFeature.bbox,
+                        isSelected: true,
+                        color: color
+                    });
+                }
+            });
+
+            features.sort((a,b) => String(a.name).localeCompare(String(b.name)));
+
+            const newLayer = { id, name, geojson, bbox, features, isVisible: true, isFilter: true, color, isExpanded: false, mapLayer: null };
+            shapefileLayers.push(newLayer);
+            
+            redrawLayerMap(newLayer);
+            map.fitBounds(newLayer.mapLayer.getBounds());
+
+            // Auto set grid bounding box to layer bounds if no bounds exist
+            if (!document.getElementById('minLat').value) {
+                document.getElementById('minLng').value = bbox[0].toFixed(5);
+                document.getElementById('minLat').value = bbox[1].toFixed(5);
+                document.getElementById('maxLng').value = bbox[2].toFixed(5);
+                document.getElementById('maxLat').value = bbox[3].toFixed(5);
+            }
+
+            renderBoundaryList();
+            refreshFilteredData();
+            plotAllPoints();
             runAnalysis();
         }
 
-        function addRangeRow() {
-            customRanges.push({ min: 0, max: 100, label: 'New', color: '#6366f1' });
-            renderRangeEditor();
-            updateMapLegend();
+        function redrawLayerMap(layer) {
+            if (layer.mapLayer) map.removeLayer(layer.mapLayer);
+            const activePolys = layer.features.filter(f => f.isSelected).map(f => {
+                if (!f.poly.properties) f.poly.properties = {};
+                f.poly.properties._renderColor = f.color;
+                return f.poly;
+            });
+            
+            if (activePolys.length > 0) {
+                layer.mapLayer = L.geoJSON(turf.featureCollection(activePolys), {
+                    style: function(feature) {
+                        return { color: feature.properties._renderColor || layer.color, weight: 2, fillOpacity: 0.05, dashArray: '5, 5' };
+                    },
+                    interactive: false
+                });
+                if (layer.isVisible) layer.mapLayer.addTo(map);
+            } else { layer.mapLayer = null; }
+        }
+
+        function toggleLayerVisibility(id) {
+            const layer = shapefileLayers.find(l => l.id === id);
+            if (!layer || !layer.mapLayer) return;
+            layer.isVisible = !layer.isVisible;
+            if (layer.isVisible) map.addLayer(layer.mapLayer); else map.removeLayer(layer.mapLayer);
+            renderBoundaryList();
+        }
+
+        function toggleLayerFilter(id) {
+            const layer = shapefileLayers.find(l => l.id === id);
+            if (!layer) return;
+            layer.isFilter = !layer.isFilter;
+            renderBoundaryList();
+            refreshFilteredData();
+            plotAllPoints();
             runAnalysis();
         }
 
-        function removeRangeRow(index) {
-            customRanges.splice(index, 1);
-            renderRangeEditor();
-            updateMapLegend();
+        function toggleLayerExpand(id) {
+            const layer = shapefileLayers.find(l => l.id === id);
+            if (!layer) return;
+            layer.isExpanded = !layer.isExpanded;
+            renderBoundaryList();
+        }
+
+        function toggleFeatureSelect(layerId, featureIndex, isChecked) {
+            const layer = shapefileLayers.find(l => l.id === layerId);
+            if (!layer) return;
+            layer.features[featureIndex].isSelected = isChecked;
+            redrawLayerMap(layer);
+            if (layer.isFilter) { refreshFilteredData(); plotAllPoints(); runAnalysis(); }
+            renderBoundaryList();
+        }
+
+        function toggleAllFeatures(layerId, isChecked) {
+            const layer = shapefileLayers.find(l => l.id === layerId);
+            if (!layer) return;
+            layer.features.forEach(f => f.isSelected = isChecked);
+            redrawLayerMap(layer);
+            if (layer.isFilter) { refreshFilteredData(); plotAllPoints(); runAnalysis(); }
+            renderBoundaryList();
+        }
+        
+        function changeLayerColor(layerId, newColor) {
+            const layer = shapefileLayers.find(l => l.id === layerId);
+            if (!layer) return;
+            layer.color = newColor;
+            layer.features.forEach(f => f.color = newColor);
+            redrawLayerMap(layer);
+            renderBoundaryList();
+        }
+
+        function changeFeatureColor(layerId, featureIndex, newColor) {
+            const layer = shapefileLayers.find(l => l.id === layerId);
+            if (!layer) return;
+            layer.features[featureIndex].color = newColor;
+            redrawLayerMap(layer);
+        }
+
+        function deleteLayer(id) {
+            const idx = shapefileLayers.findIndex(l => l.id === id);
+            if (idx === -1) return;
+            if (shapefileLayers[idx].mapLayer) map.removeLayer(shapefileLayers[idx].mapLayer);
+            shapefileLayers.splice(idx, 1);
+            renderBoundaryList();
+            refreshFilteredData();
+            plotAllPoints();
             runAnalysis();
+        }
+
+        function exportLayerStats(layerId) {
+            const layer = shapefileLayers.find(l => l.id === layerId);
+            if (!layer) return;
+            const pKey = document.getElementById('activeParam').value;
+            const valKey = columnMap.params[pKey];
+            const latKey = columnMap.lat;
+            const lonKey = columnMap.lon;
+
+            if (!latKey || !lonKey) { alert("Please ensure Latitude and Longitude columns are mapped first."); return; }
+            const baseData = rawData.filter(d => Object.entries(filters).every(([k, vSet]) => vSet.size === 0 || vSet.has(String(d[k] || ''))));
+
+            const results = layer.features.filter(f => f.isSelected).map(f => {
+                let count = 0; let sum = 0; let min = Infinity; let max = -Infinity;
+                baseData.forEach(d => {
+                    const lat = parseFloat(d[latKey]), lon = parseFloat(d[lonKey]), val = parseFloat(d[valKey]);
+                    if (isNaN(lat) || isNaN(lon)) return; 
+                    if (lon < f.bbox[0] || lon > f.bbox[2] || lat < f.bbox[1] || lat > f.bbox[3]) return;
+                    if (turf.booleanPointInPolygon(turf.point([lon, lat]), f.poly)) {
+                        count++;
+                        if (!isNaN(val)) {
+                            sum += val;
+                            if (val < min) min = val;
+                            if (val > max) max = val;
+                        }
+                    }
+                });
+                return {
+                    "Shape Feature Name": f.name, "Total Samples Found": count, "Parameter": pKey,
+                    "Average Value": count > 0 && sum > 0 ? (sum / count).toFixed(3) : "No Data",
+                    "Min Value": count > 0 && min !== Infinity ? min.toFixed(3) : "-",
+                    "Max Value": count > 0 && max !== -Infinity ? max.toFixed(3) : "-"
+                };
+            });
+
+            if (results.length === 0) { alert("No features are currently selected."); return; }
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(results), "Shape_Feature_Stats");
+            XLSX.writeFile(wb, `Boundary_Stats_${layer.name}_${pKey}.xlsx`);
+        }
+
+        function renderBoundaryList() {
+            const container = document.getElementById('boundaryListContainer');
+            container.innerHTML = shapefileLayers.map(layer => `
+                <div class="flex flex-col bg-white border border-slate-200 rounded-lg shadow-sm">
+                    <div class="flex items-center justify-between p-2">
+                        <div class="flex items-center gap-2 overflow-hidden flex-1 cursor-pointer" onclick="toggleLayerExpand('${layer.id}')">
+                            <input type="color" value="${layer.color}" onchange="changeLayerColor('${layer.id}', this.value); event.stopPropagation();" onclick="event.stopPropagation();" class="w-3.5 h-3.5 rounded cursor-pointer border-none bg-transparent p-0 flex-shrink-0" title="Change Base Layer Color">
+                            <span class="text-[10px] font-bold text-slate-700 truncate" title="${layer.name}">${layer.name}</span>
+                            <i data-lucide="${layer.isExpanded ? 'chevron-up' : 'chevron-down'}" class="w-3 h-3 text-slate-400 ml-1"></i>
+                        </div>
+                        <div class="flex items-center gap-1 ml-2">
+                            <button onclick="event.stopPropagation(); toggleLayerVisibility('${layer.id}')" class="p-1.5 rounded hover:bg-slate-100 ${layer.isVisible ? 'text-indigo-600' : 'text-slate-300'}"><i data-lucide="${layer.isVisible ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="event.stopPropagation(); toggleLayerFilter('${layer.id}')" class="p-1.5 rounded hover:bg-slate-100 ${layer.isFilter ? 'text-emerald-600' : 'text-slate-300'}" title="Use as Spatial Clip"><i data-lucide="scissors" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="event.stopPropagation(); deleteLayer('${layer.id}')" class="p-1.5 rounded hover:bg-red-50 text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                    </div>
+                    <div class="${layer.isExpanded ? 'block' : 'hidden'} border-t border-slate-100 bg-slate-50 p-2 rounded-b-lg">
+                        <button onclick="exportLayerStats('${layer.id}')" class="w-full mb-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 py-1.5 rounded flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider shadow-sm"><i data-lucide="download-cloud" class="w-3 h-3"></i> Export Feature Stats</button>
+                        <div class="flex justify-between items-center mb-1.5 px-1"><span class="text-[8px] font-black text-slate-400 uppercase">Sub-Features Selection</span><div class="flex gap-2"><button onclick="toggleAllFeatures('${layer.id}', true)" class="text-[8px] font-bold text-indigo-600 hover:underline">All</button><button onclick="toggleAllFeatures('${layer.id}', false)" class="text-[8px] font-bold text-slate-500 hover:underline">None</button></div></div>
+                        <div class="max-h-32 overflow-y-auto space-y-1 custom-scrollbar pr-1 bg-white border border-slate-200 rounded p-1 shadow-inner">
+                            ${layer.features.map((f, i) => `
+                                <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded transition-colors border border-transparent hover:border-slate-100">
+                                    <input type="checkbox" onchange="toggleFeatureSelect('${layer.id}', ${i}, this.checked)" ${f.isSelected ? 'checked' : ''} class="w-3 h-3 accent-indigo-600 rounded">
+                                    <input type="color" value="${f.color}" onchange="changeFeatureColor('${layer.id}', ${i}, this.value)" class="w-3.5 h-3.5 rounded cursor-pointer border-none bg-transparent p-0 flex-shrink-0">
+                                    <span class="text-[9px] text-slate-600 font-medium truncate flex-1" title="${f.name}">${f.name}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function updateMappingDropdowns() {
+            const latSel = document.getElementById('latMap'), lonSel = document.getElementById('lonMap'), valSel = document.getElementById('valMap');
+            let opts = `<option value="">-- Select Column --</option>` + availableColumns.map(c => `<option value="${c.replace(/"/g, '&quot;')}">${c}</option>`).join('');
+            latSel.innerHTML = lonSel.innerHTML = valSel.innerHTML = opts;
+            latSel.value = columnMap.lat; lonSel.value = columnMap.lon;
+            valSel.value = columnMap.params[document.getElementById('activeParam').value] || '';
+        }
+
+        function updateLatLonMap() {
+            columnMap.lat = document.getElementById('latMap').value;
+            columnMap.lon = document.getElementById('lonMap').value;
+            refreshFilteredData(); plotAllPoints(); runAnalysis();
+        }
+
+        function updateValMap() {
+            columnMap.params[document.getElementById('activeParam').value] = document.getElementById('valMap').value;
+            plotAllPoints(); runAnalysis();
+        }
+
+        function setupFilters() {
+            const container = document.getElementById('filterList'); container.innerHTML = '';
+            const targetKeys = ['State', 'District', 'Block', 'Source', 'Season', 'Year'];
+            
+            filterMeta = targetKeys.map(key => {
+                const actualKey = Object.keys(rawData[0] || {}).find(k => k.toLowerCase() === key.toLowerCase() || (k.toLowerCase().includes(key.toLowerCase()) && !k.toLowerCase().includes('date')));
+                return { label: key, actualKey: actualKey };
+            }).filter(f => f.actualKey);
+
+            filterMeta.forEach(fm => {
+                const safeId = fm.label.toLowerCase();
+                const wrap = document.createElement('div');
+                wrap.className = "bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm";
+                wrap.innerHTML = `
+                    <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full px-3 py-2 text-left text-[10px] font-bold flex justify-between items-center bg-slate-50 uppercase tracking-tighter">
+                        <span id="label-${safeId}">${fm.label} (0)</span><i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+                    </button>
+                    <div id="opts-${safeId}" class="hidden p-2 max-h-40 overflow-y-auto space-y-1 bg-white"></div>`;
+                container.appendChild(wrap);
+            });
+            lucide.createIcons();
+            updateFilterUI();
+        }
+
+        function updateFilterUI() {
+            const stateKey = filterMeta.find(f => f.label === 'State')?.actualKey;
+            const distKey = filterMeta.find(f => f.label === 'District')?.actualKey;
+            const selectedStates = stateKey ? (filters[stateKey] || new Set()) : new Set();
+            const selectedDistricts = distKey ? (filters[distKey] || new Set()) : new Set();
+
+            filterMeta.forEach(fm => {
+                const safeId = fm.label.toLowerCase();
+                const container = document.getElementById(`opts-${safeId}`);
+                const labelSpan = document.getElementById(`label-${safeId}`);
+                let availableData = rawData;
+                
+                if (fm.label === 'District' && selectedStates.size > 0) availableData = availableData.filter(d => selectedStates.has(String(d[stateKey] || '')));
+                else if (fm.label === 'Block') {
+                    if (selectedStates.size > 0) availableData = availableData.filter(d => selectedStates.has(String(d[stateKey] || '')));
+                    if (selectedDistricts.size > 0) availableData = availableData.filter(d => selectedDistricts.has(String(d[distKey] || '')));
+                }
+                
+                const vals = [...new Set(availableData.map(d => String(d[fm.actualKey] || '')))].filter(v => v.trim() !== '').sort();
+                const currentSelected = filters[fm.actualKey] || new Set();
+                const escapedKey = fm.actualKey.replace(/'/g, "\\'");
+                
+                container.innerHTML = vals.map(v => {
+                    const escapedVal = v.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                    return `<label class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                        <input type="checkbox" onchange="updateFilter('${escapedKey}', '${escapedVal}', this.checked)" ${currentSelected.has(v) ? 'checked' : ''} class="w-3.5 h-3.5 accent-indigo-600 rounded">
+                        <span class="text-[10px] text-slate-600 font-medium truncate">${v}</span></label>`;
+                }).join('');
+                labelSpan.innerText = `${fm.label} (${vals.length})`;
+            });
+        }
+
+        function updateFilter(key, val, checked) {
+            if(!filters[key]) filters[key] = new Set();
+            if(checked) filters[key].add(val); else filters[key].delete(val);
+            
+            const fm = filterMeta.find(f => f.actualKey === key);
+            if (fm) {
+                if (fm.label === 'State') {
+                    const distKey = filterMeta.find(f => f.label === 'District')?.actualKey;
+                    const blockKey = filterMeta.find(f => f.label === 'Block')?.actualKey;
+                    if (distKey && filters[distKey]) filters[distKey].clear();
+                    if (blockKey && filters[blockKey]) filters[blockKey].clear();
+                    updateFilterUI();
+                } else if (fm.label === 'District') {
+                    const blockKey = filterMeta.find(f => f.label === 'Block')?.actualKey;
+                    if (blockKey && filters[blockKey]) filters[blockKey].clear();
+                    updateFilterUI();
+                }
+            }
+            refreshFilteredData(); plotAllPoints(); runAnalysis();
+        }
+
+        function plotAllPoints() {
+            layers.wells.clearLayers();
+            if (currentFilteredData.length === 0) return;
+            const pKey = document.getElementById('activeParam').value;
+            const hideMissing = document.getElementById('hideMissingData').checked;
+            const latKey = columnMap.lat, lonKey = columnMap.lon, valKey = columnMap.params[pKey];
+
+            currentFilteredData.forEach(d => {
+                const lat = parseFloat(d[latKey]), lon = parseFloat(d[lonKey]), val = parseFloat(d[valKey]);
+                if(!isNaN(lat) && !isNaN(lon)) {
+                    let color = '#6366f1', isVisible = true;
+                    if (!isNaN(val)) {
+                        const rangeMatch = getRangeMatch(val);
+                        if (rangeMatch) { color = rangeMatch.color; isVisible = rangeMatch.visible !== false; }
+                    } else if (hideMissing) { isVisible = false; }
+                    if (isVisible) L.circleMarker([lat, lon], { radius: 3, color: 'white', weight: 0.5, fillColor: color, fillOpacity: 0.8 }).addTo(layers.wells);
+                }
+            });
+        }
+
+        function fitMapToPoints() {
+            if (layers.wells.getLayers().length > 0) map.fitBounds(new L.featureGroup(layers.wells.getLayers()).getBounds(), { padding: [50, 50] });
         }
 
         function toggleDrawingMode() {
             isDrawing = !isDrawing; isMeasuring = false; pickedPoints = [];
             layers.pickers.clearLayers();
-            const body = document.getElementById('mainBody');
-            const toast = document.getElementById('toast');
+            const body = document.getElementById('mainBody'), toast = document.getElementById('toast');
             body.classList.remove('measuring-mode-active');
-            if (isDrawing) {
-                body.classList.add('drawing-mode-active');
-                toast.style.display = 'flex';
-                document.getElementById('toastMsg').innerText = "Click 4 corners of the boundary";
-            } else {
-                body.classList.remove('drawing-mode-active');
-                toast.style.display = 'none';
-            }
+            if (isDrawing) { body.classList.add('drawing-mode-active'); toast.style.display = 'flex'; document.getElementById('toastMsg').innerText = "Click 4 corners of the boundary"; } 
+            else { body.classList.remove('drawing-mode-active'); toast.style.display = 'none'; }
         }
 
         function toggleMeasureMode() {
             isMeasuring = !isMeasuring; isDrawing = false; measurePoints = [];
-            const body = document.getElementById('mainBody');
-            const toast = document.getElementById('toast');
+            const body = document.getElementById('mainBody'), toast = document.getElementById('toast');
             body.classList.remove('drawing-mode-active');
-            if (isMeasuring) {
-                body.classList.add('measuring-mode-active');
-                toast.style.display = 'flex';
-                document.getElementById('toastMsg').innerText = "Click points to measure distance";
-            } else {
-                body.classList.remove('measuring-mode-active');
-                toast.style.display = 'none';
-            }
+            if (isMeasuring) { body.classList.add('measuring-mode-active'); toast.style.display = 'flex'; document.getElementById('toastMsg').innerText = "Click points to measure distance"; } 
+            else { body.classList.remove('measuring-mode-active'); toast.style.display = 'none'; }
         }
 
-        function clearMeasure() {
-            layers.measure.clearLayers();
-            measurePoints = [];
-        }
+        function clearMeasure() { layers.measure.clearLayers(); measurePoints = []; }
 
         function handleMapClick(e) {
             if (isMeasuring) {
-                const latlng = e.latlng;
-                measurePoints.push(latlng);
-                L.circleMarker(latlng, { radius: 5, color: '#f43f5e', fillOpacity: 1 }).addTo(layers.measure);
+                measurePoints.push(e.latlng);
+                L.circleMarker(e.latlng, { radius: 5, color: '#f43f5e', fillOpacity: 1 }).addTo(layers.measure);
                 if (measurePoints.length > 1) {
                     const prev = measurePoints[measurePoints.length - 2];
-                    const dist = map.distance(prev, latlng) / 1000;
-                    L.polyline([prev, latlng], { color: '#f43f5e', weight: 3, dashArray: '5, 5' }).addTo(layers.measure);
-                    const mid = L.latLng((prev.lat + latlng.lat)/2, (prev.lng + latlng.lng)/2);
-                    L.marker(mid, {
-                        icon: L.divIcon({
-                            className: 'bg-rose-500 text-white text-[10px] px-1 rounded font-bold border border-white',
-                            html: dist.toFixed(2) + ' km',
-                            iconAnchor: [30, 10]
-                        })
-                    }).addTo(layers.measure);
+                    const dist = map.distance(prev, e.latlng) / 1000;
+                    L.polyline([prev, e.latlng], { color: '#f43f5e', weight: 3, dashArray: '5, 5' }).addTo(layers.measure);
+                    L.marker(L.latLng((prev.lat + e.latlng.lat)/2, (prev.lng + e.latlng.lng)/2), { icon: L.divIcon({ className: 'bg-rose-500 text-white text-[10px] px-1 rounded font-bold border border-white', html: dist.toFixed(2) + ' km', iconAnchor: [30, 10] }) }).addTo(layers.measure);
                 }
                 return;
             }
             if (!isDrawing) return;
-            const lat = e.latlng.lat, lng = e.latlng.lng;
-            pickedPoints.push({ lat, lng });
-            L.circleMarker([lat, lng], { radius: 6, color: '#6366f1', fillColor: '#fff', fillOpacity: 1, weight: 3 }).addTo(layers.pickers);
+            pickedPoints.push({ lat: e.latlng.lat, lng: e.latlng.lng });
+            L.circleMarker([e.latlng.lat, e.latlng.lng], { radius: 6, color: '#6366f1', fillColor: '#fff', fillOpacity: 1, weight: 3 }).addTo(layers.pickers);
             if (pickedPoints.length < 4) {
                 document.getElementById('toastMsg').innerText = `Point ${pickedPoints.length}/4 captured...`;
             } else {
@@ -395,186 +1005,190 @@
                 document.getElementById('maxLat').value = Math.max(...lats).toFixed(5);
                 document.getElementById('minLng').value = Math.min(...lngs).toFixed(5);
                 document.getElementById('maxLng').value = Math.max(...lngs).toFixed(5);
-                toggleDrawingMode();
-                runAnalysis();
+                toggleDrawingMode(); runAnalysis();
             }
         }
 
-        function updateMapLegend() {
-            const container = document.getElementById('legendContainer'); 
-            container.classList.remove('hidden');
-            const pKey = document.getElementById('activeParam').value;
-            const unit = document.getElementById('activeUnit').value;
-            container.innerHTML = `
-                <div class="text-[10px] font-black text-slate-500 uppercase mb-2 border-b pb-1">${pKey} (${unit})</div>
-                <div class="space-y-1">${customRanges.map(r => `
-                    <div class="flex items-center gap-2">
-                        <div class="w-3 h-3 rounded-sm" style="background:${r.color}"></div>
-                        <span class="text-[9px] font-bold text-slate-700">${r.min}-${r.max >= 9999 ? '∞' : r.max}</span>
-                        <span class="text-[8px] text-slate-400 font-medium ml-auto">${r.label}</span>
-                    </div>`).join('')}</div>`;
-        }
-
-        document.getElementById('fileInput').onchange = (e) => {
-            const file = e.target.files[0]; if(!file) return;
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-                const wb = XLSX.read(evt.target.result, { type: 'binary' });
-                rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                const lats = rawData.map(d => parseFloat(d.Latitude || d.Lat || d.LATITUDE)).filter(v => !isNaN(v));
-                const lngs = rawData.map(d => parseFloat(d.Longitude || d.Long || d.LONGITUDE)).filter(v => !isNaN(v));
-                if(lats.length > 0) map.fitBounds([[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]]);
-                setupFilters(); document.getElementById('exportExcelBtn').classList.remove('hidden'); runAnalysis();
-            };
-            reader.readAsBinaryString(file);
-        };
-
-        function setupFilters() {
-            const container = document.getElementById('filterList'); container.innerHTML = '';
-            ['State', 'District', 'Block', 'Source', 'Season', 'Year'].forEach(key => {
-                const matchKey = Object.keys(rawData[0] || {}).find(k => k.toLowerCase() === key.toLowerCase());
-                if(!matchKey) return;
-                const uniqueVals = [...new Set(rawData.map(d => String(d[matchKey] || '')))].filter(v => v !== '' && v !== 'undefined').sort();
-                const wrap = document.createElement('div');
-                wrap.className = "bg-white border rounded-xl overflow-hidden shadow-sm";
-                wrap.innerHTML = `<button onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full px-3 py-2 text-left text-[10px] font-bold flex justify-between items-center bg-slate-50 uppercase">${key} <i data-lucide="chevron-down" class="w-3 h-3"></i></button>
-                    <div class="hidden p-2 max-h-32 overflow-y-auto space-y-1">
-                        ${uniqueVals.map(v => `<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" onchange="updateFilter('${key}', '${v}', this.checked)" class="w-3 h-3 accent-indigo-600"><span class="text-[10px] text-slate-600">${v}</span></label>`).join('')}
-                    </div>`;
-                container.appendChild(wrap);
-            });
-            lucide.createIcons();
-        }
-
-        function updateFilter(key, val, checked) {
-            if(!filters[key]) filters[key] = new Set();
-            if(checked) filters[key].add(val); else filters[key].delete(val);
-            runAnalysis();
-        }
-
-        function clearAllFilters() {
-            filters = {};
-            document.querySelectorAll('#filterList input').forEach(cb => cb.checked = false);
-            runAnalysis();
-        }
-
-        // Main results storage for export
-        let activeGridData = [];
-
         function runAnalysis() {
-            if(!map) return;
-            layers.polys.clearLayers(); layers.labels.clearLayers(); 
-            layers.mainBox.clearLayers(); layers.wells.clearLayers();
+            layers.polys.clearLayers(); layers.labels.clearLayers(); layers.mainBox.clearLayers();
             activeGridData = [];
 
             const minLat = parseFloat(document.getElementById('minLat').value), maxLat = parseFloat(document.getElementById('maxLat').value);
             const minLng = parseFloat(document.getElementById('minLng').value), maxLng = parseFloat(document.getElementById('maxLng').value);
-            
-            if(!isNaN(minLat) && !isNaN(maxLat) && !isNaN(minLng) && !isNaN(maxLng)) {
-                const mainPoly = turf.polygon([[[minLng, minLat], [maxLng, minLat], [maxLng, maxLat], [minLng, maxLat], [minLng, minLat]]]);
-                const area = turf.area(mainPoly) / 1000000;
-                document.getElementById('mainAreaDisplay').innerText = `${area.toLocaleString(undefined, {maximumFractionDigits: 1})} sq.km`;
-                L.polyline([[minLat, minLng], [maxLat, minLng], [maxLat, maxLng], [minLat, maxLng], [minLat, minLng]], { color: '#6366f1', weight: 4, dashArray: '10, 10' }).addTo(layers.mainBox);
-            }
-
-            const filtered = rawData.filter(d => Object.entries(filters).every(([k, vSet]) => vSet.size === 0 || vSet.has(String(d[Object.keys(d).find(dk => dk.toLowerCase() === k.toLowerCase())]))));
-            
-            if(document.getElementById('togglePoints').checked) {
-                filtered.forEach(d => {
-                    const lat = parseFloat(d.Latitude || d.Lat || d.LATITUDE), lon = parseFloat(d.Longitude || d.Long || d.LONGITUDE);
-                    if(!isNaN(lat) && !isNaN(lon)) L.circleMarker([lat, lon], { radius: 3, color: 'white', weight: 1, fillColor: '#6366f1', fillOpacity: 0.8 }).addTo(layers.wells);
-                });
-            }
-
             if(isNaN(minLat) || isNaN(maxLat) || isNaN(minLng) || isNaN(maxLng)) return;
 
-            const pKey = document.getElementById('activeParam').value, cellDist = Math.sqrt(parseFloat(document.getElementById('gridKm').value) || 20);
+            if (minLat >= maxLat || minLng >= maxLng) {
+                console.warn("Invalid grid bounds - Please draw a valid bounding box");
+                return;
+            }
+
+            const mainPoly = turf.polygon([[[minLng, minLat], [maxLng, minLat], [maxLng, maxLat], [minLng, maxLat], [minLng, minLat]]]);
+            L.polyline([[minLat, minLng], [maxLat, minLng], [maxLat, maxLng], [minLat, maxLng], [minLat, minLng]], { color: '#6366f1', weight: 4, dashArray: '10, 10' }).addTo(layers.mainBox);
+
+            const pKey = document.getElementById('activeParam').value;
+            const cellDist = Math.sqrt(parseFloat(document.getElementById('gridKm').value) || 20);
             
-            // Map raw data points to Turf points
-            const points = filtered.map(d => {
-                const lat = parseFloat(d.Latitude || d.Lat || d.LATITUDE), lon = parseFloat(d.Longitude || d.Long || d.LONGITUDE);
-                const val = parseFloat(d[Object.keys(d).find(k => k.toLowerCase() === pKey.toLowerCase())]);
-                return (!isNaN(lat) && !isNaN(lon) && !isNaN(val)) ? turf.point([lon, lat], { ...d, _targetVal: val }) : null;
+            const hideEmpty = document.getElementById('hideEmpty').checked;
+            const clipToBoundary = document.getElementById('clipToBoundary').checked;
+            const showId = document.getElementById('showLabelId').checked, showAvg = document.getElementById('showLabelAvg').checked, showCount = document.getElementById('showLabelCount').checked, showArea = document.getElementById('showLabelArea').checked;
+
+            const latKey = columnMap.lat, lonKey = columnMap.lon, valKey = columnMap.params[pKey];
+            const clipLayers = shapefileLayers.filter(l => l.isFilter);
+
+            let points = currentFilteredData.map(d => {
+                const lat = parseFloat(d[latKey]), lon = parseFloat(d[lonKey]), val = parseFloat(d[valKey]);
+                if(!isNaN(lat) && !isNaN(lon) && !isNaN(val)) {
+                    const rangeMatch = getRangeMatch(val);
+                    if (rangeMatch && rangeMatch.visible === false) return null;
+                    return turf.point([lon, lat], { ...d, _val: val });
+                }
+                return null;
             }).filter(p => p);
 
             const grid = turf.squareGrid([minLng, minLat, maxLng, maxLat], cellDist, { units: 'kilometers' });
+            let totalAreaSum = 0;
+
             grid.features.forEach((cell, idx) => {
-                const contained = turf.pointsWithinPolygon(turf.featureCollection(points), cell);
-                if(document.getElementById('hideEmpty').checked && contained.features.length === 0) return;
+                let finalCell = cell;
+
+                if (clipToBoundary && clipLayers.length > 0) {
+                    let cellBBox = turf.bbox(finalCell);
+                    for (let c = 0; c < clipLayers.length; c++) {
+                        if (!finalCell) break;
+                        let clipFeatures = clipLayers[c].features.filter(f => f.isSelected);
+                        let clippedFeatures = [];
+                        
+                        for (let i = 0; i < clipFeatures.length; i++) {
+                            const poly = clipFeatures[i].poly;
+                            if (cellBBox[0] > clipFeatures[i].bbox[2] || cellBBox[2] < clipFeatures[i].bbox[0] ||
+                                cellBBox[1] > clipFeatures[i].bbox[3] || cellBBox[3] < clipFeatures[i].bbox[1]) continue; 
+                            try {
+                                let intersection = turf.intersect(finalCell, poly);
+                                if (intersection) clippedFeatures.push(intersection);
+                            } catch (e) {}
+                        }
+                        
+                        if (clippedFeatures.length === 0) { finalCell = null; } 
+                        else if (clippedFeatures.length === 1) {
+                            finalCell = clippedFeatures[0];
+                        } else {
+                            try {
+                                finalCell = turf.union(turf.featureCollection(clippedFeatures));
+                            } catch (e) {
+                                finalCell = clippedFeatures[0];
+                                for (let i = 1; i < clippedFeatures.length; i++) {
+                                    try { finalCell = turf.union(turf.featureCollection([finalCell, clippedFeatures[i]])); } catch (err) {}
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if(!finalCell) return;
+
+                let areaSqKm = turf.area(finalCell) / 1000000;
+
+                const contained = turf.pointsWithinPolygon(turf.featureCollection(points), finalCell);
+                if(hideEmpty && contained.features.length === 0) return;
                 
-                const gridName = `G-${idx + 1}`, center = turf.center(cell).geometry.coordinates;
-                let avg = 0, color = 'transparent', stats = { min: 0, max: 0, sum: 0 };
-                
+                totalAreaSum += areaSqKm;
+                const gridName = `G-${idx + 1}`;
+                let avg = 0, color = 'rgba(203, 213, 225, 0.15)', min = 0, max = 0, unit = '';
                 const gridRawPoints = contained.features.map(f => f.properties);
 
                 if(gridRawPoints.length > 0) {
-                    const vals = gridRawPoints.map(p => p._targetVal);
+                    const vals = gridRawPoints.map(p => p._val);
                     avg = vals.reduce((s, v) => s + v, 0) / vals.length;
-                    stats.min = Math.min(...vals);
-                    stats.max = Math.max(...vals);
-                    color = (customRanges.find(x => avg >= x.min && avg <= x.max) || {color: '#cbd5e1'}).color;
+                    min = Math.min(...vals); max = Math.max(...vals);
+                    const rangeMatch = getRangeMatch(avg);
+                    if(rangeMatch) { color = rangeMatch.color; unit = rangeMatch.unit || ''; }
                 }
 
-                L.geoJSON(cell, { style: { fillColor: color, fillOpacity: 0.6, weight: 1, color: 'white', opacity: 0.5 } }).addTo(layers.polys);
-                if(document.getElementById('toggleLabels').checked) {
-                    L.marker([center[1], center[0]], { icon: L.divIcon({ className: '', html: `<div class="analysis-label">#${gridName}<br>N: ${gridRawPoints.length}<br>Avg: ${gridRawPoints.length > 0 ? avg.toFixed(1) : 'NA'}</div>` }) }).addTo(layers.labels);
-                }
+                const polyLayer = L.geoJSON(finalCell, { 
+                    style: { 
+                        fillColor: color, fillOpacity: 0.6, 
+                        color: labelFormat.sector.matchFill ? color : labelFormat.sector.borderColor, 
+                        weight: labelFormat.sector.weight, opacity: 0.7 
+                    } 
+                }).addTo(layers.polys);
 
-                activeGridData.push({ 
-                    id: gridName, 
-                    points: gridRawPoints, 
-                    avg: avg,
-                    min: stats.min,
-                    max: stats.max,
-                    count: gridRawPoints.length
+                polyLayer.on('click', (e) => {
+                    const subStatusRows = customRanges.map((range, i) => {
+                        const count = gridRawPoints.filter(p => (i === customRanges.length - 1) ? (p._val >= range.min && p._val <= range.max) : (p._val >= range.min && p._val < range.max)).length;
+                        const perc = gridRawPoints.length > 0 ? ((count / gridRawPoints.length) * 100).toFixed(1) : 0;
+                        return `<div class="stat-row"><div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full" style="background:${range.color}"></div><span class="text-[10px] font-bold text-slate-600">${range.label}</span></div><span class="text-[10px] font-black text-slate-900">${count} <small class="text-slate-400 font-normal">(${perc}%)</small></span></div>`;
+                    }).join('');
+
+                    const popupContent = `
+                        <div class="stats-popup-header">Grid Cell: ${gridName}</div>
+                        <div class="stats-popup-body">
+                            <div class="flex justify-between mb-3 pb-2 border-b border-slate-100">
+                                <div><div class="text-[8px] text-slate-400 uppercase font-black">Average</div><div class="text-[11px] font-bold text-indigo-600">${gridRawPoints.length > 0 ? avg.toFixed(2) : 'N/A'} ${unit}</div></div>
+                                <div class="text-right"><div class="text-[8px] text-slate-400 uppercase font-black">Total Samples</div><div class="text-[11px] font-bold text-slate-800">${gridRawPoints.length}</div></div>
+                            </div>
+                            <div class="text-[8px] text-slate-400 uppercase font-black mb-1">Distribution Status</div>
+                            ${subStatusRows}
+                            <div class="mt-3 pt-2 border-t border-slate-100 text-[8px] text-slate-400 italic">Area: ${areaSqKm.toFixed(2)} km²</div>
+                        </div>
+                    `;
+                    L.popup().setLatLng(e.latlng).setContent(popupContent).openOn(map);
                 });
+
+                if (showId || showAvg || showCount || showArea) {
+                    const center = turf.centerOfMass(finalCell).geometry.coordinates; // better visual center for clipped polygons
+                    let labelHtml = `<div class="analysis-label flex flex-col items-center">`;
+                    if(showId) labelHtml += `<span style="color:${labelFormat.id.color}; font-size:${labelFormat.id.size}px; font-weight:900;">${gridName}</span>`;
+                    if(showAvg) labelHtml += `<span style="color:${labelFormat.avg.color}; font-size:${labelFormat.avg.size}px;">Avg: <b style="font-weight:900">${gridRawPoints.length > 0 ? avg.toFixed(1) : 'NA'}</b></span>`;
+                    if(showCount) labelHtml += `<span style="color:${labelFormat.count.color}; font-size:${labelFormat.count.size}px; font-weight:700">N: <b>${gridRawPoints.length}</b></span>`;
+                    if(showArea) labelHtml += `<span style="color:${labelFormat.area.color}; font-size:${labelFormat.area.size}px; opacity:0.8; font-style:italic;">${areaSqKm.toFixed(1)} km²</span>`;
+                    labelHtml += `</div>`;
+                    L.marker([center[1], center[0]], { icon: L.divIcon({ className: '', html: labelHtml }) }).addTo(layers.labels);
+                }
+
+                activeGridData.push({ id: gridName, points: gridRawPoints, avg, min, max, count: gridRawPoints.length, area: areaSqKm, unit });
             });
+            
+            document.getElementById('mainAreaDisplay').innerText = `${totalAreaSum.toLocaleString(undefined, {maximumFractionDigits: 1})} sq.km`;
+        }
+
+        function updateLegend() {
+            const c = document.getElementById('legendContainer'); c.classList.remove('hidden');
+            const p = document.getElementById('activeParam').value;
+            c.innerHTML = `<div class="text-[10px] font-black uppercase mb-1 border-b pb-1">${p} Legend</div>` +
+                customRanges.map(r => `<div class="flex justify-between items-center gap-3 text-[9px] font-bold text-slate-600 ${r.visible === false ? 'opacity-40 line-through' : ''} mb-1"><div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${r.color}"></div><span>${r.label} <span class="text-[8px] opacity-60 font-normal">(${r.unit || '-'})</span></span></div><span class="text-[8px] font-mono text-slate-400 bg-slate-50 px-1 rounded border border-slate-100">[${r.min} - ${r.max >= 99999 ? 'MAX' : r.max}]</span></div>`).join('');
         }
 
         function exportAnalysisReports() {
             if(activeGridData.length === 0) return;
             const wb = XLSX.utils.book_new();
             const pKey = document.getElementById('activeParam').value;
-            const unit = document.getElementById('activeUnit').value;
 
-            activeGridData.forEach(grid => {
-                // 1. Detailed Location Sheet
-                const detailData = grid.points.map(p => {
-                    const cleanP = {...p};
-                    delete cleanP._targetVal; // remove internal marker
-                    return cleanP;
+            // 1. Executive Summary Sheet
+            const summaryData = activeGridData.map(g => ({
+                "Grid ID": g.id, "Samples": g.count, "Average": g.count > 0 ? g.avg.toFixed(3) : "NA",
+                "Min": g.count > 0 ? g.min.toFixed(3) : "-", "Max": g.count > 0 ? g.max.toFixed(3) : "-",
+                "Unit": g.unit, "Area (sq km)": g.area.toFixed(4)
+            }));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), "Analysis_Summary");
+
+            // 2. Individual Grid Detail Sheets (Stats format like Sector)
+            activeGridData.filter(g => g.count > 0).forEach(grid => {
+                const statSheetName = `STAT_${grid.id}`.replace(/[^a-zA-Z0-9_]/g, '').substring(0, 31);
+                const distributionRows = customRanges.map((range, i) => {
+                    const countInRange = grid.points.filter(pt => (i === customRanges.length - 1) ? (pt._val >= range.min && pt._val <= range.max) : (pt._val >= range.min && pt._val < range.max)).length;
+                    return { "Range Name": range.label, "Limits": `${range.min} - ${range.max}`, "Unit": range.unit, "No. of Samples": countInRange, "Percentage (%)": (grid.count > 0 ? (countInRange / grid.count * 100).toFixed(2) : 0) + "%" };
                 });
-                if(detailData.length > 0) {
-                    const wsDetail = XLSX.utils.json_to_sheet(detailData);
-                    XLSX.utils.book_append_sheet(wb, wsDetail, `${grid.id}_Details`);
-                }
-
-                // 2. Statistical Sheet
-                const statsData = [];
-                statsData.push({ Label: "Grid ID", Value: grid.id });
-                statsData.push({ Label: "Parameter", Value: pKey });
-                statsData.push({ Label: "Unit", Value: unit });
-                statsData.push({ Label: "Total Samples", Value: grid.count });
-                statsData.push({ Label: "Average", Value: grid.avg.toFixed(3) });
-                statsData.push({ Label: "Minimum", Value: grid.min.toFixed(3) });
-                statsData.push({ Label: "Maximum", Value: grid.max.toFixed(3) });
-                statsData.push({ Label: "---", Value: "---" });
-                statsData.push({ Label: "Range Analysis", Value: "Count (%)" });
-
-                customRanges.forEach(range => {
-                    const inRange = grid.points.filter(p => p._targetVal >= range.min && p._targetVal <= range.max);
-                    const percent = grid.count > 0 ? ((inRange.length / grid.count) * 100).toFixed(2) : 0;
-                    statsData.push({ 
-                        Label: `${range.label} (${range.min}-${range.max})`, 
-                        Value: `${inRange.length} (${percent}%)` 
-                    });
-                });
-
-                const wsStats = XLSX.utils.json_to_sheet(statsData);
-                XLSX.utils.book_append_sheet(wb, wsStats, `${grid.id}_Stats`);
+                const combinedRows = [
+                    { "Metric": "Identifier", "Value": grid.id },
+                    { "Metric": "Total Samples", "Value": grid.count },
+                    { "Metric": "Average", "Value": grid.avg.toFixed(3) + " " + grid.unit },
+                    { "Metric": "Area (sq km)", "Value": grid.area.toFixed(4) },
+                    {}, ...distributionRows
+                ];
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(combinedRows), statSheetName);
             });
 
-            XLSX.writeFile(wb, `MultiReport_${pKey}_${Date.now()}.xlsx`);
+            XLSX.writeFile(wb, `Advanced_Grid_Report_${pKey}_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
     </script>
 </body>

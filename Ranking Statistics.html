@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Critical Risk Analysis - Groundwater</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8fafc; /* slate-50 */
+            color: #334155; /* slate-700 */
+        }
+        
+        /* Sober Desktop Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+        /* Form Elements overrides */
+        input[type="number"], select {
+            appearance: none;
+            background-image: none;
+        }
+        
+        .table-header-sticky th {
+            position: sticky;
+            top: 0;
+            background-color: #f8fafc; /* Matches table head bg */
+            z-index: 10;
+        }
+
+        /* Attractive GUI Header Styles */
+        .glass-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .btn-animate { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-animate:hover { transform: translateY(-2px); filter: brightness(1.05); }
+        .btn-animate:active { transform: translateY(0px); }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden antialiased">
+
+    <!-- Container for custom alerts -->
+    <div id="alert-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-[300] flex flex-col gap-2 w-full max-w-md pointer-events-none"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 z-[200] bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center text-slate-800">
+        <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-blue-600 mb-4"></i>
+        <p id="loadingText" class="font-semibold tracking-wide text-sm text-blue-800 uppercase">Processing Data...</p>
+    </div>
+
+    <!-- Column Mapping Modal -->
+    <div id="mappingModal" class="hidden fixed inset-0 z-[150] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col border border-slate-200">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center shrink-0 bg-slate-50 rounded-t-xl">
+                <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="columns" class="text-blue-600 w-5 h-5"></i> 
+                    Map File Columns
+                </h2>
+                <button onclick="closeMapping()" class="text-slate-400 hover:text-slate-600 transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <!-- Body -->
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+                <p class="text-sm text-slate-600 mb-6">Verify the auto-detected columns or manually map them to the correct dashboard parameters.</p>
+                
+                <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
+                    Geographical Information
+                </h3>
+                <!-- Changed to grid-cols-4 for the new Location mapper -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8" id="geoMapContainer"></div>
+                
+                <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
+                    Chemical Parameters
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="chemMapContainer"></div>
+            </div>
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-3 shrink-0 bg-slate-50 rounded-b-xl">
+                <button onclick="closeMapping()" class="px-4 py-2 rounded-lg font-medium text-sm border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button onclick="confirmMapping()" class="px-5 py-2 rounded-lg font-medium text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2">
+                    Confirm & Analyze
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex flex-col overflow-hidden p-6 max-w-[1600px] w-full mx-auto gap-5">
+        
+        <!-- Attractive GUI Header -->
+        <div class="glass-header flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 p-6 md:p-8 rounded-[2rem] transition-all relative overflow-hidden shrink-0 w-full">
+            <!-- decorative background elements -->
+            <div class="absolute -right-20 -top-20 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+            <div class="absolute -left-20 -bottom-20 w-72 h-72 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+            
+            <div class="flex items-center gap-5 relative z-10">
+                <div class="p-4 bg-gradient-to-br from-blue-500 to-indigo-600 border border-white/20 rounded-2xl shadow-lg shadow-blue-500/30">
+                    <i data-lucide="droplets" class="text-white w-8 h-8"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-black tracking-tight text-white leading-tight drop-shadow-sm">
+                        Critical Risk <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Analysis</span>
+                    </h1>
+                    <p class="text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] mt-1 text-slate-300">Groundwater Monitoring Dashboard</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3 relative z-10">
+                <label class="cursor-pointer bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md text-white px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg transition-all btn-animate">
+                    <i data-lucide="upload" class="w-4 h-4 text-blue-300"></i> 
+                    <span id="uploadBtnText">Upload Dataset</span>
+                    <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls, .csv">
+                </label>
+
+                <button onclick="exportAllRiskLevels()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 border border-blue-400/50 text-white px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg shadow-blue-900/50 transition-all btn-animate">
+                    <i data-lucide="download" class="w-4 h-4 text-white"></i> Export Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- Configuration Bar -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm shrink-0 grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+            <div class="md:col-span-2">
+                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Chemical Parameter</label>
+                <div class="relative">
+                    <select id="activeParam" onchange="updateRiskAnalysis()" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-3 pr-10 font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm cursor-pointer">
+                        <option value="">Awaiting Dataset...</option>
+                    </select>
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Sort Ranking By</label>
+                <div class="relative">
+                    <select id="rankBy" onchange="updateRiskAnalysis()" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-3 pr-10 font-medium text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm cursor-pointer">
+                        <option value="count">Exceedance Count</option>
+                        <option value="percentage">Risk Percentage</option>
+                    </select>
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Display Top N Results</label>
+                <div class="relative">
+                    <input type="number" id="topNInput" value="10" min="1" oninput="updateRiskAnalysis()" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div id="tabs-container" class="hidden flex space-x-1 border-b border-slate-200 shrink-0 overflow-x-auto custom-scrollbar">
+            <button onclick="switchTab('national')" id="tab-btn-national" class="whitespace-nowrap pb-3 px-5 text-sm font-semibold transition-colors border-b-2 border-indigo-600 text-indigo-700">National Summary</button>
+            <button onclick="switchTab('summary')" id="tab-btn-summary" class="whitespace-nowrap pb-3 px-5 text-sm font-medium transition-colors border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300">State Summary</button>
+            <button onclick="switchTab('state')" id="tab-btn-state" class="whitespace-nowrap pb-3 px-5 text-sm font-medium transition-colors border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300">State Ranking</button>
+            <button onclick="switchTab('district')" id="tab-btn-district" class="whitespace-nowrap pb-3 px-5 text-sm font-medium transition-colors border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300">District Ranking</button>
+            <button onclick="switchTab('block')" id="tab-btn-block" class="whitespace-nowrap pb-3 px-5 text-sm font-medium transition-colors border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300">Block Ranking</button>
+        </div>
+
+        <!-- Table Container (Flex Grow to fill remaining height) -->
+        <div id="risk-dashboard" class="hidden flex-1 flex flex-col min-h-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            
+            <!-- National Summary Table View -->
+            <div id="card-national-container" class="flex flex-col h-full">
+                <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                    <h4 class="text-xs font-semibold text-slate-600 uppercase tracking-wider">National Level Overview (All Mapped Parameters)</h4>
+                </div>
+                <div id="nationalList" class="flex-1 overflow-auto custom-scrollbar"></div>
+            </div>
+
+            <!-- Summary Table View -->
+            <div id="card-summary-container" class="hidden flex flex-col h-full">
+                <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                    <h4 class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Detailed State Overview</h4>
+                </div>
+                <div id="summaryList" class="flex-1 overflow-auto custom-scrollbar"></div>
+            </div>
+
+            <!-- States Table View -->
+            <div id="card-state-container" class="hidden flex flex-col h-full">
+                <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                    <h4 class="text-xs font-semibold text-slate-600 uppercase tracking-wider">State Level Aggregation</h4>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium text-slate-500">Min. Required Samples:</span>
+                        <input type="number" id="minState" value="10" oninput="updateRiskAnalysis()" class="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-medium focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div id="topStatesList" class="flex-1 overflow-auto custom-scrollbar"></div>
+            </div>
+
+            <!-- Districts Table View -->
+            <div id="card-district-container" class="hidden flex flex-col h-full">
+                <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                    <h4 class="text-xs font-semibold text-slate-600 uppercase tracking-wider">District Level Aggregation</h4>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium text-slate-500">Min. Required Samples:</span>
+                        <input type="number" id="minDist" value="5" oninput="updateRiskAnalysis()" class="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-medium focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div id="topDistrictsList" class="flex-1 overflow-auto custom-scrollbar"></div>
+            </div>
+
+            <!-- Blocks Table View -->
+            <div id="card-block-container" class="hidden flex flex-col h-full">
+                <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                    <h4 class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Block Level Aggregation</h4>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium text-slate-500">Min. Required Samples:</span>
+                        <input type="number" id="minBlock" value="2" oninput="updateRiskAnalysis()" class="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-medium focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div id="topBlocksList" class="flex-1 overflow-auto custom-scrollbar"></div>
+            </div>
+
+            <!-- Empty State Placeholder (Before file upload) -->
+            <div id="empty-state" class="flex-1 flex flex-col items-center justify-center text-slate-400">
+                <i data-lucide="table-2" class="w-12 h-12 mb-3 opacity-50"></i>
+                <p class="text-sm font-medium">Please upload a dataset to view rankings.</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const PARAM_CONFIG = {
+            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH Level', keywords: ['ph', 'ph level', 'hydrogen'] },
+            'TDS': { b1: 500, b2: 2000, unit: 'mg/l', name: 'Total Dissolved Solids', keywords: ['tds', 'total dissolved solids'] },
+            'Turbidity': { b1: 1, b2: 5, unit: 'NTU', name: 'Turbidity', keywords: ['turbidity'] },
+            'Alkalinity': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Alkalinity', keywords: ['alkalinity', 'total alkalinity'] },
+            'TH': { b1: 200, b2: 600, unit: 'mg/l as CaCO3', name: 'Total Hardness', keywords: ['th', 'total hardness', 'hardness'] },
+            'EC': { b1: 750, b2: 3000, unit: 'µS/cm at 25°C', name: 'Electrical Conductivity', keywords: ['ec', 'cond', 'conductivity', 'electrical conductivity'] },
+            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride', keywords: ['cl', 'chloride'] },
+            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate', keywords: ['no3', 'nitrate'] },
+            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride', keywords: ['f', 'fluoride'] },
+            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron', keywords: ['fe', 'iron', 'total iron'] },
+            'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic', keywords: ['as', 'arsenic'] },
+            'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium', keywords: ['u', 'uranium'] },
+            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc', keywords: ['zn', 'zinc'] },
+            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper', keywords: ['cu', 'copper'] },
+            'Pb': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Lead', keywords: ['pb', 'lead'] },
+            'Cd': { b1: 0.003, b2: 0.003, unit: 'mg/L', name: 'Cadmium', keywords: ['cd', 'cadmium'] },
+            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium', keywords: ['cr', 'chromium'] },
+            'Hg': { b1: 0.001, b2: 0.001, unit: 'mg/L', name: 'Mercury', keywords: ['hg', 'mercury'] },
+            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel', keywords: ['ni', 'nickel'] },
+            'Se': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Selenium', keywords: ['se', 'selenium'] },
+            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium', keywords: ['ca', 'calcium'] },
+            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium', keywords: ['mg', 'magnesium'] },
+            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate', keywords: ['so4', 'sulphate', 'sulfate'] },
+            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese', keywords: ['mn', 'manganese'] },
+            'Al': { b1: 0.03, b2: 0.2, unit: 'mg/l', name: 'Aluminium', keywords: ['al', 'aluminium', 'alluminium'] },
+            'Ba': { b1: 0.7, b2: 0.7, unit: 'mg/l', name: 'Barium', keywords: ['ba', 'barium'] },
+            'B': { b1: 0.5, b2: 2.4, unit: 'mg/l', name: 'Boron', keywords: ['b', 'boron', 'boran'] },
+            'Mo': { b1: 0.05, b2: 0.07, unit: 'mg/l', name: 'Molybdenum', keywords: ['mo', 'molybdnum', 'molybdenum'] },
+        };
+
+        let rawData = [];
+        let fileHeaders = [];
+        let dataHeaders = { state: '', district: '', block: '', location: '', paramMap: {} };
+
+        window.onload = () => {
+            lucide.createIcons();
+            document.getElementById('risk-dashboard').classList.remove('hidden');
+            document.getElementById('card-national-container').classList.add('hidden'); // Hide until loaded
+        };
+
+        // Custom Alert Overrider
+        window.alert = function(message) {
+            const container = document.getElementById('alert-container');
+            if (!container) return; 
+            const alertBox = document.createElement('div');
+            alertBox.className = 'bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl transition-all duration-300 transform translate-y-[-20px] opacity-0 flex items-center justify-between gap-3 pointer-events-auto border border-slate-700';
+            alertBox.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i data-lucide="info" class="w-4 h-4 text-blue-400"></i>
+                    <span class="text-sm font-medium">${message}</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+            `;
+            container.appendChild(alertBox);
+            lucide.createIcons();
+            
+            requestAnimationFrame(() => alertBox.classList.remove('translate-y-[-20px]', 'opacity-0'));
+            setTimeout(() => {
+                if (alertBox.parentElement) {
+                    alertBox.classList.add('opacity-0');
+                    setTimeout(() => alertBox.remove(), 300);
+                }
+            }, 4000);
+        };
+
+        function showLoading(msg = "Processing Data...") {
+            document.getElementById('loadingText').innerText = msg;
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            document.getElementById('loadingOverlay').classList.add('flex');
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            document.getElementById('loadingOverlay').classList.remove('flex');
+        }
+
+        document.getElementById('fileInput').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Format file name for button
+            let displayFileName = file.name;
+            if(displayFileName.length > 20) displayFileName = displayFileName.substring(0, 17) + '...';
+            document.getElementById('uploadBtnText').innerText = displayFileName;
+            
+            showLoading("Reading File...");
+            
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const wb = XLSX.read(evt.target.result, { type: 'binary' });
+                rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                
+                if(rawData.length === 0) {
+                    hideLoading();
+                    return alert("The uploaded file appears to be empty.");
+                }
+                
+                fileHeaders = Object.keys(rawData[0]).filter(h => h && h.trim() !== '');
+                hideLoading();
+                openMappingModal();
+            };
+            reader.onerror = () => {
+                hideLoading();
+                alert("Error reading the file.");
+            };
+            reader.readAsBinaryString(file);
+        };
+
+        function openMappingModal() {
+            const createSelect = (id, label, guessKeywords) => {
+                let opts = `<option value="">-- Skip / Not Available --</option>`;
+                let matched = false;
+                fileHeaders.forEach(h => {
+                    const hl = h.toLowerCase().trim();
+                    let isMatch = false;
+                    if (!matched && guessKeywords) {
+                        isMatch = guessKeywords.some(kw => hl === kw.toLowerCase() || (kw.length > 2 && hl.includes(kw.toLowerCase())));
+                        if (isMatch) matched = true;
+                    }
+                    opts += `<option value="${h}" ${isMatch ? 'selected' : ''}>${h}</option>`;
+                });
+                return `
+                <div class="bg-white p-3 rounded-lg border border-slate-200">
+                    <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">${label}</label>
+                    <select id="${id}" class="w-full bg-slate-50 border border-slate-200 text-sm font-medium text-slate-800 outline-none rounded py-1.5 px-2 cursor-pointer focus:border-blue-500">
+                        ${opts}
+                    </select>
+                </div>`;
+            };
+
+            document.getElementById('geoMapContainer').innerHTML = 
+                createSelect('map_state', 'State / UT', ['state', 'state_name']) +
+                createSelect('map_district', 'District', ['district', 'dist']) +
+                createSelect('map_block', 'Block / Tehsil', ['block', 'tehsil', 'taluka']) +
+                createSelect('map_location', 'Location / Village', ['location', 'village', 'city', 'habitation', 'site']);
+
+            let chemHtml = '';
+            Object.keys(PARAM_CONFIG).forEach(param => {
+                chemHtml += createSelect(`map_${param}`, `${PARAM_CONFIG[param].name} (${param})`, PARAM_CONFIG[param].keywords);
+            });
+            document.getElementById('chemMapContainer').innerHTML = chemHtml;
+
+            document.getElementById('mappingModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeMapping() {
+            document.getElementById('mappingModal').classList.add('hidden');
+            document.getElementById('fileInput').value = '';
+            if (Object.keys(dataHeaders.paramMap).length === 0) {
+                document.getElementById('uploadBtnText').innerText = "Upload Dataset";
+            }
+        }
+
+        function confirmMapping() {
+            dataHeaders.state = document.getElementById('map_state').value;
+            dataHeaders.district = document.getElementById('map_district').value;
+            dataHeaders.block = document.getElementById('map_block').value;
+            dataHeaders.location = document.getElementById('map_location').value;
+            
+            dataHeaders.paramMap = {};
+            Object.keys(PARAM_CONFIG).forEach(param => {
+                const val = document.getElementById(`map_${param}`).value;
+                if (val) {
+                    dataHeaders.paramMap[param] = val;
+                }
+            });
+
+            if (Object.keys(dataHeaders.paramMap).length === 0) {
+                alert("Please map at least one chemical parameter to proceed.");
+                return;
+            }
+
+            document.getElementById('mappingModal').classList.add('hidden');
+            showLoading("Applying Mapping...");
+            
+            setTimeout(() => {
+                initParamSelector();
+                document.getElementById('empty-state').classList.add('hidden'); // Hide empty state
+                document.getElementById('tabs-container').classList.remove('hidden'); // Show tabs
+                
+                // Default to national tab initially
+                switchTab('national');
+                updateRiskAnalysis();
+                hideLoading();
+            }, 100);
+        }
+
+        function initParamSelector() {
+            const sel = document.getElementById('activeParam');
+            sel.innerHTML = Object.keys(dataHeaders.paramMap).map(p => 
+                `<option value="${p}">${PARAM_CONFIG[p].name} (${p})</option>`
+            ).join('');
+        }
+
+        function getProcessedRiskData(geoColName, minT, topN) {
+            const activeParamKey = document.getElementById('activeParam').value;
+            if (!geoColName || !activeParamKey) return [];
+
+            const mappedDataColName = dataHeaders.paramMap[activeParamKey];
+            const config = PARAM_CONFIG[activeParamKey];
+            const map = {};
+
+            rawData.forEach(d => {
+                const loc = String(d[geoColName] || '').trim();
+                if (!loc || loc === 'undefined') return;
+                
+                const v = parseFloat(d[mappedDataColName]);
+                if (isNaN(v)) return;
+                
+                if (!map[loc]) {
+                    map[loc] = { 
+                        name: loc, 
+                        total: 0, 
+                        fail: 0, 
+                        state: String(d[dataHeaders.state] || 'N/A'), 
+                        district: String(d[dataHeaders.district] || 'N/A'),
+                        block: String(d[dataHeaders.block] || 'N/A')
+                    };
+                }
+                
+                map[loc].total++;
+                if (activeParamKey === 'pH' ? (v < config.b1 || v > config.b2) : (v > config.b2)) {
+                    map[loc].fail++;
+                }
+            });
+            
+            const rankBy = document.getElementById('rankBy') ? document.getElementById('rankBy').value : 'count';
+            
+            return Object.values(map)
+                .filter(d => d.total >= minT)
+                .sort((a, b) => {
+                    if (rankBy === 'percentage') {
+                        const pctA = a.total > 0 ? (a.fail / a.total) * 100 : 0;
+                        const pctB = b.total > 0 ? (b.fail / b.total) * 100 : 0;
+                        if (pctB !== pctA) {
+                            return pctB - pctA;
+                        }
+                    }
+                    return b.fail - a.fail; // Primary or fallback sort
+                })
+                .slice(0, topN);
+        }
+
+        function generateNationalSummaryData() {
+            if (Object.keys(dataHeaders.paramMap).length === 0) return [];
+            
+            const nationalData = [];
+            
+            Object.keys(dataHeaders.paramMap).forEach(paramKey => {
+                const mappedColName = dataHeaders.paramMap[paramKey];
+                const config = PARAM_CONFIG[paramKey];
+                
+                let minObj = null;
+                let maxObj = null;
+                let sum = 0;
+                let count = 0;
+                const values = [];
+                
+                rawData.forEach(d => {
+                    const v = parseFloat(d[mappedColName]);
+                    if (isNaN(v)) return;
+                    
+                    values.push(v);
+                    sum += v;
+                    count++;
+                    
+                    const locInfo = {
+                        val: v,
+                        loc: dataHeaders.location ? (d[dataHeaders.location] || 'N/A') : 'N/A',
+                        district: dataHeaders.district ? (d[dataHeaders.district] || 'N/A') : 'N/A',
+                        block: dataHeaders.block ? (d[dataHeaders.block] || 'N/A') : 'N/A',
+                        state: dataHeaders.state ? (d[dataHeaders.state] || 'N/A') : 'N/A'
+                    };
+                    
+                    if (!minObj || v < minObj.val) minObj = locInfo;
+                    if (!maxObj || v > maxObj.val) maxObj = locInfo;
+                });
+                
+                if (count > 0) {
+                    const avg = sum / count;
+                    let variance = 0;
+                    values.forEach(v => { variance += Math.pow(v - avg, 2); });
+                    const stdDev = count > 1 ? Math.sqrt(variance / (count - 1)) : 0;
+                    
+                    nationalData.push({
+                        paramKey: paramKey,
+                        config: config,
+                        min: minObj,
+                        max: maxObj,
+                        avg: avg,
+                        stdDev: stdDev,
+                        count: count
+                    });
+                }
+            });
+            
+            return nationalData.sort((a, b) => a.config.name.localeCompare(b.config.name));
+        }
+
+        function renderNationalSummaryTable() {
+            const list = document.getElementById('nationalList');
+            const nationalData = generateNationalSummaryData();
+
+            if (!nationalData.length) {
+                list.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-12"><p class="text-sm font-medium">No numerical data found for any mapped parameter.</p></div>`;
+                return;
+            }
+
+            let tableHeader = `
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 text-[10px] uppercase tracking-wider table-header-sticky border-y border-slate-200">
+                        <tr>
+                            <th class="py-3 px-4 font-semibold text-slate-500 w-12 text-center">SL. NO.</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600">Country</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600">Parameter</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600">Unit</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600">Permissible Limit</th>
+                            <th class="py-3 px-4 font-semibold text-center text-blue-600">Min Value</th>
+                            <th class="py-3 px-4 font-semibold text-center text-red-600">Max Value</th>
+                            <th class="py-3 px-4 font-semibold text-center text-slate-600">Avg Value</th>
+                            <th class="py-3 px-4 font-semibold text-center text-slate-600">Std Dev</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600 min-w-[250px]">Location (Min Value)</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600 min-w-[250px]">Location (Max Value)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-xs bg-white">
+            `;
+
+            let tableRows = nationalData.map((d, i) => {
+                const limitStr = d.paramKey === 'pH' ? `${d.config.b1} - ${d.config.b2}` : d.config.b2;
+                return `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="py-3 px-4 text-center font-medium text-slate-500">${i+1}</td>
+                    <td class="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">INDIA</td>
+                    <td class="py-3 px-4 font-medium text-slate-600">${d.config.name}</td>
+                    <td class="py-3 px-4 font-medium text-slate-500 whitespace-nowrap">${d.config.unit}</td>
+                    <td class="py-3 px-4 font-medium text-slate-500 whitespace-nowrap">${limitStr}</td>
+                    <td class="py-3 px-4 text-center font-bold text-blue-600">${d.min.val.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center font-bold text-red-600">${d.max.val.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center font-medium text-slate-700">${d.avg.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center font-medium text-slate-700">${d.stdDev.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-slate-600">
+                        <span class="font-bold text-blue-700">${d.min.loc}</span><br>
+                        <span class="text-[10px] uppercase text-slate-400 font-medium">State: ${d.min.state}, Dist: ${d.min.district}, Blk: ${d.min.block}</span><br>
+                        <span class="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold">${d.min.val.toFixed(2)} ${d.config.unit}</span>
+                    </td>
+                    <td class="py-3 px-4 text-slate-600">
+                        <span class="font-bold text-red-700">${d.max.loc}</span><br>
+                        <span class="text-[10px] uppercase text-slate-400 font-medium">State: ${d.max.state}, Dist: ${d.max.district}, Blk: ${d.max.block}</span><br>
+                        <span class="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-bold">${d.max.val.toFixed(2)} ${d.config.unit}</span>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+
+            list.innerHTML = tableHeader + tableRows + `</tbody></table>`;
+        }
+
+        function generateSummaryData() {
+            const activeParamKey = document.getElementById('activeParam').value;
+            if (!activeParamKey || !dataHeaders.state) return [];
+
+            const mappedDataColName = dataHeaders.paramMap[activeParamKey];
+            const config = PARAM_CONFIG[activeParamKey];
+            const stateGroups = {};
+
+            rawData.forEach(d => {
+                const state = String(d[dataHeaders.state] || '').trim();
+                if (!state || state === 'undefined') return;
+                
+                const v = parseFloat(d[mappedDataColName]);
+                if (isNaN(v)) return;
+                
+                if (!stateGroups[state]) {
+                    stateGroups[state] = {
+                        state: state,
+                        values: [],
+                        minObj: null,
+                        maxObj: null,
+                        sum: 0
+                    };
+                }
+                
+                stateGroups[state].values.push(v);
+                stateGroups[state].sum += v;
+                
+                const locInfo = {
+                    val: v,
+                    loc: dataHeaders.location ? (d[dataHeaders.location] || 'N/A') : 'N/A',
+                    district: dataHeaders.district ? (d[dataHeaders.district] || 'N/A') : 'N/A',
+                    block: dataHeaders.block ? (d[dataHeaders.block] || 'N/A') : 'N/A'
+                };
+                
+                if (!stateGroups[state].minObj || v < stateGroups[state].minObj.val) {
+                    stateGroups[state].minObj = locInfo;
+                }
+                if (!stateGroups[state].maxObj || v > stateGroups[state].maxObj.val) {
+                    stateGroups[state].maxObj = locInfo;
+                }
+            });
+            
+            return Object.values(stateGroups).map(g => {
+                const n = g.values.length;
+                const avg = g.sum / n;
+                let variance = 0;
+                g.values.forEach(v => { variance += Math.pow(v - avg, 2); });
+                const stdDev = n > 1 ? Math.sqrt(variance / (n - 1)) : 0;
+                
+                return {
+                    state: g.state,
+                    min: g.minObj,
+                    max: g.maxObj,
+                    avg: avg,
+                    stdDev: stdDev
+                };
+            }).sort((a, b) => a.state.localeCompare(b.state));
+        }
+
+        function renderSummaryTable() {
+            const list = document.getElementById('summaryList');
+            const activeParamKey = document.getElementById('activeParam').value;
+            if (!activeParamKey || !dataHeaders.state) {
+                list.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-12"><p class="text-sm font-medium">Awaiting valid parameter / state mapping.</p></div>`;
+                return;
+            }
+
+            const config = PARAM_CONFIG[activeParamKey];
+            const summaryData = generateSummaryData();
+
+            if (!summaryData.length) {
+                list.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-12"><p class="text-sm font-medium">No numerical data found for this parameter.</p></div>`;
+                return;
+            }
+
+            let tableHeader = `
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 text-[10px] uppercase tracking-wider table-header-sticky border-y border-slate-200">
+                        <tr>
+                            <th class="py-3 px-4 font-semibold text-slate-500 w-12 text-center">SL. NO.</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600">State</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600">Parameter</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600">Unit</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600">Permissible Limit</th>
+                            <th class="py-3 px-4 font-semibold text-center text-blue-600">Min Value</th>
+                            <th class="py-3 px-4 font-semibold text-center text-red-600">Max Value</th>
+                            <th class="py-3 px-4 font-semibold text-center text-slate-600">Avg Value</th>
+                            <th class="py-3 px-4 font-semibold text-center text-slate-600">Std Dev</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600 min-w-[200px]">Location (Min Value)</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600 min-w-[200px]">Location (Max Value)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-xs bg-white">
+            `;
+
+            let tableRows = summaryData.map((d, i) => {
+                const limitStr = activeParamKey === 'pH' ? `${config.b1} - ${config.b2}` : config.b2;
+                return `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="py-3 px-4 text-center font-medium text-slate-500">${i+1}</td>
+                    <td class="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">${d.state}</td>
+                    <td class="py-3 px-4 font-medium text-slate-600">${config.name}</td>
+                    <td class="py-3 px-4 font-medium text-slate-500 whitespace-nowrap">${config.unit}</td>
+                    <td class="py-3 px-4 font-medium text-slate-500 whitespace-nowrap">${limitStr}</td>
+                    <td class="py-3 px-4 text-center font-bold text-blue-600">${d.min.val.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center font-bold text-red-600">${d.max.val.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center font-medium text-slate-700">${d.avg.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center font-medium text-slate-700">${d.stdDev.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-slate-600">
+                        <span class="font-bold text-blue-700">${d.min.loc}</span><br>
+                        <span class="text-[10px] uppercase text-slate-400 font-medium">Dist: ${d.min.district}, Blk: ${d.min.block}</span><br>
+                        <span class="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold">${d.min.val.toFixed(2)} ${config.unit}</span>
+                    </td>
+                    <td class="py-3 px-4 text-slate-600">
+                        <span class="font-bold text-red-700">${d.max.loc}</span><br>
+                        <span class="text-[10px] uppercase text-slate-400 font-medium">Dist: ${d.max.district}, Blk: ${d.max.block}</span><br>
+                        <span class="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-bold">${d.max.val.toFixed(2)} ${config.unit}</span>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+
+            list.innerHTML = tableHeader + tableRows + `</tbody></table>`;
+        }
+
+        function switchTab(tabId) {
+            const tabs = ['national', 'summary', 'state', 'district', 'block'];
+            
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const card = document.getElementById(`card-${t}-container`);
+                
+                if (t === tabId) {
+                    let activeColorClass = t === 'state' ? 'border-red-500 text-red-600' : 
+                                           t === 'district' ? 'border-orange-500 text-orange-600' : 
+                                           t === 'summary' ? 'border-emerald-600 text-emerald-700' :
+                                           t === 'national' ? 'border-indigo-600 text-indigo-700' :
+                                           'border-purple-500 text-purple-600';
+                    btn.className = `whitespace-nowrap pb-3 px-5 text-sm font-semibold transition-colors border-b-2 ${activeColorClass}`;
+                    card.classList.remove('hidden');
+                } else {
+                    btn.className = `whitespace-nowrap pb-3 px-5 text-sm font-medium transition-colors border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300`;
+                    card.classList.add('hidden');
+                }
+            });
+        }
+
+        function updateRiskAnalysis() {
+            renderNationalSummaryTable();
+            renderSummaryTable();
+            
+            const topN = parseInt(document.getElementById('topNInput').value) || 10;
+            
+            const levels = [
+                { id: 'state', key: dataHeaders.state, min: 'minState', list: 'topStatesList' },
+                { id: 'district', key: dataHeaders.district, min: 'minDist', list: 'topDistrictsList' },
+                { id: 'block', key: dataHeaders.block, min: 'minBlock', list: 'topBlocksList' }
+            ];
+
+            levels.forEach(lvl => {
+                const list = document.getElementById(lvl.list);
+                
+                if (!lvl.key) {
+                    list.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-slate-400 py-12">
+                            <i data-lucide="map-pin-off" class="w-10 h-10 mb-2 opacity-50"></i>
+                            <p class="text-sm font-medium">Geography column not mapped.</p>
+                        </div>`;
+                    return;
+                }
+
+                const min = parseInt(document.getElementById(lvl.min).value) || 1;
+                const data = getProcessedRiskData(lvl.key, min, topN);
+                
+                if (!data.length) {
+                    list.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-slate-400 py-12">
+                            <i data-lucide="check-circle-2" class="w-10 h-10 mb-2 opacity-50 text-emerald-500"></i>
+                            <p class="text-sm font-medium">No locations found exceeding permissible limits.</p>
+                        </div>`;
+                } else {
+                    let geoHeadersHtml = '';
+                    if (lvl.id === 'state') {
+                        geoHeadersHtml = `<th class="py-3 px-4 font-semibold text-slate-600">State</th>`;
+                    } else if (lvl.id === 'district') {
+                        geoHeadersHtml = `
+                            <th class="py-3 px-4 font-semibold text-slate-600">State</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600">District</th>`;
+                    } else if (lvl.id === 'block') {
+                        geoHeadersHtml = `
+                            <th class="py-3 px-4 font-semibold text-slate-600">State</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600">District</th>
+                            <th class="py-3 px-4 font-semibold text-slate-600">Block</th>`;
+                    }
+                    
+                    let tableHeader = `
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 text-[11px] uppercase tracking-wider table-header-sticky border-y border-slate-200">
+                                <tr>
+                                    <th class="py-3 px-4 font-semibold text-slate-500 w-16 text-center">Rank</th>
+                                    ${geoHeadersHtml}
+                                    <th class="py-3 px-4 font-semibold text-center text-slate-600">Total Samples</th>
+                                    <th class="py-3 px-4 font-semibold text-center text-slate-600">Above Permissible Limit</th>
+                                    <th class="py-3 px-4 font-semibold text-center text-slate-600">Percentage</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm bg-white">
+                    `;
+
+                    let tableRows = data.map((d, i) => {
+                        let geoColsHtml = '';
+                        if (lvl.id === 'state') {
+                            geoColsHtml = `<td class="py-3 px-4 whitespace-nowrap font-medium text-slate-800">${d.name}</td>`;
+                        } else if (lvl.id === 'district') {
+                            geoColsHtml = `
+                                <td class="py-3 px-4 whitespace-nowrap text-slate-500">${d.state}</td>
+                                <td class="py-3 px-4 whitespace-nowrap font-medium text-slate-800">${d.name}</td>`;
+                        } else if (lvl.id === 'block') {
+                            geoColsHtml = `
+                                <td class="py-3 px-4 whitespace-nowrap text-slate-500">${d.state}</td>
+                                <td class="py-3 px-4 whitespace-nowrap text-slate-500">${d.district}</td>
+                                <td class="py-3 px-4 whitespace-nowrap font-medium text-slate-800">${d.name}</td>`;
+                        }
+
+                        const pct = ((d.fail/d.total)*100).toFixed(1);
+
+                        return `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="py-3 px-4 text-center">
+                                <span class="text-slate-500 font-semibold">${i+1}</span>
+                            </td>
+                            ${geoColsHtml}
+                            <td class="py-3 px-4 text-center font-medium text-slate-700">${d.total}</td>
+                            <td class="py-3 px-4 text-center font-semibold text-red-600">${d.fail}</td>
+                            <td class="py-3 px-4 text-center whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+                                    ${pct}%
+                                </span>
+                            </td>
+                        </tr>
+                        `;
+                    }).join('');
+
+                    list.innerHTML = tableHeader + tableRows + `</tbody></table>`;
+                }
+            });
+            lucide.createIcons();
+        }
+
+        // --- EXPORT FUNCTIONALITY ---
+        function exportAllRiskLevels() {
+            if (!rawData.length || Object.keys(dataHeaders.paramMap).length === 0) return;
+            const activeParamKey = document.getElementById('activeParam').value;
+            const config = PARAM_CONFIG[activeParamKey];
+            const limitStr = activeParamKey === 'pH' ? `${config.b1} - ${config.b2}` : config.b2;
+            const wb = XLSX.utils.book_new();
+            
+            // Helper function to style exported sheets
+            const appendStyledSheet = (dataArray, sheetName) => {
+                const ws = XLSX.utils.json_to_sheet(dataArray);
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                const colWidths = [];
+                Object.keys(dataArray[0]).forEach(key => colWidths.push({ wch: Math.max(key.length + 2, 10) }));
+                
+                for (let R = range.s.r; R <= range.e.r; ++R) {
+                    for (let C = range.s.c; C <= range.e.c; ++C) {
+                        const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                        if (!ws[cellRef]) continue;
+                        const isHeader = (R === 0);
+                        const cellValStr = ws[cellRef].v ? String(ws[cellRef].v) : "";
+                        if (cellValStr.length + 2 > colWidths[C].wch) colWidths[C].wch = Math.min(cellValStr.length + 2, 45);
+                        
+                        ws[cellRef].s = {
+                            font: { name: "Times New Roman", sz: 12, bold: isHeader, color: isHeader ? { rgb: "FFFFFF" } : { rgb: "000000" } },
+                            fill: isHeader ? { fgColor: { rgb: "000000" } } : undefined,
+                            border: { top: { style: "thin", color: { rgb: "000000" } }, bottom: { style: "thin", color: { rgb: "000000" } }, left: { style: "thin", color: { rgb: "000000" } }, right: { style: "thin", color: { rgb: "000000" } } },
+                            alignment: { vertical: "center", horizontal: isHeader ? "center" : "left", wrapText: true }
+                        };
+                    }
+                }
+                ws['!cols'] = colWidths;
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            };
+
+            // 1. Export National Summary Sheet
+            const nationalData = generateNationalSummaryData();
+            if (nationalData.length > 0) {
+                const exportNationalData = nationalData.map((d, i) => {
+                    const natLimitStr = d.paramKey === 'pH' ? `${d.config.b1} - ${d.config.b2}` : d.config.b2;
+                    return {
+                        "SL. NO.": i + 1,
+                        "Country": "INDIA",
+                        "Parameter": d.config.name,
+                        "Unit": d.config.unit,
+                        "Permissible Limit": natLimitStr,
+                        "Minimum Value": d.min.val.toFixed(2),
+                        "Maximum Value": d.max.val.toFixed(2),
+                        "Std Deviation": d.stdDev.toFixed(2),
+                        "Average Value": d.avg.toFixed(2),
+                        "Min Value Location Details": `Loc: ${d.min.loc}, Blk: ${d.min.block}, Dist: ${d.min.district}, State: ${d.min.state} | Val: ${d.min.val.toFixed(2)} ${d.config.unit}`,
+                        "Max Value Location Details": `Loc: ${d.max.loc}, Blk: ${d.max.block}, Dist: ${d.max.district}, State: ${d.max.state} | Val: ${d.max.val.toFixed(2)} ${d.config.unit}`
+                    };
+                });
+                appendStyledSheet(exportNationalData, "NATIONAL SUMMARY");
+            }
+
+            // 2. Export Detailed State Summary Sheet
+            const summaryData = generateSummaryData();
+            if (summaryData.length > 0) {
+                const exportSummaryData = summaryData.map((d, i) => {
+                    return {
+                        "SL. NO.": i + 1,
+                        "State": d.state,
+                        "Parameter": config.name,
+                        "Unit": config.unit,
+                        "Permissible Limit": limitStr,
+                        "Minimum Value": d.min.val.toFixed(2),
+                        "Maximum Value": d.max.val.toFixed(2),
+                        "Std Deviation": d.stdDev.toFixed(2),
+                        "Average Value": d.avg.toFixed(2),
+                        "Min Value Location Details": `Loc: ${d.min.loc}, Dist: ${d.min.district}, Blk: ${d.min.block} | Val: ${d.min.val.toFixed(2)} ${config.unit}`,
+                        "Max Value Location Details": `Loc: ${d.max.loc}, Dist: ${d.max.district}, Blk: ${d.max.block} | Val: ${d.max.val.toFixed(2)} ${config.unit}`
+                    };
+                });
+                appendStyledSheet(exportSummaryData, "STATE SUMMARY");
+            }
+            
+            // 3. Export Hierarchy Levels
+            const levelsToExport = [];
+            if (dataHeaders.state) levelsToExport.push({ id: 'state', key: dataHeaders.state });
+            if (dataHeaders.district) levelsToExport.push({ id: 'district', key: dataHeaders.district });
+            if (dataHeaders.block) levelsToExport.push({ id: 'block', key: dataHeaders.block });
+
+            if(levelsToExport.length === 0) {
+                alert("No geographical columns mapped to export data.");
+                return;
+            }
+
+            levelsToExport.forEach(lvl => {
+                const rawDataProcessed = getProcessedRiskData(lvl.key, 1, 10000); 
+                const exportData = rawDataProcessed.map((d, i) => {
+                    const obj = { "Rank": i+1 };
+                    if (lvl.id === 'state') {
+                        obj["State"] = d.name;
+                    }
+                    else if (lvl.id === 'district') { 
+                        obj["State"] = d.state; 
+                        obj["District"] = d.name; 
+                    }
+                    else { 
+                        obj["State"] = d.state; 
+                        obj["District"] = d.district; 
+                        obj["Block"] = d.name; 
+                    }
+                    obj["Total Samples"] = d.total;
+                    obj["Samples Above Permissible Limit"] = d.fail;
+                    obj["Percentage Above Limit"] = Number(((d.fail/d.total)*100).toFixed(2));
+                    return obj;
+                });
+                
+                if (exportData.length > 0) {
+                    appendStyledSheet(exportData, lvl.id.toUpperCase());
+                }
+            });
+
+            if (wb.SheetNames.length > 0) {
+                XLSX.writeFile(wb, `Risk_Analysis_Report_${activeParamKey}.xlsx`);
+            } else {
+                alert("No exceedance data found to export for the selected parameter.");
+            }
+        }
+    </script>
+</body>
+</html>

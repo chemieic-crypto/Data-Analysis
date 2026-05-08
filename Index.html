@@ -1,26 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GWQ Data Process Engine - Hydro-Chemical OS</title>
+    <title> Data Analyser </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap');
         
         :root {
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.4);
             --bg-dark: #020617;
             --sidebar-bg: #030712;
             --border-glass: rgba(255, 255, 255, 0.05);
             --panel-glass: rgba(15, 23, 42, 0.8);
+            --text-main: #e2e8f0;
+            --header-height: 70px; 
+            --footer-height: 36px;
+            --font-main: "Times New Roman", Times, serif;
+            
+            /* Dynamic Node Variables */
+            --node-color: #10b981;
+            --node-glow: rgba(16, 185, 129, 0.2);
             --time-color: #fb923c;
             --date-color: #facc15;
-            --header-height: 56px;
-            --font-main: "Times New Roman", Times, serif;
+
+            /* Dynamic Ticker Variables */
+            --ticker-bg: #0f172a;
+            --ticker-text: #10b981;
+        }
+
+        /* --- Global Themes --- */
+        body.theme-arctic {
+            --bg-dark: #f8fafc;
+            --sidebar-bg: #e2e8f0;
+            --border-glass: rgba(0, 0, 0, 0.1);
+            --panel-glass: rgba(255, 255, 255, 0.9);
+            --text-main: #1e293b;
+        }
+
+        body.theme-ocean {
+            --bg-dark: #001220;
+            --sidebar-bg: #001a2c;
+            --border-glass: rgba(0, 150, 255, 0.1);
+            --panel-glass: rgba(0, 25, 45, 0.85);
+            --text-main: #bde0fe;
         }
 
         body { 
@@ -29,8 +54,9 @@
             margin: 0; 
             height: 100vh;
             overflow: hidden;
-            color: #e2e8f0;
+            color: var(--text-main);
             display: flex;
+            transition: background 0.5s ease, color 0.5s ease;
         }
 
         #scientific-bg {
@@ -39,23 +65,25 @@
             pointer-events: none;
             z-index: 0;
             background: 
-                radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 0% 0%, var(--node-glow) 0%, transparent 50%),
                 radial-gradient(circle at 100% 100%, rgba(30, 64, 175, 0.05) 0%, transparent 50%),
-                #020617;
+                var(--bg-dark);
+            transition: background 0.8s ease;
         }
 
         .grid-line {
             position: absolute;
-            background: rgba(59, 130, 246, 0.03);
+            background: var(--border-glass);
         }
 
         .particle {
             position: absolute;
-            background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+            background: radial-gradient(circle, var(--node-color) 0%, transparent 70%);
             border-radius: 50%;
             filter: blur(1px);
-            opacity: 0.2;
+            opacity: 0.15;
             animation: move linear infinite;
+            transition: background 0.5s ease;
         }
 
         @keyframes move {
@@ -73,21 +101,8 @@
             align-items: center;
             padding: 20px 0;
             z-index: 100;
-            box-shadow: 10px 0 30px rgba(0,0,0,0.5);
-        }
-
-        @keyframes logo-pulse-green {
-            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.3); }
-            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-        }
-
-        @keyframes drop-fall {
-            0% { transform: translateY(-15px) scaleY(1.1) scaleX(0.9); opacity: 0; }
-            10% { opacity: 1; }
-            60% { transform: translateY(10px) scaleY(1) scaleX(1); opacity: 1; }
-            80% { transform: translateY(18px) scaleY(0.8) scaleX(1.2); opacity: 0; }
-            100% { transform: translateY(-15px) scaleY(1.1) scaleX(0.9); opacity: 0; }
+            box-shadow: 10px 0 30px rgba(0,0,0,0.3);
+            transition: background 0.5s ease;
         }
 
         .main-logo-container {
@@ -100,12 +115,14 @@
             justify-content: center;
             border: 1px solid rgba(34, 197, 94, 0.3);
             position: relative;
-            animation: logo-pulse-green 3s infinite;
+            animation: logo-pulse 3s infinite;
             overflow: hidden;
         }
 
-        .animated-drop {
-            animation: drop-fall 2s cubic-bezier(0.445, 0.05, 0.55, 0.95) infinite;
+        @keyframes logo-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.3); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
 
         .app-btn {
@@ -119,86 +136,16 @@
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(255, 255, 255, 0.03);
             color: #64748b;
             border: 1px solid var(--border-glass);
         }
 
-        .app-btn:hover {
-            color: white;
-            background: rgba(59, 130, 246, 0.1);
-            border-color: rgba(59, 130, 246, 0.3);
-            transform: scale(1.05);
-        }
-
         .app-btn.active {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            background: var(--node-color);
             color: white;
-            box-shadow: 0 0 25px var(--accent-glow);
+            box-shadow: 0 0 20px var(--node-glow);
             border-color: transparent;
-        }
-
-        .app-btn.active::before {
-            content: '';
-            position: absolute;
-            left: -14px;
-            width: 4px;
-            height: 20px;
-            background: #3b82f6;
-            border-radius: 0 4px 4px 0;
-            box-shadow: 0 0 10px #3b82f6;
-        }
-
-        .app-btn::after {
-            font-family: var(--font-main);
-            content: attr(data-label);
-            position: absolute;
-            left: 70px;
-            background: #1e293b;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 700;
-            white-space: nowrap;
-            opacity: 0;
-            transform: translateX(-10px);
-            pointer-events: none;
-            transition: all 0.2s;
-            border: 1px solid var(--border-glass);
-            z-index: 200;
-        }
-
-        .app-btn:hover::after {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        #master-viewport {
-            flex: 1;
-            height: 100vh;
-            position: relative;
-            z-index: 10;
-            background: #000;
-            padding-top: var(--header-height);
-            box-sizing: border-box;
-        }
-
-        iframe {
-            width: 100%;
-            height: calc(100vh - var(--header-height));
-            border: none;
-            position: absolute;
-            top: var(--header-height); 
-            left: 0;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.4s ease;
-        }
-
-        iframe.active {
-            opacity: 1;
-            pointer-events: auto;
         }
 
         .header-status {
@@ -211,190 +158,239 @@
             z-index: 50;
             display: flex;
             align-items: center;
-            padding: 0 32px;
+            padding: 0 24px;
             justify-content: space-between;
         }
 
-        .data-stream {
+        /* --- HINDI DISCLAIMER TICKER (LOWER SIDE) --- */
+        .disclaimer-ticker {
+            position: fixed;
+            bottom: 0;
+            left: 80px;
+            right: 0;
+            height: var(--footer-height);
+            background: var(--ticker-bg);
+            border-top: 1px solid var(--border-glass);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
             display: flex;
             align-items: center;
-            gap: 20px;
+            overflow: hidden;
+            white-space: nowrap;
+            transition: background 1s ease;
         }
 
-        .stream-item {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .stream-label {
-            font-size: 10px;
-            font-weight: 800;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-
-        .stream-value {
-            font-size: 14px;
-            transition: all 0.4s ease;
-        }
-
-        #platform-title {
-            color: #ef4444; 
-            text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
-        }
-
-        #platform-title.loaded {
-            color: #10b981; 
-            text-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
-        }
-
-        .indicator-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: rgba(0,0,0,0.3);
-            padding: 6px 16px;
-            border-radius: 99px;
-            border: 1px solid var(--border-glass);
-        }
-
-        #data-status-dot {
-            width: 8px; height: 8px;
-            background: #ef4444; 
-            border-radius: 50%;
-            box-shadow: 0 0 10px #ef4444;
-            transition: all 0.5s ease;
-        }
-
-        #data-status-dot.active {
-            background: #10b981; 
-            box-shadow: 0 0 15px #10b981;
-        }
-
-        .terminal-text {
+        .ticker-content {
+            display: inline-block;
+            padding-left: 100%;
+            animation: ticker-move 60s linear infinite;
+            font-family: 'Noto Sans Devanagari', sans-serif;
             font-size: 13px;
-            color: #3b82f6;
-            font-weight: bold;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            color: var(--ticker-text);
+            transition: color 1s ease;
         }
 
-        .mono-telemetry {
-            font-family: 'JetBrains Mono', monospace;
+        @keyframes ticker-move {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
         }
 
-        .time-date-container {
+        .theme-selector {
             display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            min-width: 120px;
+            background: rgba(0,0,0,0.1);
+            border: 1px solid var(--border-glass);
+            border-radius: 10px;
+            padding: 3px;
+            gap: 2px;
         }
 
-        #clock {
-            color: var(--time-color);
-            text-shadow: 0 0 8px rgba(251, 146, 60, 0.3);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
+        .theme-swatch {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            border: 1px solid transparent;
         }
 
-        #current-date {
-            color: var(--date-color);
-            text-shadow: 0 0 8px rgba(250, 204, 21, 0.3);
-            font-weight: bold;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
+        .theme-swatch.active { border-color: var(--node-color); background: rgba(255,255,255,0.1); }
+
+        #active-mod {
+            color: var(--node-color);
+            text-shadow: 0 0 12px var(--node-glow);
+            transition: color 0.5s ease;
         }
+
+        #master-viewport {
+            flex: 1;
+            height: 100vh;
+            position: relative;
+            z-index: 10;
+            background: #000;
+            padding-top: var(--header-height);
+            padding-bottom: var(--footer-height);
+        }
+
+        iframe {
+            width: 100%;
+            height: calc(100vh - var(--header-height) - var(--footer-height));
+            border: none;
+            position: absolute;
+            top: var(--header-height); 
+            left: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        iframe.active { opacity: 1; pointer-events: auto; }
+
+        .adat-label {
+            font-size: 14px;
+            letter-spacing: 0.2em;
+            color: #3b82f6;
+            font-weight: 800;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        #clock { color: var(--time-color); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+        #current-date { color: var(--date-color); font-weight: bold; font-size: 10px; text-transform: uppercase; }
+
     </style>
 </head>
-<body>
+<body class="theme-cyber">
 
     <div id="scientific-bg"></div>
 
     <aside class="sidebar-nexus">
         <div class="mb-8">
             <div class="main-logo-container">
-                <svg class="animated-drop" width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" fill="#ffffff" />
                 </svg>
             </div>
         </div>
 
-        <nav class="flex flex-col items-center">
-            <div class="app-btn active" data-file="Splitoreflector.html" data-label="Splito-Reflector">
-                <i data-lucide="layers"></i>
-            </div>
-            <div class="app-btn" data-file="Combinations.html" data-label="Standard Combination">
-                <i data-lucide="beaker"></i>
-            </div>
-            <div class="app-btn" data-file="Combinations_pro.html" data-label="Combination Analysis Pro">
-                <i data-lucide="database"></i>
-            </div>
-            <div class="app-btn" data-file="Grid_analysis.html" data-label="Spatial Grid Engine">
-                <i data-lucide="grid"></i>
-            </div>
-            <div class="app-btn" data-file="Range_analysis.html" data-label="Compliance Reporting">
-                <i data-lucide="clipboard-check"></i>
-            </div>
-            <div class="app-btn" data-file="Sector_analysis.html" data-label="Radial Sector Analyst">
-                <i data-lucide="radar"></i>
-            </div>
-            <div class="app-btn" data-file="donut_chart.html" data-label="3D Statistics Visualizer">
-                <i data-lucide="pie-chart"></i>
-            </div>
-            <div class="app-btn" data-file="ttest.html" data-label="Paired T-Test Engine">
-                <i data-lucide="sigma"></i>
-            </div>
+        <nav class="flex flex-col items-center overflow-y-auto pb-4 scrollbar-hide">
+            <div class="app-btn active" data-file="Splitoreflector.html" title="Splito-Reflector"><i data-lucide="layers"></i></div>
+            <div class="app-btn" data-file="Location Analysis.html" title="Location Profiler"><i data-lucide="map-pin"></i></div>
+            <div class="app-btn" data-file="Ranking Statistics.html" title="Ranking Statistics"><i data-lucide="bar-chart-3"></i></div>
+            <div class="app-btn" data-file="sorter.html" title="Compliance Sorter"><i data-lucide="filter"></i></div>
+            <div class="app-btn" data-file="Staticdata_Validator.html" title="Data Validator"><i data-lucide="check-circle-2"></i></div>
+            <div class="app-btn" data-file="USSL Diagram.html" title="USSL Diagram Engine"><i data-lucide="activity"></i></div>
+            <div class="app-btn" data-file="Combinations.html" title="Standard Combination"><i data-lucide="beaker"></i></div>
+            <div class="app-btn" data-file="Combinations_pro.html" title="Combination Pro"><i data-lucide="database"></i></div>
+            <div class="app-btn" data-file="Grid_analysis.html" title="Spatial Grid Engine"><i data-lucide="grid"></i></div>
+            <div class="app-btn" data-file="Range_analysis.html" title="Compliance Reporting"><i data-lucide="clipboard-check"></i></div>
+            <div class="app-btn" data-file="Sector_analysis.html" title="Radial Sector Analyst"><i data-lucide="radar"></i></div>
+            <div class="app-btn" data-file="donut_chart.html" title="3D Statistics"><i data-lucide="pie-chart"></i></div>
+            <div class="app-btn" data-file="ttest.html" title="Paired T-Test"><i data-lucide="sigma"></i></div>
         </nav>
 
-        <div class="mt-auto flex flex-col items-center gap-6">
-            <button onclick="location.reload()" class="p-3 text-slate-500 hover:text-white transition-colors" title="Reload System">
+        <div class="mt-auto flex flex-col items-center gap-2">
+            <button onclick="location.reload()" class="p-3 text-slate-500 hover:text-white transition-colors">
                 <i data-lucide="refresh-cw" class="w-5 h-5"></i>
             </button>
-            <div class="text-[9px] font-bold text-slate-700 tracking-[0.3em] uppercase rotate-180 [writing-mode:vertical-lr] pb-4">
-                ENGINE-STATION
-            </div>
         </div>
     </aside>
 
     <div class="header-status">
-        <div class="data-stream">
-            <div class="stream-item">
-                <span class="stream-label">Platform Identity</span>
-                <div class="flex items-center gap-3">
-                    <div id="data-status-dot"></div>
-                    <span id="platform-title" class="stream-value font-bold">Meghnagar WQ Data Analytics</span>
+        <div class="flex items-center gap-6">
+            <div class="flex flex-col">
+                <span class="text-[10px] font-bold text-white-400 uppercase tracking-widest">प्लेटफ़ॉर्म</span>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <span class="adat-label whitespace-nowrap">भूजल गुणवत्ता डेटा विश्लेषण प्रणाली  </span>
+                    <span class="text-[10px] text-slate-400 font-mono">(संस्करण 10.0)</span>
                 </div>
             </div>
-            <div class="h-8 w-[1px] bg-white/5"></div>
-            <div class="stream-item">
-                <span class="stream-label">System Node</span>
-                <span id="active-mod" class="text-white font-bold stream-value">Splito-Reflector</span>
+
+            <div class="h-10 w-[1px] bg-white/5"></div>
+
+            <div class="flex flex-col">
+                <span class="text-[10px] font-bold text-orange-500 uppercase tracking-widest">UI Theme</span>
+                <div class="theme-selector mt-1">
+                    <div class="theme-swatch active" onclick="setTheme('cyber', this)" title="Cyber Laboratory">
+                        <div class="w-3 h-3 rounded-full bg-slate-900 border border-slate-700"></div>
+                    </div>
+                    <div class="theme-swatch" onclick="setTheme('arctic', this)" title="Arctic Clean">
+                        <div class="w-3 h-3 rounded-full bg-slate-100 border border-slate-300"></div>
+                    </div>
+                    <div class="theme-swatch" onclick="setTheme('ocean', this)" title="Deep Ocean">
+                        <div class="w-3 h-3 rounded-full bg-blue-900 border border-blue-700"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-10 w-[1px] bg-white/5"></div>
+
+            <div class="flex flex-col">
+                <span class="text-[10px] font-bold text-white-400 uppercase tracking-widest">सक्रिय प्रणाली नोड</span>
+                <div class="flex items-center gap-3 mt-0.5">
+                    <button id="prev-node" class="text-slate-500 hover:text-white"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                    <span id="active-mod" class="font-bold text-sm tracking-wide uppercase italic min-w-[160px] text-center">Splito-Reflector</span>
+                    <button id="next-node" class="text-slate-500 hover:text-white"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                </div>
             </div>
         </div>
 
-        <div class="indicator-group">
-            <span class="terminal-text">Jitendra Kumar // STA (Chemical) // Faridabad </span>
-            <div class="h-3 w-[1px] bg-blue-500/30"></div>
-            <div class="time-date-container">
-                <span id="clock" class="mono-telemetry leading-none">00:00:00</span>
-                <span id="current-date" class="mt-0.5">01 JAN 2024</span>
+        <div class="flex items-center gap-6">
+            <div class="indicator-group flex items-center gap-4 bg-white/5 px-6 py-2.5 rounded-full border border-white/5">
+                <div class="flex flex-col items-center">
+                    <span class="text-[11px] font-bold text-blue-1000 tracking-wider">जितेंद्र कुमार</span>
+                    <span class="text-[9px] text-slate-500 uppercase">वरिष्ठ तकनीकी सहायक (रसायन) // फरीदाबाद</span>
+                </div>
+                <div class="time-date-container">
+                    <div id="clock">00:00:00</div>
+                    <div id="current-date">01 JAN 2024</div>
+                </div>
             </div>
         </div>
     </div>
 
     <main id="master-viewport"></main>
 
+    <!-- Moving Ticker Footer in Hindi -->
+    <footer class="disclaimer-ticker" id="ticker-bar">
+        <div class="ticker-content" id="ticker-text">
+            *** सिस्टम अलर्ट: GWQ डेटा विश्लेषण v10.0 *** विकासकर्ता: जितेंद्र कुमार, STA (केमिकल), फरीदाबाद *** कानूनी अस्वीकरण: यह इंजन कम्प्यूटेशनल अनुसंधान और पर्यावरणीय मूल्यांकन के लिए डिज़ाइन किया गया है। यद्यपि एल्गोरिदम स्थापित हाइड्रो-केमिकल मानकों पर आधारित हैं, सभी परिणामों को आधिकारिक प्रयोगशाला प्रोटोकॉल के माध्यम से सत्यापित किया जाना चाहिए। जितेंद्र कुमार इस प्रणाली के स्वचालित प्रसंस्करण के आधार पर की गई किसी भी त्रुटि, व्याख्या या परिचालन निर्णयों के लिए स्पष्ट रूप से किसी भी दायित्व को अस्वीकार करते हैं। *** सत्यापित सिस्टम नोड सक्रिय ***
+        </div>
+    </footer>
+
     <script>
         const MODULE_MAP = {
-            'Splitoreflector.html': 'Splito-Reflector',
-            'Combinations.html': 'Standard Combination',
-            'Combinations_pro.html': 'Combination Analysis Pro',
-            'Grid_analysis.html': 'Spatial Grid Engine',
-            'Range_analysis.html': 'Compliance Reporting',
-            'Sector_analysis.html': 'Radial Sector Analyst',
-            'donut_chart.html': '3D Statistics Visualizer',
-            'ttest.html': 'Paired T-Test Engine'
+            'Splitoreflector.html': { name: 'Splito-Reflector', color: '#10b981', glow: 'rgba(16, 185, 129, 0.2)' },
+            'Location Analysis.html': { name: 'Location Profiler', color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.2)' },
+            'Ranking Statistics.html': { name: 'Ranking Statistics', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.2)' },
+            'sorter.html': { name: 'Compliance Sorter', color: '#6366f1', glow: 'rgba(99, 102, 241, 0.2)' },
+            'Staticdata_Validator.html': { name: 'Data Validator', color: '#facc15', glow: 'rgba(250, 204, 21, 0.2)' },
+            'USSL Diagram.html': { name: 'USSL Diagram Engine', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.2)' },
+            'Combinations.html': { name: 'Standard Combination', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.2)' },
+            'Combinations_pro.html': { name: 'Combination Analysis Pro', color: '#ec4899', glow: 'rgba(236, 72, 153, 0.2)' },
+            'Grid_analysis.html': { name: 'Spatial Grid Engine', color: '#06b6d4', glow: 'rgba(6, 182, 212, 0.2)' },
+            'Range_analysis.html': { name: 'Compliance Reporting', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.2)' },
+            'Sector_analysis.html': { name: 'Radial Sector Analyst', color: '#84cc16', glow: 'rgba(132, 204, 22, 0.2)' },
+            'donut_chart.html': { name: '3D Statistics Visualizer', color: '#f43f5e', glow: 'rgba(244, 63, 94, 0.2)' },
+            'ttest.html': { name: 'Paired T-Test Engine', color: '#f97316', glow: 'rgba(249, 115, 22, 0.2)' }
         };
+
+        const TICKER_PALETTES = [
+            { bg: '#064e3b', text: '#6ee7b7' }, // Emerald
+            { bg: '#451a03', text: '#fcd34d' }, // Amber
+            { bg: '#1e3a8a', text: '#bfdbfe' }, // Blue
+            { bg: '#4c1d95', text: '#ddd6fe' }, // Violet
+            { bg: '#701a75', text: '#f5d0fe' }, // Fuchsia
+            { bg: '#000000', text: '#00ff41' }, // Matrix
+            { bg: '#7f1d1d', text: '#fecaca' }, // Dark Red
+            { bg: '#0f172a', text: '#38bdf8' }  // Cyber
+        ];
+
+        const moduleKeys = Object.keys(MODULE_MAP);
+        let currentIndex = 0;
 
         window.onload = () => {
             lucide.createIcons();
@@ -402,48 +398,75 @@
             initSystemClock();
             loadModules();
             initNavigation();
-            initMessageListener();
+            initNodeControls();
+            initTickerCycler();
+            switchModule(0);
         };
 
-        function initMessageListener() {
-            window.addEventListener('message', (event) => {
-                if (event.data && event.data.type === 'DATA_LOADED') {
-                    const dot = document.getElementById('data-status-dot');
-                    const title = document.getElementById('platform-title');
-                    dot.classList.add('active');
-                    title.classList.add('loaded');
-                }
+        function initTickerCycler() {
+            const tickerText = document.getElementById('ticker-text');
+            let currentPalette = 0;
+
+            // Triggered every time the text finishes its run across the screen
+            tickerText.addEventListener('animationiteration', () => {
+                currentPalette = (currentPalette + 1) % TICKER_PALETTES.length;
+                const palette = TICKER_PALETTES[currentPalette];
+                
+                document.documentElement.style.setProperty('--ticker-bg', palette.bg);
+                document.documentElement.style.setProperty('--ticker-text', palette.text);
             });
+        }
+
+        function setTheme(themeName, element) {
+            document.body.className = `theme-${themeName}`;
+            document.querySelectorAll('.theme-swatch').forEach(s => s.classList.remove('active'));
+            element.classList.add('active');
         }
 
         function loadModules() {
             const viewport = document.getElementById('master-viewport');
-            Object.keys(MODULE_MAP).forEach((file, index) => {
+            moduleKeys.forEach((file, index) => {
                 const frame = document.createElement('iframe');
-                frame.id = `view-${file}`;
+                frame.id = `view-${file.replace(/\s/g, '_')}`;
                 frame.src = file;
                 if (index === 0) frame.classList.add('active');
                 viewport.appendChild(frame);
             });
         }
 
-        function initNavigation() {
-            const btns = document.querySelectorAll('.app-btn[data-file]');
-            btns.forEach(btn => {
-                btn.onclick = () => {
-                    const file = btn.getAttribute('data-file');
-                    btns.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    document.querySelectorAll('iframe').forEach(f => f.classList.remove('active'));
-                    const targetFrame = document.getElementById(`view-${file}`);
-                    if (targetFrame) targetFrame.classList.add('active');
-                    document.getElementById('active-mod').innerText = MODULE_MAP[file];
-                };
+        function switchModule(index) {
+            currentIndex = (index + moduleKeys.length) % moduleKeys.length;
+            const file = moduleKeys[currentIndex];
+            const modData = MODULE_MAP[file];
+            
+            document.documentElement.style.setProperty('--node-color', modData.color);
+            document.documentElement.style.setProperty('--node-glow', modData.glow);
+
+            document.querySelectorAll('.app-btn').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-file') === file);
             });
+
+            document.querySelectorAll('iframe').forEach(f => f.classList.remove('active'));
+            const targetFrame = document.getElementById(`view-${file.replace(/\s/g, '_')}`);
+            if (targetFrame) targetFrame.classList.add('active');
+
+            document.getElementById('active-mod').innerText = modData.name;
+        }
+
+        function initNavigation() {
+            document.querySelectorAll('.app-btn[data-file]').forEach(btn => {
+                btn.onclick = () => switchModule(moduleKeys.indexOf(btn.getAttribute('data-file')));
+            });
+        }
+
+        function initNodeControls() {
+            document.getElementById('prev-node').onclick = () => switchModule(currentIndex - 1);
+            document.getElementById('next-node').onclick = () => switchModule(currentIndex + 1);
         }
 
         function initLabBackground() {
             const bg = document.getElementById('scientific-bg');
+            bg.innerHTML = '';
             for(let i=0; i<10; i++) {
                 const line = document.createElement('div');
                 line.className = 'grid-line';
@@ -457,10 +480,8 @@
                 const size = Math.random() * 4 + 2;
                 p.style.width = size + 'px'; p.style.height = size + 'px';
                 p.style.left = Math.random() * 100 + '%'; p.style.top = Math.random() * 100 + '%';
-                const mx = (Math.random() - 0.5) * 200;
-                const my = (Math.random() - 0.5) * 200;
-                p.style.setProperty('--mx', mx + 'px');
-                p.style.setProperty('--my', my + 'px');
+                p.style.setProperty('--mx', (Math.random() - 0.5) * 200 + 'px');
+                p.style.setProperty('--my', (Math.random() - 0.5) * 200 + 'px');
                 p.style.animationDuration = (Math.random() * 20 + 10) + 's';
                 p.style.animationDelay = (Math.random() * -20) + 's';
                 bg.appendChild(p);
@@ -470,14 +491,11 @@
         function initSystemClock() {
             const clockEl = document.getElementById('clock');
             const dateEl = document.getElementById('current-date');
-            const updateTime = () => {
+            setInterval(() => {
                 const now = new Date();
                 clockEl.innerText = now.toLocaleTimeString('en-US', { hour12: false });
-                const options = { day: '2-digit', month: 'short', year: 'numeric' };
-                dateEl.innerText = now.toLocaleDateString('en-GB', options).toUpperCase();
-            };
-            updateTime();
-            setInterval(updateTime, 1000);
+                dateEl.innerText = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+            }, 1000);
         }
     </script>
 </body>
