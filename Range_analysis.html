@@ -58,6 +58,14 @@
             100% { left: 250%; }
         }
         
+        /* --- Dropdown Panel Fix --- */
+        .glossy-panel-dropdown {
+            overflow: visible !important;
+        }
+        .glossy-panel-dropdown::before {
+            display: none !important; /* Hides shine so it doesn't spill out */
+        }
+        
         .glossy-btn-indigo {
             background: linear-gradient(145deg, #818cf8, #4f46e5);
             box-shadow: inset 0px 2px 4px rgba(255,255,255,0.6), 0px 6px 12px rgba(79,70,229,0.4), inset 0px -4px 6px rgba(0,0,0,0.2);
@@ -200,7 +208,7 @@
         </div>
 
         <!-- Shared Global Geo Filters -->
-        <div class="glossy-panel p-5 rounded-3xl mb-6 flex flex-wrap gap-4 items-end">
+        <div class="glossy-panel glossy-panel-dropdown p-5 rounded-3xl mb-6 flex flex-wrap gap-4 items-end" style="z-index: 60;">
             <div class="flex-1 min-w-[200px]">
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 drop-shadow-sm">1. Reporting Level</label>
                 <select id="geoLevel" onchange="handleLevelChange()" class="w-full glossy-input rounded-xl p-3 font-bold text-slate-700">
@@ -332,7 +340,7 @@
             </div>
 
             <!-- Filter Bar for Single View (Param Specific & Export Settings) -->
-            <div class="glossy-panel p-6 rounded-3xl mb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+            <div class="glossy-panel glossy-panel-dropdown p-6 rounded-3xl mb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start" style="z-index: 50;">
                 <div>
                     <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-2 drop-shadow-sm">4. Active Parameter for Stats</label>
                     <select id="activeParam" onchange="updateReport()" class="w-full glossy-input bg-indigo-50/30 rounded-xl p-3 font-bold text-indigo-800">
@@ -346,7 +354,7 @@
                             <span id="paramDropdownText" class="truncate">All Parameters Selected</span>
                             <i data-lucide="chevron-down" class="w-4 h-4 ml-2 shrink-0"></i>
                         </button>
-                        <div id="paramDropdown" class="hidden absolute top-full mt-2 w-full glossy-panel rounded-xl z-50 max-h-60 overflow-y-auto custom-scrollbar p-2">
+                        <div id="paramDropdown" class="hidden absolute top-full mt-2 w-full bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.2)] rounded-xl z-[100] max-h-60 overflow-y-auto custom-scrollbar p-2">
                             <!-- Dynamic Checkboxes -->
                         </div>
                     </div>
@@ -371,7 +379,7 @@
                             <span id="combinedParamDropdownText" class="truncate">All Parameters Selected</span>
                             <i data-lucide="chevron-down" class="w-4 h-4 ml-2 shrink-0"></i>
                         </button>
-                        <div id="combinedParamDropdown" class="hidden absolute top-full mt-2 w-full glossy-panel rounded-xl z-50 max-h-60 overflow-y-auto custom-scrollbar p-2">
+                        <div id="combinedParamDropdown" class="hidden absolute top-full mt-2 w-full bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.2)] rounded-xl z-[100] max-h-60 overflow-y-auto custom-scrollbar p-2">
                             <!-- Dynamic Checkboxes -->
                         </div>
                     </div>
@@ -415,7 +423,7 @@
 
         <!-- Tab Content: Multi Parameter Dashboard -->
         <div id="view-multi" class="hidden">
-            <div class="glossy-panel p-6 rounded-3xl mb-6">
+            <div class="glossy-panel glossy-panel-dropdown p-6 rounded-3xl mb-6" style="z-index: 40;">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <h3 class="text-lg font-black text-slate-800 flex items-center gap-2 drop-shadow-sm">
                         <i data-lucide="layout-dashboard" class="w-5 h-5 text-indigo-500"></i>
@@ -427,7 +435,7 @@
                                 <span id="multiParamDropdownText" class="truncate">All Parameters Selected</span>
                                 <i data-lucide="chevron-down" class="w-4 h-4 ml-2 shrink-0"></i>
                             </button>
-                            <div id="multiParamDropdown" class="hidden absolute top-full mt-2 right-0 w-64 glossy-panel rounded-xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                            <div id="multiParamDropdown" class="hidden absolute top-full mt-2 right-0 w-64 bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.2)] rounded-xl z-[100] max-h-60 overflow-y-auto custom-scrollbar p-2">
                                 <!-- Dynamic Checkboxes -->
                             </div>
                         </div>
