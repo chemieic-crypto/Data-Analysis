@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Quality Analysis Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- SheetJS for Excel parsing and generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- shpjs for Shapefile parsing -->
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+    <!-- Leaflet for Mapping -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        #map { height: 600px; width: 100%; border-radius: 0.75rem; z-index: 10; }
+        /* Custom styles for Leaflet popup to make it look modern */
+        .leaflet-popup-content-wrapper { border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .leaflet-popup-content { margin: 0; width: 280px !important; }
+
+        /* Page Break Avoidance for Print/Word */
+        .avoid-break { page-break-inside: avoid !important; }
+        tr { page-break-inside: avoid !important; }
+
+        /* --- Standard Browser Print Mode --- */
+        @media print {
+            @page { size: A4 portrait; margin: 10mm; }
+            body { background-color: white !important; margin: 0; padding: 0; }
+            
+            /* Hide the website UI (Top bar, Tabs, Upload buttons) */
+            body > div > div > div.bg-slate-900,
+            body > div > div > div.max-w-7xl > div.flex.gap-1 { display: none !important; }
+            
+            /* Remove container restrictions */
+            body > div > div > div.max-w-7xl { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            
+            .print-container { 
+                box-shadow: none !important; 
+                border: none !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            
+            /* Auto-fit tables */
+            .print-container table { width: 100% !important; table-layout: auto !important; }
+            .print-container th, .print-container td { font-size: 10px !important; padding: 5px !important; line-height: 1.3 !important; }
+            .print-container .text-lg { font-size: 11px !important; }
+            .print-container .text-\\[15px\\] { font-size: 11px !important; }
+            .print-container .text-xs { font-size: 9px !important; }
+            .print-container .w-28, .print-container .w-32, .print-container .w-1\\/3 { width: auto !important; }
+            .print-container .overflow-x-auto, .print-container .overflow-hidden { overflow: visible !important; }
+            
+            .no-print { display: none !important; }
+            .print-only { display: inline-block !important; }
+            .page-break-before { page-break-before: always !important; }
+            * { box-shadow: none !important; text-shadow: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        const COLUMNS = [
+            "S No", "State", "District", "Block", "Village/Town", "Latitude", "Longitude", 
+            "Sample Collection Structure", "Depth of the Structure from Ground Level in Meters", 
+            "Sample Collection Date", "Sample Analysis Date", "pH", "EC (µS/cm at 25 C)", 
+            "Cl-1 (mg/L)", "SO4-2 (mg/L)", "NO3-1 (mg/L)", "F", "Ca+2 (mg/L)", "Mg+2 (mg/L)", 
+            "TH *as CaCO3 (mg/L)", "Cr (mg/L)", "Mn (mg/L)", "Fe (mg/L)", "Ni (mg/L)", 
+            "Cu (mg/L)", "Zn (mg/L)", "As (µg/L)", "Se (µg/L)", "Cd (µg/L)", "Pb (µg/L)", 
+            "U (µg/L)", "Remarks"
+        ];
+
+        const DEFAULT_LIMITS = {
+            "pH": { acc: 6.5, perm: 8.5, isStrictRange: true },
+            "EC (µS/cm at 25 C)": { acc: 750, perm: 3000 },
+            "Cl-1 (mg/L)": { acc: 250, perm: 1000 },
+            "SO4-2 (mg/L)": { acc: 200, perm: 400 },
+            "NO3-1 (mg/L)": { acc: 45, perm: 45 },
+            "F": { acc: 1.0, perm: 1.5 },
+            "Ca+2 (mg/L)": { acc: 75, perm: 200 },
+            "Mg+2 (mg/L)": { acc: 30, perm: 100 },
+            "TH *as CaCO3 (mg/L)": { acc: 200, perm: 600 },
+            "Cr (mg/L)": { acc: 0.05, perm: 0.05 },
+            "Mn (mg/L)": { acc: 0.1, perm: 0.3 },
+            "Fe (mg/L)": { acc: 0.3, perm: 1.0 },
+            "Ni (mg/L)": { acc: 0.02, perm: 0.02 },
+            "Cu (mg/L)": { acc: 0.05, perm: 1.5 },
+            "Zn (mg/L)": { acc: 5.0, perm: 15.0 },
+            "As (µg/L)": { acc: 10, perm: 10 },
+            "Se (µg/L)": { acc: 10, perm: 10 },
+            "Cd (µg/L)": { acc: 3, perm: 3 },
+            "Pb (µg/L)": { acc: 10, perm: 10 },
+            "U (µg/L)": { acc: 30, perm: 30 }
+        };
+
+        const HEAVY_METALS = ["Cr", "Mn", "Fe", "Ni", "Cu", "Zn", "As", "Se", "Cd", "Pb", "U"];
+
+        const RISK_PERCEPTIONS = [
+            { param: "Manganese", text: "Continue use can damage liver, lungs and kidneys, effects the metabolism of iron for formation of hemoglobin and leads to neurological conditions- impaired memory, impaired motor coordination and delayed reaction time-results in disease called Manganism." },
+            { param: "Lead", text: "Continue use can cause cardiovascular effects, increased blood pressure and incidence of hypertension. Decreased kidney function. Reproductive problems (in both men and women)." },
+            { param: "Iron", text: "An excessive amount of exposure to iron can increase the risk of Parkinson's, cardiovascular disease, diabetes mellitus, pigmentation changes, Alzheimer's, as well as renal, liver, respiratory, and neurological issues." },
+            { param: "Arsenic", text: "Arsenic in groundwater poses significant health risks, including skin lesions, cardiovascular disease, and several types of cancer due to long-term exposure. Chronic exposure to arsenic in groundwater can lead to serious health problems, including skin lesions, peripheral neuropathy, and an increased risk of several types of cancer, such as skin, lung, and bladder cancer. Long-term ingestion can cause cardiovascular disease, diabetes, and developmental disorders in children, potentially leading to cognitive and motor impairment." }
+        ];
+
+        const MITIGATIONS = [
+            {
+                title: "Remedial Measures for pH",
+                sections: [
+                    { subtitle: "Treatment of acidic water:", points: ["Passing through Neutralizing Filter containing Calcite, Magnesia (MgO) or Calcium Carbonate.", "Adding Soda Ash (Na2CO3)"] },
+                    { subtitle: "Treatment of Basic water:", points: ["Installation of an Acid injector (white vinegar)."] }
+                ]
+            },
+            {
+                title: "Remedial Measures for Nitrate",
+                desc: "For removal of nitrate both non-treatment techniques like blending and treatment processes such as ion-exchange, reverse osmosis, biological denitrification and chemical reduction are useful.",
+                sections: [
+                    { 
+                        subtitle: "Methods involving no treatment:", 
+                        desc: "In order to use any of these options the nitrate problem must be local-scale. Common methods are:",
+                        points: ["Raw water source substitution", "Blending with low nitrate waters"],
+                        postDesc: "This greatly reduces expenses and helps to provide safer drinking water to larger numbers of people."
+                    },
+                    { 
+                        subtitle: "Methods involving Treatment:", 
+                        points: ["Adsorption/Ion Exchange", "Reverse Osmosis", "Electrodialysis", "Bio-chemical Denitrification (By using denitrifying bacteria and microbes)", "Catalytic Reduction/Denitrification (using hydrogen gas)"] 
+                    }
+                ]
+            },
+            {
+                title: "Remedial Measures for Fluoride",
+                sections: [
+                    { points: ["Adsorption and ion exchange", "Ion-Exchange resins", "Coagulation-precipitation", "Nalgonda Technique"] }
+                ]
+            },
+            {
+                title: "Removal of Total Hardness, Calcium and Magnesium",
+                sections: [
+                    { points: ["Chemical Process of Boiling Hard Water.", "Adding Slaked Lime (Clark's Process)", "Adding Washing Soda.", "Calgon Process.", "Ion Exchange Process.", "Using Ion Exchange Resins."] },
+                    { subtitle: "Carbonate (Temporary) Hardness also known as Ca Bicarbonate", desc: "Removal by Boiling or adding Lime" },
+                    { subtitle: "Non-Carbonate (Permanent) Hardness", desc: "Removal by Lime-soda, Zeolite or Demineralization Processes" }
+                ]
+            },
+            {
+                title: "Removal of Sulphate",
+                sections: [
+                    { points: ["Reverse Osmosis (RO)", "Nano Filter (NF)", "Ion exchange", "Electrocoagulation", "Chemical precipitation", "Blending", "Rain Water Harvesting (RWH)", "Zero valent iron (ZVI) method"] }
+                ]
+            },
+            {
+                title: "Specific Methods for Common Trace Metals",
+                sections: [
+                    { points: [
+                        "Manganese: Treating the water at its source, filtration system and water treatment method.",
+                        "Lead: Reverse osmosis systems, water distillers and carbon filters.",
+                        "Iron: Oxygenation of groundwater followed by precipitation.",
+                        "Arsenic: Ion exchange, Chemical Precipitation.",
+                        "Uranium: Lime Softening, Anion Exchange, Reverse Osmosis, Activated Alumina and coagulation/filtration"
+                    ] }
+                ]
+            }
+        ];
+
+        const FULL_PARAM_NAMES = {
+            "pH": "pH",
+            "EC": "Electrical conductivity",
+            "Cl-1": "Chloride",
+            "SO4-2": "Sulphate",
+            "NO3-1": "Nitrate",
+            "F": "Fluoride",
+            "Ca+2": "Calcium",
+            "Mg+2": "Magnesium",
+            "TH": "Total Hardness",
+            "Cr": "Chromium",
+            "Mn": "Manganese",
+            "Fe": "Iron",
+            "Ni": "Nickel",
+            "Cu": "Copper",
+            "Zn": "Zinc",
+            "As": "Arsenic",
+            "Se": "Selenium",
+            "Cd": "Cadmium",
+            "Pb": "Lead",
+            "U": "Uranium"
+        };
+
+        const getFullParamNames = (paramsList) => {
+            return paramsList.map(p => FULL_PARAM_NAMES[p] || p).join(', ');
+        };
+
+        const SimpleReportTable = ({ data, isDistrict, manualTotals, onManualTotalChange }) => {
+            const sumTotalAnalysed = data.reduce((sum, row) => sum + (manualTotals[row.key] !== undefined && manualTotals[row.key] !== '' ? parseInt(manualTotals[row.key]) || 0 : row.total), 0);
+            const sumMarginal = data.reduce((sum, row) => sum + row.marginal, 0);
+            const sumUnsafe = data.reduce((sum, row) => sum + row.unsafe, 0);
+            const sumContaminated = sumMarginal + sumUnsafe;
+
+            return (
+                <table className="w-full border-collapse border border-black text-[14px] text-center mb-8 bg-white">
+                    <thead>
+                        <tr>
+                            <th rowSpan="2" className="border border-black p-2 font-bold">Sl. No.</th>
+                            <th rowSpan="2" className="border border-black p-2 font-bold">Name of {isDistrict ? 'District' : 'State/UT'}</th>
+                            <th rowSpan="2" className="border border-black p-2 font-bold w-24">Total no.<br/>of samples<br/>analysed</th>
+                            <th colSpan="3" className="border border-black p-2 font-bold">No. of samples contaminated</th>
+                            <th rowSpan="2" className="border border-black p-2 font-bold w-1/3">Parameters of contamination</th>
+                        </tr>
+                        <tr>
+                            <th className="border border-black p-2 font-bold w-24">Above<br/>Acceptable<br/>Limit</th>
+                            <th className="border border-black p-2 font-bold w-24">Above<br/>Permissible<br/>Limit</th>
+                            <th className="border border-black p-2 font-bold w-24">Total samples<br/>Contaminated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {data.length === 0 ? (
+                            <tr>
+                                <td colSpan="7" className="border border-black p-4 text-center">No data available</td>
+                            </tr>
+                        ) : (
+                            data.map((row, idx) => {
+                                const totalContaminated = row.marginal + row.unsafe;
+                                const allParams = Array.from(new Set([...row.unsafeList, ...row.marginalList]));
+                                const paramString = getFullParamNames(allParams);
+                                
+                                return (
+                                    <tr key={idx}>
+                                        <td className="border border-black p-2">{idx + 1}</td>
+                                        <td className="border border-black p-2 text-left font-bold">{isDistrict ? row.district : row.state}</td>
+                                        <td className="border border-black p-2 font-bold">
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                value={manualTotals[row.key] !== undefined ? manualTotals[row.key] : row.total}
+                                                onChange={(e) => onManualTotalChange(row.key, e.target.value)}
+                                                className="w-full max-w-[60px] text-center bg-transparent border-b border-dashed border-gray-400 outline-none no-print"
+                                            />
+                                            <span className="print-only hidden">{manualTotals[row.key] !== undefined ? manualTotals[row.key] : row.total}</span>
+                                        </td>
+                                        <td className="border border-black p-2 font-bold">{row.marginal || 'Nil'}</td>
+                                        <td className="border border-black p-2 font-bold">{row.unsafe || 'Nil'}</td>
+                                        <td className="border border-black p-2 font-bold">{totalContaminated || 'Nil'}</td>
+                                        <td className="border border-black p-2 text-left">{paramString}</td>
+                                    </tr>
+                                );
+                            })
+                        )}
+                        {data.length > 0 && (
+                            <tr>
+                                <td colSpan="2" className="border border-black p-2 font-bold text-right">Total</td>
+                                <td className="border border-black p-2 font-bold">{sumTotalAnalysed}</td>
+                                <td className="border border-black p-2 font-bold">{sumMarginal || 'Nil'}</td>
+                                <td className="border border-black p-2 font-bold">{sumUnsafe || 'Nil'}</td>
+                                <td className="border border-black p-2 font-bold">{sumContaminated || 'Nil'}</td>
+                                <td className="border border-black p-2"></td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            );
+        };
+
+        const FormatParam = ({ param }) => {
+            const map = {
+                "Cl-1": <><span className="text-sm font-bold">Cl</span><sup className="text-[10px] font-bold">-</sup></>,
+                "SO4-2": <><span className="text-sm font-bold">SO</span><sub className="text-[10px] font-bold">4</sub><sup className="text-[10px] font-bold">2-</sup></>,
+                "NO3-1": <><span className="text-sm font-bold">NO</span><sub className="text-[10px] font-bold">3</sub><sup className="text-[10px] font-bold">-</sup></>,
+                "Ca+2": <><span className="text-sm font-bold">Ca</span><sup className="text-[10px] font-bold">2+</sup></>,
+                "Mg+2": <><span className="text-sm font-bold">Mg</span><sup className="text-[10px] font-bold">2+</sup></>,
+                "F": <><span className="text-sm font-bold">F</span><sup className="text-[10px] font-bold">-</sup></>
+            };
+            return map[param] || <span className="text-sm font-bold">{param}</span>;
+        };
+
+        const SummaryTable = ({ data, isDistrict, manualTotals, onManualTotalChange }) => {
+            const sumTotalAnalysed = data.reduce((sum, row) => sum + (manualTotals[row.key] !== undefined && manualTotals[row.key] !== '' ? parseInt(manualTotals[row.key]) || 0 : row.total), 0);
+            const sumMarginal = data.reduce((sum, row) => sum + row.marginal, 0);
+            const sumUnsafe = data.reduce((sum, row) => sum + row.unsafe, 0);
+            const sumContaminated = sumMarginal + sumUnsafe;
+
+            return (
+                <div className="overflow-x-auto p-4 custom-scrollbar bg-slate-50">
+                    <table className="w-full text-center border-separate border-spacing-0 shadow-[0_8px_30px_rgb(0,0,0,0.15)] rounded-xl overflow-hidden bg-white ring-1 ring-gray-200">
+                        <thead>
+                            <tr className="bg-gradient-to-b from-indigo-800 to-blue-900 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]">
+                                <th rowSpan="2" className="p-3 border-b-2 border-r border-blue-950 font-extrabold shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">Sl. No.</th>
+                                <th rowSpan="2" className="p-3 border-b-2 border-r border-blue-950 text-left font-extrabold shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">Name of {isDistrict ? 'District' : 'State/UT'}</th>
+                                <th rowSpan="2" className="p-3 border-b-2 border-r border-blue-950 font-extrabold shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] w-28">Total no. of samples analysed</th>
+                                <th colSpan="3" className="p-3 border-b border-r border-blue-950 font-extrabold shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-gradient-to-b from-indigo-700 to-blue-800 tracking-wider text-lg">No. of samples contaminated</th>
+                                <th rowSpan="2" className="p-3 border-b-2 border-blue-950 text-left font-extrabold shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] w-1/3">Parameters of contamination</th>
+                            </tr>
+                            <tr className="text-white">
+                                <th className="p-2 border-b-2 border-r border-blue-950 text-xs w-32 bg-gradient-to-b from-orange-500 to-orange-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] font-bold">Above Acceptable Limit</th>
+                                <th className="p-2 border-b-2 border-r border-blue-950 text-xs w-32 bg-gradient-to-b from-red-600 to-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] font-bold">Above Permissible Limit</th>
+                                <th className="p-2 border-b-2 border-r border-blue-950 text-xs w-32 bg-gradient-to-b from-purple-600 to-purple-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] font-bold">Total samples Contaminated</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-slate-50">
+                            {data.length === 0 ? (
+                                <tr>
+                                    <td colSpan="7" className="p-20 text-center text-gray-500 font-bold bg-white border-b border-gray-300">
+                                        Upload an Excel or CSV file to generate the contamination report.
+                                    </td>
+                                </tr>
+                            ) : (
+                                data.map((row, idx) => {
+                                    const totalContaminated = row.marginal + row.unsafe;
+                                    return (
+                                        <tr key={idx} className="hover:bg-white hover:scale-[1.005] hover:shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-all duration-200 z-10 relative">
+                                            <td className="p-3 border-b border-r border-gray-300 font-bold text-gray-700 bg-gray-100/50 shadow-[inset_1px_1px_0_rgba(255,255,255,1)]">{idx + 1}</td>
+                                            <td className="p-3 border-b border-r border-gray-300 text-left font-extrabold text-gray-800 bg-white shadow-[inset_1px_1px_0_rgba(255,255,255,1)]">
+                                                <div className="flex flex-col gap-1 items-start">
+                                                    <span className="drop-shadow-sm text-[15px]">{isDistrict ? row.district : row.state}</span>
+                                                    {row.hasHeavyMetals && (
+                                                        <span className="px-2 py-0.5 bg-gradient-to-b from-red-500 to-red-600 text-white text-[9px] font-black rounded border border-red-700 shadow-sm uppercase tracking-widest">
+                                                            Heavy Metals
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-3 border-b border-r border-gray-300 font-black text-blue-900 bg-blue-50/50 text-lg shadow-[inset_1px_1px_0_rgba(255,255,255,1)]">
+                                                <input 
+                                                    type="number" 
+                                                    min="0"
+                                                    value={manualTotals[row.key] !== undefined ? manualTotals[row.key] : row.total}
+                                                    onChange={(e) => onManualTotalChange(row.key, e.target.value)}
+                                                    className="w-full max-w-[80px] text-center bg-white/80 border border-blue-300 focus:border-blue-600 rounded px-1 py-1 outline-none font-bold transition-colors no-print"
+                                                    title="Manually edit the Total Analyzed"
+                                                />
+                                                <span className="print-only hidden text-lg">{manualTotals[row.key] !== undefined ? manualTotals[row.key] : row.total}</span>
+                                            </td>
+                                            <td className="p-3 border-b border-r border-gray-300 font-black text-orange-700 bg-orange-50/50 text-lg shadow-[inset_1px_1px_0_rgba(255,255,255,1)]">{row.marginal}</td>
+                                            <td className="p-3 border-b border-r border-gray-300 font-black text-red-700 bg-red-50/50 text-lg shadow-[inset_1px_1px_0_rgba(255,255,255,1)]">{row.unsafe}</td>
+                                            <td className="p-3 border-b border-r border-gray-300 font-black text-purple-800 bg-purple-50/50 text-lg shadow-[inset_1px_1px_0_rgba(255,255,255,1)]">{totalContaminated}</td>
+                                            <td className="p-3 border-b border-gray-300 text-left bg-white shadow-[inset_1px_1px_0_rgba(255,255,255,1)]">
+                                                <div className="flex flex-wrap gap-2">
+                                                    {row.unsafeList.map(p => (
+                                                        <span key={p} className="pl-2 pr-1 py-1 bg-gradient-to-b from-red-50 to-red-100 border border-red-300 text-red-900 rounded shadow-[0_2px_4px_rgba(0,0,0,0.05)] flex items-center gap-1.5 transform hover:-translate-y-0.5 transition-transform">
+                                                            <FormatParam param={p} />
+                                                            <span className="bg-red-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">Permissible</span>
+                                                        </span>
+                                                    ))}
+                                                    {row.marginalList.map(p => (
+                                                        <span key={p} className="pl-2 pr-1 py-1 bg-gradient-to-b from-orange-50 to-orange-100 border border-orange-300 text-orange-900 rounded shadow-[0_2px_4px_rgba(0,0,0,0.05)] flex items-center gap-1.5 transform hover:-translate-y-0.5 transition-transform">
+                                                            <FormatParam param={p} />
+                                                            <span className="bg-orange-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">Acceptable</span>
+                                                        </span>
+                                                    ))}
+                                                    {row.unsafeList.length === 0 && row.marginalList.length === 0 && (
+                                                        <span className="text-emerald-600 font-bold text-sm flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded border border-emerald-200 shadow-sm">
+                                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                                            No Contamination
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                            
+                            {/* TOTAL ROW */}
+                            {data.length > 0 && (
+                                <tr className="bg-gradient-to-b from-indigo-800 to-blue-900 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)] z-20 relative">
+                                    <td colSpan="2" className="p-3 border-t-2 border-r border-blue-950 font-extrabold text-right uppercase tracking-wider text-[15px]">Total</td>
+                                    <td className="p-3 border-t-2 border-r border-blue-950 font-black text-lg">{sumTotalAnalysed}</td>
+                                    <td className="p-3 border-t-2 border-r border-blue-950 font-black text-orange-400 text-lg">{sumMarginal}</td>
+                                    <td className="p-3 border-t-2 border-r border-blue-950 font-black text-red-400 text-lg">{sumUnsafe}</td>
+                                    <td className="p-3 border-t-2 border-r border-blue-950 font-black text-purple-300 text-lg">{sumContaminated}</td>
+                                    <td className="p-3 border-t-2 border-blue-950"></td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        };
+
+        // Map Component
+        const MapContainer = ({ data, limits, geoJsonData }) => {
+            const mapRef = useRef(null);
+            const markersLayer = useRef(L.layerGroup());
+            const geoJsonLayerRef = useRef(L.layerGroup());
+
+            useEffect(() => {
+                // Initialize map if not already done (Use preferCanvas for HIGH PERFORMANCE with thousands of markers)
+                if (!mapRef.current) {
+                    mapRef.current = L.map('map', { preferCanvas: true }).setView([20.5937, 78.9629], 5);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(mapRef.current);
+                    
+                    // Add geojson layer FIRST so it sits behind the data markers
+                    geoJsonLayerRef.current.addTo(mapRef.current);
+                    markersLayer.current.addTo(mapRef.current);
+                }
+
+                // Clear old markers
+                markersLayer.current.clearLayers();
+
+                if (data.length > 0) {
+                    const bounds = [];
+                    data.forEach(row => {
+                        const lat = parseFloat(row.Latitude);
+                        const lng = parseFloat(row.Longitude);
+                        if (isNaN(lat) || isNaN(lng)) return;
+
+                        let overallStatus = 'safe';
+                        let paramsHtml = '';
+                        let contaminatedParamsCount = 0; // Track contamination count
+
+                        // Evaluate each parameter for this specific row
+                        Object.keys(limits).forEach(param => {
+                            if (row[param] !== undefined && row[param] !== null && row[param] !== '') {
+                                const val = parseFloat(row[param]);
+                                let paramStatus = 'safe';
+                                let paramColor = '#10b981'; // Green
+                                
+                                if (!isNaN(val)) {
+                                    const limit = limits[param];
+                                    if (limit.isStrictRange) {
+                                        if (val < limit.acc || val > limit.perm) { 
+                                            paramStatus = 'unsafe'; 
+                                            paramColor = '#ef4444'; // Red
+                                            overallStatus = 'unsafe';
+                                        }
+                                    } else {
+                                        if (val > limit.perm) { 
+                                            paramStatus = 'unsafe'; 
+                                            paramColor = '#ef4444'; // Red
+                                            overallStatus = 'unsafe';
+                                        } else if (val > limit.acc) { 
+                                            paramStatus = 'marginal'; 
+                                            paramColor = '#f97316'; // Orange
+                                            if (overallStatus !== 'unsafe') overallStatus = 'marginal';
+                                        }
+                                    }
+
+                                    // Count parameters that are outside safe limits
+                                    if (paramStatus !== 'safe') {
+                                        contaminatedParamsCount++;
+                                    }
+                                }
+
+                                // Build HTML for this parameter in the popup
+                                paramsHtml += `
+                                    <div class="flex justify-between items-center border-b border-gray-100 py-1.5 last:border-0">
+                                        <span class="font-medium text-gray-600 text-xs w-2/3 pr-2 truncate" title="${param}">${param}</span>
+                                        <span class="text-xs text-right w-1/3" style="color: ${paramColor}; font-weight: ${paramStatus !== 'safe' ? '900' : '500'}">
+                                            ${row[param]}
+                                        </span>
+                                    </div>
+                                `;
+                            }
+                        });
+
+                        // Set marker colors
+                        const markerColor = overallStatus === 'unsafe' ? '#ef4444' : overallStatus === 'marginal' ? '#f97316' : '#10b981';
+                        const labelBg = overallStatus === 'unsafe' ? 'bg-red-500' : overallStatus === 'marginal' ? 'bg-orange-500' : 'bg-emerald-500';
+                        
+                        // Determine contamination string
+                        let contaminationTypeLabel = 'No Contamination';
+                        let contaminationTypeColor = 'text-emerald-600';
+                        if (contaminatedParamsCount === 1) {
+                            contaminationTypeLabel = 'Single-Parameter Contamination';
+                            contaminationTypeColor = 'text-orange-600';
+                        } else if (contaminatedParamsCount > 1) {
+                            contaminationTypeLabel = 'Multi-Parameter Contamination';
+                            contaminationTypeColor = 'text-red-600';
+                        }
+
+                        const marker = L.circleMarker([lat, lng], {
+                            radius: 8,
+                            fillColor: markerColor,
+                            color: "#ffffff",
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.9
+                        });
+
+                        // Build comprehensive popup content
+                        const popupContent = `
+                            <div class="p-4 w-full">
+                                <h3 class="text-lg font-bold text-gray-800 leading-tight">${row['Village/Town'] || 'Unknown Location'}</h3>
+                                <p class="text-[11px] text-gray-500 mt-1 uppercase tracking-wide">
+                                    ${[row['Block'], row['District'], row['State']].filter(Boolean).join(', ')}
+                                </p>
+                                
+                                <div class="mt-3 mb-4 flex flex-col gap-1.5">
+                                    <div>
+                                        <span class="px-2 py-1 text-[10px] font-bold rounded text-white ${labelBg}">
+                                            OVERALL STATUS: ${overallStatus.toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <div class="text-[11px] font-bold ${contaminationTypeColor}">
+                                        ${contaminationTypeLabel}
+                                    </div>
+                                </div>
+                                
+                                <div class="text-[11px] text-gray-600 mb-3 bg-gray-50 p-2 rounded border border-gray-100">
+                                    <div class="mb-1"><b>Structure:</b> ${row['Sample Collection Structure'] || 'N/A'}</div>
+                                    <div class="mb-1"><b>Depth:</b> ${row['Depth of the Structure from Ground Level in Meters'] ? row['Depth of the Structure from Ground Level in Meters'] + ' m' : 'N/A'}</div>
+                                    <div><b>Date Collected:</b> ${row['Sample Collection Date'] || 'N/A'}</div>
+                                </div>
+                                
+                                <h4 class="text-xs font-bold text-gray-800 border-b pb-1 mb-2">Detailed Parameters:</h4>
+                                <div class="max-h-48 overflow-y-auto custom-scrollbar pr-1 bg-white">
+                                    ${paramsHtml || '<div class="text-gray-400 italic text-xs py-2">No parameter data available</div>'}
+                                </div>
+                            </div>
+                        `;
+
+                        marker.bindPopup(popupContent);
+                        markersLayer.current.addLayer(marker);
+                        bounds.push([lat, lng]);
+                    });
+
+                    if (bounds.length > 0) {
+                        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+                    }
+                }
+            }, [data, limits]);
+
+            useEffect(() => {
+                // Update shapefile layer when new geojson data is provided
+                if (mapRef.current && geoJsonLayerRef.current) {
+                    geoJsonLayerRef.current.clearLayers();
+                    if (geoJsonData) {
+                        const layer = L.geoJSON(geoJsonData, {
+                            style: {
+                                color: '#3b82f6',
+                                weight: 2,
+                                fillOpacity: 0.1,
+                                opacity: 0.8
+                            },
+                            onEachFeature: (feature, layer) => {
+                                if (feature.properties) {
+                                    let propsHtml = '<h4 class="font-bold text-sm mb-2 border-b pb-1 text-blue-800">Boundary Properties</h4>';
+                                    propsHtml += '<div class="max-h-32 overflow-y-auto custom-scrollbar text-xs">';
+                                    Object.entries(feature.properties).forEach(([k, v]) => {
+                                        propsHtml += `<div class="mb-1"><b>${k}:</b> ${v}</div>`;
+                                    });
+                                    propsHtml += '</div>';
+                                    layer.bindPopup(`<div class="p-2 w-48">${propsHtml}</div>`);
+                                }
+                            }
+                        });
+                        geoJsonLayerRef.current.addLayer(layer);
+                        mapRef.current.fitBounds(layer.getBounds());
+                    }
+                }
+            }, [geoJsonData]);
+
+            return <div id="map" className="shadow-inner border border-gray-200"></div>;
+        };
+
+        const App = () => {
+            const [rawData, setRawData] = useState([]);
+            const [limits, setLimits] = useState(DEFAULT_LIMITS);
+            const [showLimits, setShowLimits] = useState(false);
+            const [activeTab, setActiveTab] = useState('report'); // 'state', 'district', 'map' or 'report'
+            const [geoJsonData, setGeoJsonData] = useState(null);
+            const [uploadError, setUploadError] = useState('');
+
+            // Document Report Config States
+            const [fromDate, setFromDate] = useState(new Date(new Date().setDate(new Date().getDate() - 14)).toISOString().split('T')[0]);
+            const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+            const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
+            const [manualTotals, setManualTotals] = useState({}); // Manually override total samples
+
+            const handleManualTotalChange = (key, value) => {
+                setManualTotals(prev => ({
+                    ...prev,
+                    [key]: value === '' ? '' : parseInt(value)
+                }));
+            };
+
+            // High Performance Single-Pass Calculation for both State and District summaries
+            const { summaryData, districtSummaryData } = useMemo(() => {
+                if (!rawData || rawData.length === 0) return { summaryData: [], districtSummaryData: [] };
+                
+                const sSummary = {};
+                const dSummary = {};
+                
+                // Cache limits array outside the loop for massive performance boost
+                const limitEntries = Object.entries(limits);
+
+                for (let i = 0; i < rawData.length; i++) {
+                    const row = rawData[i];
+                    const state = row["State"];
+                    const district = row["District"];
+                    
+                    if (!state) continue;
+                    
+                    if (!sSummary[state]) {
+                        sSummary[state] = { state, total: 0, safe: 0, marginal: 0, unsafe: 0, marginalParams: new Set(), unsafeParams: new Set() };
+                    }
+                    sSummary[state].total++;
+
+                    let dKey = null;
+                    if (district) {
+                        dKey = `${state}-${district}`;
+                        if (!dSummary[dKey]) {
+                            dSummary[dKey] = { state, district, total: 0, safe: 0, marginal: 0, unsafe: 0, marginalParams: new Set(), unsafeParams: new Set() };
+                        }
+                        dSummary[dKey].total++;
+                    }
+
+                    let rowIsUnsafe = false;
+                    let rowIsMarginal = false;
+
+                    for (let j = 0; j < limitEntries.length; j++) {
+                        const [param, limit] = limitEntries[j];
+                        const valStr = row[param];
+                        
+                        if (valStr == null || valStr === '') continue;
+                        
+                        const val = parseFloat(valStr);
+                        if (val !== val) continue; // Fast isNaN check
+
+                        const shortName = param.split(' ')[0];
+
+                        if (limit.isStrictRange) {
+                            if (val < limit.acc || val > limit.perm) {
+                                rowIsUnsafe = true;
+                                sSummary[state].unsafeParams.add(shortName);
+                                if (dKey) dSummary[dKey].unsafeParams.add(shortName);
+                            }
+                        } else {
+                            if (val > limit.perm) {
+                                rowIsUnsafe = true;
+                                sSummary[state].unsafeParams.add(shortName);
+                                if (dKey) dSummary[dKey].unsafeParams.add(shortName);
+                            } else if (val > limit.acc) {
+                                rowIsMarginal = true;
+                                sSummary[state].marginalParams.add(shortName);
+                                if (dKey) dSummary[dKey].marginalParams.add(shortName);
+                            }
+                        }
+                    }
+
+                    if (rowIsUnsafe) {
+                        sSummary[state].unsafe++;
+                        if (dKey) dSummary[dKey].unsafe++;
+                    } else if (rowIsMarginal) {
+                        sSummary[state].marginal++;
+                        if (dKey) dSummary[dKey].marginal++;
+                    } else {
+                        sSummary[state].safe++;
+                        if (dKey) dSummary[dKey].safe++;
+                    }
+                }
+
+                const formatSummary = (summaryObj, sortFn) => Object.values(summaryObj).map(s => {
+                    const combined = new Set([...s.unsafeParams, ...s.marginalParams]);
+                    let hasHeavyMetals = false;
+                    for (const p of combined) {
+                        if (HEAVY_METALS.includes(p)) {
+                            hasHeavyMetals = true;
+                            break;
+                        }
+                    }
+                    return {
+                        ...s,
+                        key: s.district ? `${s.state}-${s.district}` : s.state,
+                        combinedCount: combined.size,
+                        hasHeavyMetals,
+                        unsafeList: Array.from(s.unsafeParams).sort(),
+                        marginalList: Array.from(s.marginalParams).filter(p => !s.unsafeParams.has(p)).sort()
+                    };
+                }).sort(sortFn);
+
+                return {
+                    summaryData: formatSummary(sSummary, (a, b) => a.state.localeCompare(b.state)),
+                    districtSummaryData: formatSummary(dSummary, (a, b) => a.state.localeCompare(b.state) || a.district.localeCompare(b.district))
+                };
+            }, [rawData, limits]);
+
+            const isSingleState = summaryData.length === 1;
+            const reportLocation = isSingleState ? summaryData[0].state : 'All India';
+            const reportTableData = isSingleState ? districtSummaryData : summaryData;
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const bstr = evt.target.result;
+                    const wb = XLSX.read(bstr, { type: 'binary' });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    setRawData(XLSX.utils.sheet_to_json(ws));
+                };
+                reader.readAsBinaryString(file);
+            };
+
+            const handleShapefileUpload = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                setUploadError('');
+                
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const geojson = await shp(buffer);
+                    setGeoJsonData(geojson);
+                    // Automatically switch to map tab to show the uploaded shapefile
+                    setActiveTab('map');
+                } catch (error) {
+                    console.error("Error parsing shapefile:", error);
+                    setUploadError("Could not parse the ZIP file. Please ensure it contains valid .shp, .shx, and .dbf files.");
+                    setTimeout(() => setUploadError(''), 5000); // Clear error after 5 seconds
+                }
+                
+                // Reset file input
+                e.target.value = null;
+            };
+
+            const downloadTemplate = () => {
+                const ws = XLSX.utils.aoa_to_sheet([COLUMNS]);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Water Quality Data");
+                XLSX.writeFile(wb, "Water_Quality_Template.xlsx");
+            };
+
+            const exportSummary = () => {
+                if (activeTab === 'state') {
+                    if (!summaryData || summaryData.length === 0) return;
+                    
+                    const exportData = summaryData.map(row => ({
+                        "State": row.state,
+                        "Total Analyzed": manualTotals[row.key] !== undefined && manualTotals[row.key] !== '' ? manualTotals[row.key] : row.total,
+                        "Safe Locations": row.safe,
+                        "Marginal Locations": row.marginal,
+                        "Unsafe Locations": row.unsafe,
+                        "Unsafe Parameters": row.unsafeList.join(', '),
+                        "Marginal Parameters": row.marginalList.join(', '),
+                        "Heavy Metals Detected": row.hasHeavyMetals ? "Yes" : "No"
+                    }));
+
+                    const ws = XLSX.utils.json_to_sheet(exportData);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "State Summary");
+                    XLSX.writeFile(wb, "State_Quality_Summary.xlsx");
+                } else if (activeTab === 'district') {
+                    if (!districtSummaryData || districtSummaryData.length === 0) return;
+                    
+                    const exportData = districtSummaryData.map(row => ({
+                        "State": row.state,
+                        "District": row.district,
+                        "Total Analyzed": manualTotals[row.key] !== undefined && manualTotals[row.key] !== '' ? manualTotals[row.key] : row.total,
+                        "Safe Locations": row.safe,
+                        "Marginal Locations": row.marginal,
+                        "Unsafe Locations": row.unsafe,
+                        "Unsafe Parameters": row.unsafeList.join(', '),
+                        "Marginal Parameters": row.marginalList.join(', '),
+                        "Heavy Metals Detected": row.hasHeavyMetals ? "Yes" : "No"
+                    }));
+
+                    const ws = XLSX.utils.json_to_sheet(exportData);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "District Summary");
+                    XLSX.writeFile(wb, "District_Quality_Summary.xlsx");
+                }
+            };
+
+            const handleDownloadWord = () => {
+                const element = document.querySelector('.print-container');
+                const clone = element.cloneNode(true);
+
+                // Handle .no-print elements
+                const noPrintElements = clone.querySelectorAll('.no-print');
+                noPrintElements.forEach(el => el.remove());
+
+                // Handle .print-only elements
+                const printOnlyElements = clone.querySelectorAll('.print-only');
+                printOnlyElements.forEach(el => {
+                    el.classList.remove('hidden');
+                    el.style.display = 'block';
+                });
+
+                // CRITICAL: Make tables true MS Word tables (fully resizable)
+                // Remove Tailwind width/height classes that lock table cells in Word
+                const allElements = clone.querySelectorAll('*');
+                allElements.forEach(el => {
+                    if (el.className && typeof el.className === 'string') {
+                        el.className = el.className.replace(/\b(w-\S+|max-w-\S+|min-w-\S+|h-\S+|max-h-\S+|min-h-\S+)\b/g, '').trim();
+                    }
+                });
+
+                // Inject basic styles for Word document with Native MS Office XML metadata
+                const htmlContent = `
+                    <html xmlns:v="urn:schemas-microsoft-com:vml"
+                          xmlns:o="urn:schemas-microsoft-com:office:office"
+                          xmlns:w="urn:schemas-microsoft-com:office:word"
+                          xmlns="http://www.w3.org/TR/REC-html40">
+                    <head>
+                        <meta charset='utf-8'>
+                        <title>Ground Water Quality Alert</title>
+                        <!--[if gte mso 9]>
+                        <xml>
+                            <w:WordDocument>
+                                <w:View>Print</w:View>
+                                <w:Zoom>100</w:Zoom>
+                                <w:DoNotOptimizeForBrowser/>
+                            </w:WordDocument>
+                        </xml>
+                        <![endif]-->
+                        <style>
+                            @page WordSection1 {
+                                size: 8.27in 11.69in; /* A4 size */
+                                margin: 1.0in 1.0in 1.0in 1.0in;
+                            }
+                            div.WordSection1 { page: WordSection1; }
+                            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11pt; }
+                            table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+                            th, td { border: 1px solid black; padding: 8px; font-size: 10pt; text-align: center; vertical-align: top; }
+                            .text-left { text-align: left !important; }
+                            .font-bold { font-weight: bold; }
+                            .bg-gray-100 { background-color: #f3f4f6; }
+                            h1 { text-align: center; text-decoration: underline; font-size: 16pt; margin-bottom: 20px; color: black; }
+                            h3 { text-decoration: underline; font-size: 14pt; margin-bottom: 10px; color: black; font-weight: bold; }
+                            h4 { text-decoration: underline; font-size: 12pt; margin-bottom: 10px; color: black; font-weight: bold; }
+                            h5 { text-decoration: underline; font-size: 11pt; font-weight: bold; color: black; }
+                            .indent-8 { text-indent: 40px; }
+                            .text-justify { text-align: justify; }
+                            ul { margin-top: 5px; margin-bottom: 20px; }
+                            li { margin-bottom: 5px; }
+                            p { margin-bottom: 10px; line-height: 1.5; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="WordSection1">
+                            ${clone.innerHTML}
+                        </div>
+                    </body>
+                    </html>
+                `;
+
+                // Add BOM (\ufeff) to ensure Word parses it as UTF-8
+                const blob = new Blob(['\ufeff', htmlContent], {
+                    type: 'application/msword'
+                });
+                
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                const formattedIssueDate = issueDate.split('-').reverse().join('-');
+                link.download = `GroundWaterQualityAlert_${formattedIssueDate}.doc`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            };
+
+            const handlePrint = () => {
+                window.focus(); // Force focus so iframe print doesn't fail
+                setTimeout(() => {
+                    window.print();
+                }, 100);
+            };
+
+            const updateLimit = (param, type, value) => {
+                setLimits(prev => ({
+                    ...prev,
+                    [param]: { ...prev[param], [type]: parseFloat(value) }
+                }));
+            };
+
+            return (
+                <div className="min-h-screen pb-12">
+                    <div className="bg-slate-900 text-white p-6 shadow-md border-b-4 border-slate-800">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center">
+                            <div>
+                                <h1 className="text-3xl font-bold flex items-center gap-2 drop-shadow-md">
+                                    <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                                    Fortnightly GW Quality Alerts Validation Interface
+                                </h1>
+                            </div>
+                            <div className="mt-4 md:mt-0 flex flex-wrap gap-4">
+                                <button onClick={downloadTemplate} className="px-5 py-2.5 rounded-xl font-bold text-white bg-gradient-to-b from-emerald-400 to-emerald-600 border border-emerald-700 shadow-[0_5px_0_rgb(4,120,87)] hover:from-emerald-300 hover:to-emerald-500 active:shadow-[0_0px_0_rgb(4,120,87)] active:translate-y-[5px] transition-all flex items-center gap-2">
+                                    Download Template
+                                </button>
+                                <label className="px-5 py-2.5 rounded-xl font-bold text-white bg-gradient-to-b from-blue-400 to-blue-600 border border-blue-700 shadow-[0_5px_0_rgb(29,78,216)] hover:from-blue-300 hover:to-blue-500 active:shadow-[0_0px_0_rgb(29,78,216)] active:translate-y-[5px] transition-all cursor-pointer flex items-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+                                    Shapefile (ZIP)
+                                    <input type="file" accept=".zip" className="hidden" onChange={handleShapefileUpload} />
+                                </label>
+                                <label className="px-5 py-2.5 rounded-xl font-bold text-slate-800 bg-gradient-to-b from-white to-gray-200 border border-gray-300 shadow-[0_5px_0_rgb(156,163,175)] hover:from-gray-50 hover:to-gray-100 active:shadow-[0_0px_0_rgb(156,163,175)] active:translate-y-[5px] transition-all cursor-pointer flex items-center gap-2">
+                                    Upload Data
+                                    <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleFileUpload} />
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {uploadError && (
+                        <div className="max-w-7xl mx-auto px-4 mt-4">
+                            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm flex justify-between items-center">
+                                <div>
+                                    <p className="font-bold">Upload Error</p>
+                                    <p className="text-sm">{uploadError}</p>
+                                </div>
+                                <button onClick={() => setUploadError('')} className="text-red-700 hover:text-red-900">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="max-w-7xl mx-auto px-4 mt-8">
+                        {/* Tab Switcher */}
+                        <div className="flex flex-wrap gap-3 bg-slate-200/80 p-3 rounded-2xl w-fit mb-8 no-print shadow-inner border border-slate-300">
+                            <button 
+                                onClick={() => setActiveTab('report')}
+                                className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 border ${activeTab === 'report' ? 'bg-gradient-to-b from-blue-500 to-blue-700 text-white shadow-[0_5px_0_rgb(30,58,138)] border-blue-800 translate-y-0' : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 shadow-[0_5px_0_rgb(209,213,219)] border-gray-300 hover:from-gray-50 hover:to-gray-200 active:translate-y-[5px] active:shadow-none'}`}
+                            >
+                                Alert Report (Doc)
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('state')}
+                                className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 border ${activeTab === 'state' ? 'bg-gradient-to-b from-violet-500 to-violet-700 text-white shadow-[0_5px_0_rgb(76,29,149)] border-violet-800 translate-y-0' : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 shadow-[0_5px_0_rgb(209,213,219)] border-gray-300 hover:from-gray-50 hover:to-gray-200 active:translate-y-[5px] active:shadow-none'}`}
+                            >
+                                State Summary
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('district')}
+                                className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 border ${activeTab === 'district' ? 'bg-gradient-to-b from-orange-500 to-orange-700 text-white shadow-[0_5px_0_rgb(154,52,18)] border-orange-800 translate-y-0' : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 shadow-[0_5px_0_rgb(209,213,219)] border-gray-300 hover:from-gray-50 hover:to-gray-200 active:translate-y-[5px] active:shadow-none'}`}
+                            >
+                                District Summary
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('map')}
+                                className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 border ${activeTab === 'map' ? 'bg-gradient-to-b from-teal-500 to-teal-700 text-white shadow-[0_5px_0_rgb(17,94,89)] border-teal-800 translate-y-0' : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 shadow-[0_5px_0_rgb(209,213,219)] border-gray-300 hover:from-gray-50 hover:to-gray-200 active:translate-y-[5px] active:shadow-none'}`}
+                            >
+                                Spatial Map
+                            </button>
+                        </div>
+
+                        {activeTab === 'report' && (
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-300 overflow-hidden mb-8 print-container">
+                                <div className="bg-gray-50 px-8 py-5 border-b border-gray-200 flex justify-between items-center no-print">
+                                    <h2 className="text-xl font-bold text-gray-800">Ground Water Quality Alert Document</h2>
+                                    <div className="flex gap-4">
+                                        <button onClick={handleDownloadWord} className="px-5 py-2.5 rounded-xl font-bold text-white bg-gradient-to-b from-indigo-500 to-indigo-700 border border-indigo-800 shadow-[0_5px_0_rgb(49,46,129)] hover:from-indigo-400 hover:to-indigo-600 active:shadow-none active:translate-y-[5px] transition-all flex items-center gap-2">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                            Download Word
+                                        </button>
+                                        <button onClick={handlePrint} className="px-5 py-2.5 rounded-xl font-bold text-white bg-gradient-to-b from-sky-500 to-sky-700 border border-sky-800 shadow-[0_5px_0_rgb(7,89,133)] hover:from-sky-400 hover:to-sky-600 active:shadow-none active:translate-y-[5px] transition-all flex items-center gap-2">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                            Print
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div className="p-8 md:p-12 text-gray-800 text-justify leading-relaxed text-[15px] max-w-5xl mx-auto">
+                                    <h1 className="text-center font-bold text-2xl underline mb-8">Ground Water Quality Alert</h1>
+                                    
+                                    <table className="w-full border-collapse border border-black mb-8 text-[15px]">
+                                        <tbody>
+                                            <tr>
+                                                <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">Location</td>
+                                                <td className="border border-black p-2 w-1/4">{reportLocation}</td>
+                                                <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">For the period</td>
+                                                <td className="border border-black p-2 w-1/4 align-top">
+                                                    <div className="no-print flex flex-col gap-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-10 text-sm font-semibold text-gray-600">From</span>
+                                                            <div className="relative flex-1 max-w-[120px]">
+                                                                <div className="px-2 py-1 border border-gray-300 rounded text-sm bg-white text-center font-bold cursor-pointer hover:bg-gray-50 transition">
+                                                                    {fromDate.split('-').reverse().join('/')}
+                                                                </div>
+                                                                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Select From Date" />
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-10 text-sm font-semibold text-gray-600">To</span>
+                                                            <div className="relative flex-1 max-w-[120px]">
+                                                                <div className="px-2 py-1 border border-gray-300 rounded text-sm bg-white text-center font-bold cursor-pointer hover:bg-gray-50 transition">
+                                                                    {toDate.split('-').reverse().join('/')}
+                                                                </div>
+                                                                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Select To Date" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="print-only hidden font-semibold">
+                                                        <div>From: {fromDate.split('-').reverse().join('/')}</div>
+                                                        <div>To: {toDate.split('-').reverse().join('/')}</div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td className="border border-black p-2 font-bold bg-gray-100">Issue Date</td>
+                                                <td className="border border-black p-2 align-top">
+                                                    <div className="no-print relative max-w-[120px]">
+                                                        <div className="px-2 py-1 border border-gray-300 rounded text-sm bg-white text-center font-bold cursor-pointer hover:bg-gray-50 transition">
+                                                            {issueDate.split('-').reverse().join('/')}
+                                                        </div>
+                                                        <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Select Issue Date" />
+                                                    </div>
+                                                    <div className="print-only hidden font-semibold">
+                                                        {issueDate.split('-').reverse().join('/')}
+                                                    </div>
+                                                </td>
+                                                <td className="border border-black p-2 font-bold bg-gray-100">Issuing Office</td>
+                                                <td className="border border-black p-2">CGWB, CHQ-Faridabad</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+
+                                    {/* Dynamic Calculations for the Introduction */}
+                                    {(() => {
+                                        // Uses the exact same array.reduce computation as the Sum Row in the table
+                                        const overallTotal = reportTableData.reduce((sum, row) => {
+                                            const man = manualTotals[row.key];
+                                            const val = (man !== undefined && man !== '') ? (parseInt(man, 10) || 0) : row.total;
+                                            return sum + (isNaN(val) ? 0 : val);
+                                        }, 0);
+
+                                        const overallMarginal = reportTableData.reduce((acc, curr) => acc + curr.marginal, 0);
+                                        const overallUnsafe = reportTableData.reduce((acc, curr) => acc + curr.unsafe, 0);
+                                        const overallContaminated = overallMarginal + overallUnsafe;
+                                        
+                                        const statesWithHM = Array.from(new Set(reportTableData.filter(s => s.hasHeavyMetals).map(s => s.state)));
+                                        let hmStateText = statesWithHM.length > 0 ? `, and Heavy Metals were analyzed in ${statesWithHM.join(' and ')}` : '';
+
+                                        return (
+                                            <p className="mb-8 indent-8">
+                                                Total <b>{overallTotal}</b> samples were analyzed for Heavy Metal/basic parameters like pH, Electrical Conductivity, Total Hardness, Calcium, Magnesium, Sodium, Potassium, Carbonate, Bicarbonate, Sulphate, Chloride, Nitrate & Fluoride in {isSingleState ? reportLocation : 'most of the states'}{hmStateText}. Out of the analyzed samples <b>{overallMarginal}</b> were found to be above acceptable limit, <b>{overallUnsafe}</b> were found to be above permissible limit and the total contaminated samples were <b>{overallContaminated}</b> as per BIS Drinking water Standard IS 10500 (2012).
+                                            </p>
+                                        );
+                                    })()}
+
+                                    <p className="mb-4">The following Table shows the {isSingleState ? 'district-wise' : 'state-wise'} details of the contaminations detected. The detailed parameter-wise sample analysis is in the attached excel sheet.</p>
+                                    
+                                    <h3 className="font-bold underline mb-4">Para I</h3>
+                                    
+                                    <SimpleReportTable data={reportTableData} isDistrict={isSingleState} manualTotals={manualTotals} onManualTotalChange={handleManualTotalChange} />
+
+                                    <div className="page-break-before pt-8">
+                                        <h3 className="font-bold underline mb-4">Para II</h3>
+                                        <p className="mb-6">The anomalies may be termed major in some case.</p>
+
+                                        <h4 className="font-bold text-lg underline mb-4">Risk perception for:</h4>
+                                        <ul className="list-none space-y-4 mb-8">
+                                            {RISK_PERCEPTIONS.map((risk, idx) => (
+                                                <li key={idx} className="text-justify avoid-break">
+                                                    <span className="font-bold">{risk.param}:</span> {risk.text}
+                                                </li>
+                                            ))}
+                                        </ul>
+
+                                        <h4 className="font-bold text-lg underline mb-4">Recommendation for Mitigation</h4>
+                                        
+                                        <div className="space-y-6">
+                                            {MITIGATIONS.map((mitigation, idx) => (
+                                                <div key={idx} className="avoid-break">
+                                                    <h5 className="font-bold underline mb-2">{mitigation.title}</h5>
+                                                    {mitigation.desc && <p className="mb-2">{mitigation.desc}</p>}
+                                                    
+                                                    {mitigation.sections.map((sec, sIdx) => (
+                                                        <div key={sIdx} className="mb-3">
+                                                            {sec.subtitle && <p className="font-bold">{sec.subtitle}</p>}
+                                                            {sec.desc && <p>{sec.desc}</p>}
+                                                            
+                                                            {sec.points && (
+                                                                <ul className="list-disc pl-8 mt-1 space-y-1">
+                                                                    {sec.points.map((pt, pIdx) => (
+                                                                        <li key={pIdx}>{pt}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
+                                                            
+                                                            {sec.postDesc && <p className="mt-1">{sec.postDesc}</p>}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'state' && (
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-8">
+                                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center flex-wrap gap-4">
+                                    <h2 className="text-xl font-bold text-gray-800">State-wise Summary</h2>
+                                    <div className="flex items-center gap-6">
+                                        <div className="flex gap-4 text-xs">
+                                            <span className="flex items-center gap-1"><div className="w-3 h-3 bg-emerald-500 rounded"></div> Safe</span>
+                                            <span className="flex items-center gap-1"><div className="w-3 h-3 bg-orange-500 rounded"></div> Marginal</span>
+                                            <span className="flex items-center gap-1"><div className="w-3 h-3 bg-red-500 rounded"></div> Unsafe</span>
+                                        </div>
+                                        {summaryData.length > 0 && (
+                                            <button 
+                                                onClick={exportSummary}
+                                                className="px-4 py-2 rounded-lg font-bold text-white bg-gradient-to-b from-amber-500 to-amber-700 border border-amber-800 shadow-[0_4px_0_rgb(146,64,14)] hover:from-amber-400 hover:to-amber-600 active:shadow-none active:translate-y-[4px] transition-all flex items-center gap-1.5 text-xs"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                                Export Table
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                <SummaryTable data={summaryData} isDistrict={false} manualTotals={manualTotals} onManualTotalChange={handleManualTotalChange} />
+                            </div>
+                        )}
+
+                        {activeTab === 'district' && (
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-8">
+                                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center flex-wrap gap-4">
+                                    <h2 className="text-xl font-bold text-gray-800">District-wise Summary</h2>
+                                    <div className="flex items-center gap-6">
+                                        <div className="flex gap-4 text-xs">
+                                            <span className="flex items-center gap-1"><div className="w-3 h-3 bg-emerald-500 rounded"></div> Safe</span>
+                                            <span className="flex items-center gap-1"><div className="w-3 h-3 bg-orange-500 rounded"></div> Marginal</span>
+                                            <span className="flex items-center gap-1"><div className="w-3 h-3 bg-red-500 rounded"></div> Unsafe</span>
+                                        </div>
+                                        {districtSummaryData.length > 0 && (
+                                            <button 
+                                                onClick={exportSummary}
+                                                className="px-4 py-2 rounded-lg font-bold text-white bg-gradient-to-b from-amber-500 to-amber-700 border border-amber-800 shadow-[0_4px_0_rgb(146,64,14)] hover:from-amber-400 hover:to-amber-600 active:shadow-none active:translate-y-[4px] transition-all flex items-center gap-1.5 text-xs"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                                Export Table
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                <SummaryTable data={districtSummaryData} isDistrict={true} manualTotals={manualTotals} onManualTotalChange={handleManualTotalChange} />
+                            </div>
+                        )}
+
+                        {activeTab === 'map' && (
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden p-4 mb-8">
+                                <MapContainer data={rawData} limits={limits} geoJsonData={geoJsonData} />
+                                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100 flex items-center gap-3">
+                                        <div className="w-4 h-4 rounded-full bg-emerald-500"></div>
+                                        <span className="text-sm font-bold text-emerald-800">Safe: All parameters within acceptable limits</span>
+                                    </div>
+                                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-200 flex items-center gap-3">
+                                        <div className="w-4 h-4 rounded-full bg-orange-500"></div>
+                                        <span className="text-sm font-bold text-orange-800">Marginal: Above Acceptable, below Permissible</span>
+                                    </div>
+                                    <div className="bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-3">
+                                        <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                                        <span className="text-sm font-bold text-red-800">Unsafe: Above Permissible (or pH out of range)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Limits Config */}
+                        <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden no-print mt-8">
+                            <button onClick={() => setShowLimits(!showLimits)} className="w-full bg-slate-50 hover:bg-slate-100 px-6 py-4 flex justify-between items-center transition">
+                                <h3 className="font-bold text-slate-700">Standards Configuration (IS 10500:2012)</h3>
+                                <span className="text-sm text-blue-600 font-bold">{showLimits ? 'Hide' : 'View/Edit'} Standards</span>
+                            </button>
+                            {showLimits && (
+                                <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-white border-t border-gray-100">
+                                    {Object.keys(limits).map(param => (
+                                        <div key={param} className={`p-3 border rounded-lg ${limits[param].isStrictRange ? 'bg-blue-50 border-blue-200' : 'bg-slate-50'}`}>
+                                            <div className="text-[10px] font-bold text-slate-500 mb-2 truncate uppercase tracking-tighter">
+                                                {param}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <div className="flex-1">
+                                                    <label className="text-[9px] block text-gray-400 font-bold">ACC.</label>
+                                                    <input type="number" step="0.01" value={limits[param].acc} onChange={(e) => updateLimit(param, 'acc', e.target.value)} className="w-full p-1 border rounded text-xs font-bold" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="text-[9px] block text-gray-400 font-bold">PERM.</label>
+                                                    <input type="number" step="0.01" value={limits[param].perm} onChange={(e) => updateLimit(param, 'perm', e.target.value)} className="w-full p-1 border rounded text-xs font-bold" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
