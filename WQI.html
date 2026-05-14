@@ -319,6 +319,12 @@
                         <label class="flex items-center text-xs font-bold text-slate-600 cursor-pointer hover:text-slate-900 transition-colors">
                             <input type="checkbox" id="toggleContours" checked class="mr-2 accent-emerald-500 w-3.5 h-3.5"> Show IDW Map
                         </label>
+                        
+                        <!-- Toggle Empty Regions Feature -->
+                        <label class="flex items-center text-xs font-bold text-slate-600 cursor-pointer hover:text-slate-900 transition-colors ml-4">
+                            <input type="checkbox" id="toggleEmptyRegions" class="mr-2 accent-cyan-500 w-3 h-3"> Isolate Unsampled Regions
+                        </label>
+
                         <label class="flex items-center text-xs font-bold text-slate-600 cursor-pointer hover:text-slate-900 transition-colors">
                             <input type="checkbox" id="toggleShapefile" checked class="mr-2 accent-emerald-500 w-3.5 h-3.5"> Show Boundary
                         </label>
@@ -826,6 +832,19 @@
 
             <div class="space-y-4">
                 <div>
+                    <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Unsampled Data Threshold</h3>
+                    <div class="grid grid-cols-1 gap-4 mb-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-1">Data Reach Radius (px)</label>
+                            <input type="range" id="set_maxRadius" min="10" max="200" step="1" value="40" class="w-full accent-cyan-500">
+                            <p class="text-[9px] text-slate-400 mt-1 italic">Determines how far a sample point's data is allowed to stretch when "Isolate Unsampled Regions" is active.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 my-3"></div>
+
+                <div>
                     <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">UI Panel Scaling</h3>
                     <div class="grid grid-cols-2 gap-4 mb-3">
                         <div>
@@ -1071,7 +1090,8 @@
             legendScale: 1,
             layersScale: 1,
             showNorth: true,
-            showScale: true
+            showScale: true,
+            maxRadius: 40 // Default pixel radius for isolating unsampled regions
         };
 
         // Icon Mapping Configuration
@@ -1175,6 +1195,10 @@
                 } else {
                     titleCtrl.classList.add('hidden');
                 }
+            });
+            document.getElementById('toggleEmptyRegions').addEventListener('change', () => {
+                if(currentFilteredData.length > 0) plotMapData(currentFilteredData);
+                updateLegendUI();
             });
         }
 
@@ -1406,6 +1430,15 @@
                          </div>`;
                 prevMax = c.max;
             });
+            
+            const hideEmptyToggle = document.getElementById('toggleEmptyRegions');
+            if (hideEmptyToggle && hideEmptyToggle.checked) {
+                html += `<div class="flex items-center gap-2 text-xs font-bold text-slate-700 mt-2">
+                            <span class="w-4 h-4 rounded-sm shadow-sm border border-slate-300 flex-shrink-0" style="background-color: #ffffff"></span> 
+                            <span class="whitespace-nowrap pr-2">No Sample Done</span>
+                         </div>`;
+            }
+
             html += `</div>`;
             legendContainer.innerHTML = html;
         }
@@ -1747,6 +1780,8 @@
 
             const stateVal = document.getElementById('stateFilter')?.value || 'ALL';
             const isPrintMode = document.getElementById('togglePrintMode').checked;
+            const hideEmpty = document.getElementById('toggleEmptyRegions').checked;
+            const maxR2 = mapSettings.maxRadius * mapSettings.maxRadius;
 
             const spatialData = data.filter(d => {
                 if (d.Latitude === undefined || d.Longitude === undefined || d.Latitude === null || d.Longitude === null) return false;
@@ -1926,12 +1961,15 @@
                             let sumValue = 0;
                             let exactMatch = false;
                             let exactVal = 0;
+                            let minD2 = Infinity;
 
                             for (let i = 0; i < pxPoints.length; i++) {
                                 const pt = pxPoints[i];
                                 const dx = x - pt.x;
                                 const dy = y - pt.y;
                                 const d2 = dx*dx + dy*dy;
+
+                                if (d2 < minD2) minD2 = d2;
 
                                 if (d2 < 0.5) {
                                     exactMatch = true;
@@ -1945,14 +1983,22 @@
                             }
 
                             const finalVal = exactMatch ? exactVal : (sumValue / sumWeight);
-                            const hexColor = getColorForWQI(finalVal);
-                            const rgb = hexToRgb(hexColor);
-                            
                             const idx = (y * width + x) * 4;
-                            pixelData[idx] = rgb.r;
-                            pixelData[idx+1] = rgb.g;
-                            pixelData[idx+2] = rgb.b;
-                            pixelData[idx+3] = alpha;
+
+                            if (hideEmpty && minD2 > maxR2) {
+                                // Render as white if beyond the allowed unsampled radius
+                                pixelData[idx] = 255;
+                                pixelData[idx+1] = 255;
+                                pixelData[idx+2] = 255;
+                                pixelData[idx+3] = alpha; 
+                            } else {
+                                const hexColor = getColorForWQI(finalVal);
+                                const rgb = hexToRgb(hexColor);
+                                pixelData[idx] = rgb.r;
+                                pixelData[idx+1] = rgb.g;
+                                pixelData[idx+2] = rgb.b;
+                                pixelData[idx+3] = alpha;
+                            }
                         }
                     }
                     
@@ -2120,6 +2166,17 @@
         document.getElementById('togglePrintMode').addEventListener('change', (e) => {
             const isPrint = e.target.checked;
             const printArea = document.getElementById('mapPrintArea');
+            
+            // Fix: Reset draggable element positions to prevent them from getting lost off-screen during resize
+            ['mapLayersPanel', 'mapTitleControl', 'mapLegend', 'northArrow'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.top = '';
+                    el.style.left = '';
+                    el.style.right = '';
+                    el.style.bottom = '';
+                }
+            });
             
             document.getElementById('map').style.backgroundColor = isPrint ? '#ffffff' : '#e2e8f0';
             isPrint ? map.removeLayer(baseLayer) : map.addLayer(baseLayer);
@@ -2564,6 +2621,7 @@
         // Map Settings Customization
         // ===============================
         function openMapSettings() {
+            document.getElementById('set_maxRadius').value = mapSettings.maxRadius;
             document.getElementById('set_pointSize').value = mapSettings.pointSize;
             document.getElementById('set_shpColor').value = mapSettings.shpColor;
             document.getElementById('set_shpThickness').value = mapSettings.shpThickness;
@@ -2582,6 +2640,7 @@
         }
 
         function saveMapSettings() {
+            mapSettings.maxRadius = parseInt(document.getElementById('set_maxRadius').value);
             mapSettings.pointSize = parseInt(document.getElementById('set_pointSize').value);
             mapSettings.shpColor = document.getElementById('set_shpColor').value;
             mapSettings.shpThickness = parseFloat(document.getElementById('set_shpThickness').value);
