@@ -105,24 +105,92 @@
             transition: background 0.5s ease;
         }
 
+        /* --- 3D Water Drop Animated Logo --- */
         .main-logo-container {
             width: 52px;
             height: 52px;
-            background: linear-gradient(135deg, #166534, #15803d);
-            border-radius: 14px;
+            background: linear-gradient(135deg, #0f172a, #082f49, #0ea5e9);
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid rgba(34, 197, 94, 0.3);
+            border: 1px solid rgba(14, 165, 233, 0.4);
             position: relative;
-            animation: logo-pulse 3s infinite;
+            animation: water-pulse 3s infinite;
             overflow: hidden;
+            box-shadow: inset 0 0 15px rgba(255,255,255,0.1), 0 4px 10px rgba(0,0,0,0.5);
         }
 
-        @keyframes logo-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.3); }
-            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        @keyframes water-pulse {
+            0% { box-shadow: inset 0 0 15px rgba(255,255,255,0.1), 0 0 0 0 rgba(14, 165, 233, 0.4); }
+            70% { box-shadow: inset 0 0 15px rgba(255,255,255,0.1), 0 0 0 10px rgba(14, 165, 233, 0); }
+            100% { box-shadow: inset 0 0 15px rgba(255,255,255,0.1), 0 0 0 0 rgba(14, 165, 233, 0); }
+        }
+
+        .water-drop-3d {
+            width: 22px;
+            height: 22px;
+            background: radial-gradient(circle at 60% 60%, #ffffff 0%, #38bdf8 20%, #0284c7 60%, #082f49 100%);
+            border-radius: 0 50% 50% 50%;
+            transform: rotate(45deg);
+            box-shadow: 
+                2px 2px 4px rgba(0,0,0,0.4),
+                inset 2px 2px 5px rgba(255,255,255,0.6),
+                inset -3px -3px 6px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 2;
+            margin-top: -8px;
+            animation: float-drop 3s ease-in-out infinite;
+        }
+
+        .drip-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle at 60% 60%, #ffffff 0%, #38bdf8 30%, #0369a1 100%);
+            border-radius: 0 50% 50% 50%;
+            transform: rotate(45deg);
+            bottom: 24px;
+            left: 50%;
+            margin-left: -4px;
+            z-index: 1;
+            opacity: 0;
+            box-shadow: 1px 1px 2px rgba(0,0,0,0.3), inset 1px 1px 2px rgba(255,255,255,0.5);
+            animation: water-drip 2s infinite cubic-bezier(0.5, 0, 0.5, 1);
+        }
+
+        .splash-ring {
+            position: absolute;
+            bottom: 6px;
+            left: 50%;
+            width: 18px;
+            height: 6px;
+            margin-left: -9px;
+            border: 2px solid #38bdf8;
+            border-radius: 50%;
+            opacity: 0;
+            transform: scale(0.5);
+            animation: splash-anim 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes water-drip {
+            0% { bottom: 26px; opacity: 0; transform: rotate(45deg) scale(0.3); }
+            15% { bottom: 22px; opacity: 1; transform: rotate(45deg) scale(1); }
+            50% { bottom: 8px; opacity: 1; transform: rotate(45deg) scale(0.8); }
+            55% { bottom: 6px; opacity: 0; transform: rotate(45deg) scale(0.1); }
+            100% { bottom: 6px; opacity: 0; }
+        }
+
+        @keyframes splash-anim {
+            0%, 50% { opacity: 0; transform: scale(0.5); border-width: 2px; }
+            55% { opacity: 0.8; transform: scale(0.8); border-width: 2px; }
+            75% { opacity: 0; transform: scale(1.6); border-width: 0px; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes float-drop {
+            0%, 100% { transform: rotate(45deg) translate(0, 0); }
+            50% { transform: rotate(45deg) translate(-2px, -2px); }
         }
 
         .app-btn {
@@ -150,7 +218,7 @@
 
         .header-status {
             position: absolute;
-            top: 0; left: 80px; right: 0;
+            top: 0; left: 80px; right: 80px;
             height: var(--header-height);
             background: var(--panel-glass);
             backdrop-filter: blur(20px);
@@ -167,7 +235,7 @@
             position: fixed;
             bottom: 0;
             left: 80px;
-            right: 0;
+            right: 80px;
             height: var(--footer-height);
             background: var(--ticker-bg);
             border-top: 1px solid var(--border-glass);
@@ -190,6 +258,20 @@
             letter-spacing: 0.02em;
             color: var(--ticker-text);
             transition: color 1s ease;
+        }
+
+        .sidebar-right {
+            width: 80px;
+            height: 100vh;
+            background: var(--sidebar-bg);
+            border-left: 1px solid var(--border-glass);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            z-index: 100;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.3);
+            transition: background 0.5s ease;
         }
 
         @keyframes ticker-move {
@@ -258,9 +340,37 @@
             text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
         }
 
-        #clock { color: var(--time-color); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-        #current-date { color: var(--date-color); font-weight: bold; font-size: 10px; text-transform: uppercase; }
+        /* --- Advanced Digital Clock Styles --- */
+        .live-dot {
+            background-color: var(--node-color);
+            box-shadow: 0 0 8px var(--node-glow);
+            animation: pulse-dot 1.5s infinite;
+        }
+        
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(0.8); }
+        }
 
+        .clock-container {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 6px 14px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .clock-container:hover {
+            border-color: var(--node-color);
+            box-shadow: 0 0 20px var(--node-glow);
+            background: rgba(0, 0, 0, 0.6);
+            transform: translateY(-1px);
+        }
+
+        .time-display { font-family: 'JetBrains Mono', monospace; }
     </style>
 </head>
 <body class="theme-cyber">
@@ -269,10 +379,10 @@
 
     <aside class="sidebar-nexus">
         <div class="mb-8">
-            <div class="main-logo-container">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" fill="#ffffff" />
-                </svg>
+            <div class="main-logo-container" title="Groundwater Analytics Core">
+                <div class="water-drop-3d"></div>
+                <div class="drip-particle"></div>
+                <div class="splash-ring"></div>
             </div>
         </div>
 
@@ -344,15 +454,42 @@
                     <span class="text-[11px] font-bold text-blue-1000 tracking-wider">जितेंद्र कुमार</span>
                     <span class="text-[9px] text-slate-500 uppercase">वरिष्ठ तकनीकी सहायक (रसायन) // फरीदाबाद</span>
                 </div>
-                <div class="time-date-container">
-                    <div id="clock">00:00:00</div>
-                    <div id="current-date">01 JAN 2024</div>
+                
+                <!-- Advanced Clock Widget -->
+                <div class="clock-container cursor-default ml-2">
+                    <div class="flex flex-col items-center pr-3 border-r border-white/10">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <div class="w-1.5 h-1.5 rounded-full live-dot"></div>
+                            <div class="time-display flex items-baseline">
+                                <span id="clock-hm" class="text-sm font-bold text-white tracking-wider">00:00</span>
+                                <span id="clock-sec" class="text-[10px] text-[var(--time-color)] ml-0.5 font-bold">00</span>
+                            </div>
+                        </div>
+                        <span id="clock-day" class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">DAY</span>
+                    </div>
+                    <div class="flex flex-col items-start pl-1">
+                        <span id="clock-dm" class="text-xs font-black text-[var(--date-color)] tracking-wide">00 XXX</span>
+                        <span id="clock-y" class="text-[10px] text-slate-500 font-bold tracking-widest leading-none mt-1">0000</span>
+                    </div>
                 </div>
+                
             </div>
         </div>
     </div>
 
     <main id="master-viewport"></main>
+
+    <aside class="sidebar-right">
+        <div class="mb-8">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/30 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]" title="Pro Analytics Tools">
+                <i data-lucide="cpu" class="w-5 h-5"></i>
+            </div>
+        </div>
+
+        <nav class="flex flex-col items-center">
+            <div class="app-btn" data-file="WQI.html" title="WQI Spatial Analytics"><i data-lucide="droplets"></i></div>
+        </nav>
+    </aside>
 
     <!-- Moving Ticker Footer in Hindi -->
     <footer class="disclaimer-ticker" id="ticker-bar">
@@ -375,7 +512,8 @@
             'Range_analysis.html': { name: 'Compliance Reporting', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.2)' },
             'Sector_analysis.html': { name: 'Radial Sector Analyst', color: '#84cc16', glow: 'rgba(132, 204, 22, 0.2)' },
             'donut_chart.html': { name: '3D Statistics Visualizer', color: '#f43f5e', glow: 'rgba(244, 63, 94, 0.2)' },
-            'ttest.html': { name: 'Paired T-Test Engine', color: '#f97316', glow: 'rgba(249, 115, 22, 0.2)' }
+            'ttest.html': { name: 'Paired T-Test Engine', color: '#f97316', glow: 'rgba(249, 115, 22, 0.2)' },
+            'WQI.html': { name: 'WQI Spatial Analytics', color: '#00b87c', glow: 'rgba(0, 184, 124, 0.2)' }
         };
 
         const TICKER_PALETTES = [
@@ -489,12 +627,35 @@
         }
 
         function initSystemClock() {
-            const clockEl = document.getElementById('clock');
-            const dateEl = document.getElementById('current-date');
+            const elHM = document.getElementById('clock-hm');
+            const elSec = document.getElementById('clock-sec');
+            const elDay = document.getElementById('clock-day');
+            const elDM = document.getElementById('clock-dm');
+            const elY = document.getElementById('clock-y');
+
+            const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+            const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
             setInterval(() => {
                 const now = new Date();
-                clockEl.innerText = now.toLocaleTimeString('en-US', { hour12: false });
-                dateEl.innerText = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+                
+                // Extract Time
+                const h = String(now.getHours()).padStart(2, '0');
+                const m = String(now.getMinutes()).padStart(2, '0');
+                const s = String(now.getSeconds()).padStart(2, '0');
+                
+                // Extract Date
+                const dayName = days[now.getDay()];
+                const date = String(now.getDate()).padStart(2, '0');
+                const monthName = months[now.getMonth()];
+                const year = now.getFullYear();
+
+                // Update DOM Elements
+                elHM.innerText = `${h}:${m}`;
+                elSec.innerText = s;
+                elDay.innerText = dayName;
+                elDM.innerText = `${date} ${monthName}`;
+                elY.innerText = year;
             }, 1000);
         }
     </script>
