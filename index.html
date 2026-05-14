@@ -220,7 +220,7 @@
             position: absolute;
             top: 0; left: 80px; right: 80px;
             height: var(--header-height);
-            background: var(--panel-glass);
+            background: #ffffff;
             backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border-glass);
             z-index: 50;
@@ -228,6 +228,111 @@
             align-items: center;
             padding: 0 24px;
             justify-content: space-between;
+            overflow: hidden;
+        }
+
+        .header-status > div:not(.header-water-container) {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* --- Flowing Water Header Effect --- */
+        .header-water-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 25px;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+            opacity: 0.8;
+        }
+
+        .water-wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background-color: #38bdf8; /* Set to a constant, vibrant water blue */
+            -webkit-mask-size: 50% 100%;
+            mask-size: 50% 100%;
+            -webkit-mask-repeat: repeat-x;
+            mask-repeat: repeat-x;
+            transition: background-color 0.5s ease;
+        }
+
+        .water-wave-1 {
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 100' preserveAspectRatio='none'%3E%3Cpath d='M0,50 C250,100 250,0 500,50 C750,100 750,0 1000,50 L1000,100 L0,100 Z'/%3E%3C/svg%3E");
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 100' preserveAspectRatio='none'%3E%3Cpath d='M0,50 C250,100 250,0 500,50 C750,100 750,0 1000,50 L1000,100 L0,100 Z'/%3E%3C/svg%3E");
+            animation: wave-slide 10s linear infinite;
+            opacity: 0.6;
+        }
+
+        .water-wave-2 {
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 100' preserveAspectRatio='none'%3E%3Cpath d='M0,50 C250,0 250,100 500,50 C750,0 750,100 1000,50 L1000,100 L0,100 Z'/%3E%3C/svg%3E");
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 100' preserveAspectRatio='none'%3E%3Cpath d='M0,50 C250,0 250,100 500,50 C750,0 750,100 1000,50 L1000,100 L0,100 Z'/%3E%3C/svg%3E");
+            animation: wave-slide 7s linear infinite reverse;
+            opacity: 0.3;
+            height: 70%;
+        }
+
+        @keyframes wave-slide {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* --- Sidebar Weather Effects --- */
+        .sidebar-nexus, .sidebar-right {
+            position: relative; 
+        }
+        
+        .sidebar-nexus > *:not(.evaporation-container),
+        .sidebar-right > *:not(.precipitation-container) {
+            position: relative;
+            z-index: 10;
+        }
+
+        .evaporation-container, .precipitation-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        /* Left Sidebar: Evaporation */
+        .vapor {
+            position: absolute;
+            bottom: -20px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.4) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(3px);
+            animation: evaporate linear infinite;
+        }
+
+        @keyframes evaporate {
+            0% { transform: translateY(0) scale(1); opacity: 0; }
+            20% { opacity: 0.8; }
+            100% { transform: translateY(-100vh) scale(3); opacity: 0; }
+        }
+
+        /* Right Sidebar: Precipitation */
+        .rain {
+            position: absolute;
+            top: -20px;
+            width: 2px;
+            background: linear-gradient(to bottom, transparent, rgba(56, 189, 248, 0.8));
+            border-radius: 2px;
+            animation: precipitate linear infinite;
+        }
+
+        @keyframes precipitate {
+            0% { transform: translateY(0); opacity: 0; }
+            10% { opacity: 1; }
+            100% { transform: translateY(100vh); opacity: 0; }
         }
 
         /* --- HINDI DISCLAIMER TICKER (LOWER SIDE) --- */
@@ -313,24 +418,33 @@
             height: 100vh;
             position: relative;
             z-index: 10;
-            background: #000;
+            background: transparent;
             padding-top: var(--header-height);
             padding-bottom: var(--footer-height);
+            overflow: hidden;
         }
 
-        iframe {
+        /* Replaced iframe with modular div container for Canvas Preview */
+        .module-container {
             width: 100%;
             height: calc(100vh - var(--header-height) - var(--footer-height));
-            border: none;
             position: absolute;
             top: var(--header-height); 
             left: 0;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.4s ease;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            transform: scale(0.98);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        iframe.active { opacity: 1; pointer-events: auto; }
+        .module-container.active { 
+            opacity: 1; 
+            pointer-events: auto; 
+            transform: scale(1);
+        }
 
         .adat-label {
             font-size: 14px;
@@ -353,8 +467,8 @@
         }
 
         .clock-container {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-glass);
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 12px;
             padding: 6px 14px;
             display: flex;
@@ -366,11 +480,24 @@
         .clock-container:hover {
             border-color: var(--node-color);
             box-shadow: 0 0 20px var(--node-glow);
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.1);
             transform: translateY(-1px);
         }
 
         .time-display { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Inner Module Styles */
+        .inner-module-card {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-glass);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            max-width: 600px;
+            width: 90%;
+        }
     </style>
 </head>
 <body class="theme-cyber">
@@ -378,6 +505,8 @@
     <div id="scientific-bg"></div>
 
     <aside class="sidebar-nexus">
+        <div class="evaporation-container" id="evap-container"></div>
+        
         <div class="mb-8">
             <div class="main-logo-container" title="Groundwater Analytics Core">
                 <div class="water-drop-3d"></div>
@@ -386,20 +515,20 @@
             </div>
         </div>
 
-        <nav class="flex flex-col items-center overflow-y-auto pb-4 scrollbar-hide">
-            <div class="app-btn active" data-file="Splitoreflector.html" title="Splito-Reflector"><i data-lucide="layers"></i></div>
-            <div class="app-btn" data-file="Location Analysis.html" title="Location Profiler"><i data-lucide="map-pin"></i></div>
-            <div class="app-btn" data-file="Ranking Statistics.html" title="Ranking Statistics"><i data-lucide="bar-chart-3"></i></div>
-            <div class="app-btn" data-file="sorter.html" title="Compliance Sorter"><i data-lucide="filter"></i></div>
-            <div class="app-btn" data-file="Staticdata_Validator.html" title="Data Validator"><i data-lucide="check-circle-2"></i></div>
-            <div class="app-btn" data-file="USSL Diagram.html" title="USSL Diagram Engine"><i data-lucide="activity"></i></div>
-            <div class="app-btn" data-file="Combinations.html" title="Standard Combination"><i data-lucide="beaker"></i></div>
-            <div class="app-btn" data-file="Combinations_pro.html" title="Combination Pro"><i data-lucide="database"></i></div>
-            <div class="app-btn" data-file="Grid_analysis.html" title="Spatial Grid Engine"><i data-lucide="grid"></i></div>
-            <div class="app-btn" data-file="Range_analysis.html" title="Compliance Reporting"><i data-lucide="clipboard-check"></i></div>
-            <div class="app-btn" data-file="Sector_analysis.html" title="Radial Sector Analyst"><i data-lucide="radar"></i></div>
-            <div class="app-btn" data-file="donut_chart.html" title="3D Statistics"><i data-lucide="pie-chart"></i></div>
-            <div class="app-btn" data-file="ttest.html" title="Paired T-Test"><i data-lucide="sigma"></i></div>
+        <nav class="flex flex-col items-center overflow-y-auto pb-4 scrollbar-hide" style="scrollbar-width: none;">
+            <div class="app-btn active" data-file="Splitoreflector.html" data-icon="layers" title="Splito-Reflector"><i data-lucide="layers"></i></div>
+            <div class="app-btn" data-file="Location Analysis.html" data-icon="map-pin" title="Location Profiler"><i data-lucide="map-pin"></i></div>
+            <div class="app-btn" data-file="Ranking Statistics.html" data-icon="bar-chart-3" title="Ranking Statistics"><i data-lucide="bar-chart-3"></i></div>
+            <div class="app-btn" data-file="sorter.html" data-icon="filter" title="Compliance Sorter"><i data-lucide="filter"></i></div>
+            <div class="app-btn" data-file="Staticdata_Validator.html" data-icon="check-circle-2" title="Data Validator"><i data-lucide="check-circle-2"></i></div>
+            <div class="app-btn" data-file="USSL Diagram.html" data-icon="activity" title="USSL Diagram Engine"><i data-lucide="activity"></i></div>
+            <div class="app-btn" data-file="Combinations.html" data-icon="beaker" title="Standard Combination"><i data-lucide="beaker"></i></div>
+            <div class="app-btn" data-file="Combinations_pro.html" data-icon="database" title="Combination Pro"><i data-lucide="database"></i></div>
+            <div class="app-btn" data-file="Grid_analysis.html" data-icon="grid" title="Spatial Grid Engine"><i data-lucide="grid"></i></div>
+            <div class="app-btn" data-file="Range_analysis.html" data-icon="clipboard-check" title="Compliance Reporting"><i data-lucide="clipboard-check"></i></div>
+            <div class="app-btn" data-file="Sector_analysis.html" data-icon="radar" title="Radial Sector Analyst"><i data-lucide="radar"></i></div>
+            <div class="app-btn" data-file="donut_chart.html" data-icon="pie-chart" title="3D Statistics"><i data-lucide="pie-chart"></i></div>
+            <div class="app-btn" data-file="ttest.html" data-icon="sigma" title="Paired T-Test"><i data-lucide="sigma"></i></div>
         </nav>
 
         <div class="mt-auto flex flex-col items-center gap-2">
@@ -410,20 +539,26 @@
     </aside>
 
     <div class="header-status">
+        <!-- Flowing Water Effect -->
+        <div class="header-water-container">
+            <div class="water-wave water-wave-1"></div>
+            <div class="water-wave water-wave-2"></div>
+        </div>
+
         <div class="flex items-center gap-6">
             <div class="flex flex-col">
-                <span class="text-[10px] font-bold text-white-400 uppercase tracking-widest">प्लेटफ़ॉर्म</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-600">प्लेटफ़ॉर्म</span>
                 <div class="flex items-center gap-2 mt-0.5">
                     <span class="adat-label whitespace-nowrap">भूजल गुणवत्ता डेटा विश्लेषण प्रणाली  </span>
-                    <span class="text-[10px] text-slate-400 font-mono">(संस्करण 10.0)</span>
+                    <span class="text-[10px] text-slate-500 font-mono">(संस्करण 10.0)</span>
                 </div>
             </div>
 
-            <div class="h-10 w-[1px] bg-white/5"></div>
+            <div class="h-10 w-[1px] bg-black/10"></div>
 
             <div class="flex flex-col">
-                <span class="text-[10px] font-bold text-orange-500 uppercase tracking-widest">UI Theme</span>
-                <div class="theme-selector mt-1">
+                <span class="text-[10px] font-bold text-orange-600 uppercase tracking-widest">UI Theme</span>
+                <div class="theme-selector mt-1 border border-black/10">
                     <div class="theme-swatch active" onclick="setTheme('cyber', this)" title="Cyber Laboratory">
                         <div class="w-3 h-3 rounded-full bg-slate-900 border border-slate-700"></div>
                     </div>
@@ -436,40 +571,40 @@
                 </div>
             </div>
 
-            <div class="h-10 w-[1px] bg-white/5"></div>
+            <div class="h-10 w-[1px] bg-black/10"></div>
 
             <div class="flex flex-col">
-                <span class="text-[10px] font-bold text-white-400 uppercase tracking-widest">सक्रिय प्रणाली नोड</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-600">सक्रिय प्रणाली नोड</span>
                 <div class="flex items-center gap-3 mt-0.5">
-                    <button id="prev-node" class="text-slate-500 hover:text-white"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                    <button id="prev-node" class="text-slate-600 hover:text-slate-900"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
                     <span id="active-mod" class="font-bold text-sm tracking-wide uppercase italic min-w-[160px] text-center">Splito-Reflector</span>
-                    <button id="next-node" class="text-slate-500 hover:text-white"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                    <button id="next-node" class="text-slate-600 hover:text-slate-900"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
                 </div>
             </div>
         </div>
 
         <div class="flex items-center gap-6">
-            <div class="indicator-group flex items-center gap-4 bg-white/5 px-6 py-2.5 rounded-full border border-white/5">
+            <div class="indicator-group flex items-center gap-4 bg-black/5 px-6 py-2.5 rounded-full border border-black/5">
                 <div class="flex flex-col items-center">
-                    <span class="text-[11px] font-bold text-blue-1000 tracking-wider">जितेंद्र कुमार</span>
+                    <span class="text-[11px] font-bold text-blue-600 tracking-wider">जितेंद्र कुमार</span>
                     <span class="text-[9px] text-slate-500 uppercase">वरिष्ठ तकनीकी सहायक (रसायन) // फरीदाबाद</span>
                 </div>
                 
                 <!-- Advanced Clock Widget -->
                 <div class="clock-container cursor-default ml-2">
-                    <div class="flex flex-col items-center pr-3 border-r border-white/10">
+                    <div class="flex flex-col items-center pr-3 border-r border-slate-300">
                         <div class="flex items-center gap-2 mb-0.5">
                             <div class="w-1.5 h-1.5 rounded-full live-dot"></div>
                             <div class="time-display flex items-baseline">
-                                <span id="clock-hm" class="text-sm font-bold text-white tracking-wider">00:00</span>
+                                <span id="clock-hm" class="text-sm font-bold text-slate-800 tracking-wider">00:00</span>
                                 <span id="clock-sec" class="text-[10px] text-[var(--time-color)] ml-0.5 font-bold">00</span>
                             </div>
                         </div>
-                        <span id="clock-day" class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">DAY</span>
+                        <span id="clock-day" class="text-[8px] text-slate-500 uppercase tracking-widest font-bold">DAY</span>
                     </div>
                     <div class="flex flex-col items-start pl-1">
                         <span id="clock-dm" class="text-xs font-black text-[var(--date-color)] tracking-wide">00 XXX</span>
-                        <span id="clock-y" class="text-[10px] text-slate-500 font-bold tracking-widest leading-none mt-1">0000</span>
+                        <span id="clock-y" class="text-[10px] text-slate-600 font-bold tracking-widest leading-none mt-1">0000</span>
                     </div>
                 </div>
                 
@@ -480,6 +615,8 @@
     <main id="master-viewport"></main>
 
     <aside class="sidebar-right">
+        <div class="precipitation-container" id="precip-container"></div>
+        
         <div class="mb-8">
             <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/30 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]" title="Pro Analytics Tools">
                 <i data-lucide="cpu" class="w-5 h-5"></i>
@@ -487,8 +624,9 @@
         </div>
 
         <nav class="flex flex-col items-center">
-            <div class="app-btn" data-file="WQI.html" title="WQI Spatial Analytics"><i data-lucide="droplets"></i></div>
-            <div class="app-btn" data-file="HydroMerge.html" title="HydroMerge 3D Analytics"><i data-lucide="git-merge"></i></div>
+            <div class="app-btn" data-file="WQI.html" data-icon="droplets" title="WQI Spatial Analytics"><i data-lucide="droplets"></i></div>
+            <div class="app-btn" data-file="HydroMerge.html" data-icon="git-merge" title="HydroMerge 3D Analytics"><i data-lucide="git-merge"></i></div>
+            <div class="app-btn" data-file="Groundwateralerts.html" data-icon="alert-triangle" title="Groundwater Alerts Dashboard"><i data-lucide="alert-triangle"></i></div>
         </nav>
     </aside>
 
@@ -501,21 +639,22 @@
 
     <script>
         const MODULE_MAP = {
-            'Splitoreflector.html': { name: 'Splito-Reflector', color: '#10b981', glow: 'rgba(16, 185, 129, 0.2)' },
-            'Location Analysis.html': { name: 'Location Profiler', color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.2)' },
-            'Ranking Statistics.html': { name: 'Ranking Statistics', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.2)' },
-            'sorter.html': { name: 'Compliance Sorter', color: '#6366f1', glow: 'rgba(99, 102, 241, 0.2)' },
-            'Staticdata_Validator.html': { name: 'Data Validator', color: '#facc15', glow: 'rgba(250, 204, 21, 0.2)' },
-            'USSL Diagram.html': { name: 'USSL Diagram Engine', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.2)' },
-            'Combinations.html': { name: 'Standard Combination', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.2)' },
-            'Combinations_pro.html': { name: 'Combination Analysis Pro', color: '#ec4899', glow: 'rgba(236, 72, 153, 0.2)' },
-            'Grid_analysis.html': { name: 'Spatial Grid Engine', color: '#06b6d4', glow: 'rgba(6, 182, 212, 0.2)' },
-            'Range_analysis.html': { name: 'Compliance Reporting', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.2)' },
-            'Sector_analysis.html': { name: 'Radial Sector Analyst', color: '#84cc16', glow: 'rgba(132, 204, 22, 0.2)' },
-            'donut_chart.html': { name: '3D Statistics Visualizer', color: '#f43f5e', glow: 'rgba(244, 63, 94, 0.2)' },
-            'ttest.html': { name: 'Paired T-Test Engine', color: '#f97316', glow: 'rgba(249, 115, 22, 0.2)' },
-            'WQI.html': { name: 'WQI Spatial Analytics', color: '#00b87c', glow: 'rgba(0, 184, 124, 0.2)' },
-            'HydroMerge.html': { name: 'HydroMerge 3D Analytics', color: '#f97316', glow: 'rgba(249, 115, 22, 0.2)' }
+            'Splitoreflector.html': { name: 'Splito-Reflector', color: '#10b981', glow: 'rgba(16, 185, 129, 0.2)', desc: 'Core dataset splitting and reflection analysis module.' },
+            'Location Analysis.html': { name: 'Location Profiler', color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.2)', desc: 'Spatial intelligence and geographic groundwater profiling.' },
+            'Ranking Statistics.html': { name: 'Ranking Statistics', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.2)', desc: 'Statistical hierarchy and algorithmic parameter ranking.' },
+            'sorter.html': { name: 'Compliance Sorter', color: '#6366f1', glow: 'rgba(99, 102, 241, 0.2)', desc: 'Automated BIS/WHO compliance sorting engine.' },
+            'Staticdata_Validator.html': { name: 'Data Validator', color: '#facc15', glow: 'rgba(250, 204, 21, 0.2)', desc: 'Static structural validation and error correction protocols.' },
+            'USSL Diagram.html': { name: 'USSL Diagram Engine', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.2)', desc: 'Salinity and Sodium hazard diagram generation.' },
+            'Combinations.html': { name: 'Standard Combination', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.2)', desc: 'Standard hydrochemical combination matrices.' },
+            'Combinations_pro.html': { name: 'Combination Analysis Pro', color: '#ec4899', glow: 'rgba(236, 72, 153, 0.2)', desc: 'Advanced multidimensional combination analysis.' },
+            'Grid_analysis.html': { name: 'Spatial Grid Engine', color: '#06b6d4', glow: 'rgba(6, 182, 212, 0.2)', desc: 'Geo-spatial grid computation and interpolation.' },
+            'Range_analysis.html': { name: 'Compliance Reporting', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.2)', desc: 'Parameter range evaluation and compliance reporting.' },
+            'Sector_analysis.html': { name: 'Radial Sector Analyst', color: '#84cc16', glow: 'rgba(132, 204, 22, 0.2)', desc: 'Radial distribution and sector-wise data mapping.' },
+            'donut_chart.html': { name: '3D Statistics Visualizer', color: '#f43f5e', glow: 'rgba(244, 63, 94, 0.2)', desc: 'Volumetric and proportional 3D charting.' },
+            'ttest.html': { name: 'Paired T-Test Engine', color: '#f97316', glow: 'rgba(249, 115, 22, 0.2)', desc: 'Statistical significance testing for paired datasets.' },
+            'WQI.html': { name: 'WQI Spatial Analytics', color: '#00b87c', glow: 'rgba(0, 184, 124, 0.2)', desc: 'Water Quality Index spatial distribution analysis.' },
+            'HydroMerge.html': { name: 'HydroMerge 3D Analytics', color: '#f97316', glow: 'rgba(249, 115, 22, 0.2)', desc: 'Comprehensive 3D data merging and synthesis.' },
+            'Groundwateralerts.html': { name: 'Groundwater Alerts Dashboard', color: '#eab308', glow: 'rgba(234, 179, 8, 0.2)', desc: 'Automated water quality alert reporting and spatial mapping.' }
         };
 
         const TICKER_PALETTES = [
@@ -540,8 +679,36 @@
             initNavigation();
             initNodeControls();
             initTickerCycler();
+            initSidebarWeather();
             switchModule(0);
         };
+
+        function initSidebarWeather() {
+            // Setup Evaporation on Left
+            const evapContainer = document.getElementById('evap-container');
+            for (let i = 0; i < 15; i++) {
+                const vapor = document.createElement('div');
+                vapor.className = 'vapor';
+                vapor.style.left = Math.random() * 100 + '%';
+                vapor.style.width = (Math.random() * 20 + 10) + 'px';
+                vapor.style.height = vapor.style.width;
+                vapor.style.animationDuration = (Math.random() * 4 + 3) + 's'; // Float up slowly (3-7s)
+                vapor.style.animationDelay = (Math.random() * 5) + 's';
+                evapContainer.appendChild(vapor);
+            }
+
+            // Setup Precipitation on Right
+            const precipContainer = document.getElementById('precip-container');
+            for (let i = 0; i < 25; i++) {
+                const rain = document.createElement('div');
+                rain.className = 'rain';
+                rain.style.left = Math.random() * 100 + '%';
+                rain.style.height = (Math.random() * 15 + 10) + 'px';
+                rain.style.animationDuration = (Math.random() * 0.8 + 0.6) + 's'; // Fall fast (0.6-1.4s)
+                rain.style.animationDelay = (Math.random() * 2) + 's';
+                precipContainer.appendChild(rain);
+            }
+        }
 
         function initTickerCycler() {
             const tickerText = document.getElementById('ticker-text');
@@ -563,15 +730,40 @@
             element.classList.add('active');
         }
 
+        // Modified for Canvas to inject visual placeholder panels instead of iframes
         function loadModules() {
             const viewport = document.getElementById('master-viewport');
-            moduleKeys.forEach((file, index) => {
-                const frame = document.createElement('iframe');
-                frame.id = `view-${file.replace(/\s/g, '_')}`;
-                frame.src = file;
-                if (index === 0) frame.classList.add('active');
-                viewport.appendChild(frame);
+            
+            document.querySelectorAll('.app-btn').forEach((btn, index) => {
+                const file = btn.getAttribute('data-file');
+                const iconName = btn.getAttribute('data-icon');
+                const modData = MODULE_MAP[file];
+                
+                if(!modData) return;
+
+                const container = document.createElement('div');
+                container.id = `view-${file.replace(/\s/g, '_')}`;
+                container.className = 'module-container';
+                if (index === 0) container.classList.add('active');
+
+                container.innerHTML = `
+                    <div class="inner-module-card">
+                        <i data-lucide="${iconName}" style="width: 80px; height: 80px; color: ${modData.color}; margin: 0 auto 24px auto; filter: drop-shadow(0 0 15px ${modData.glow});"></i>
+                        <h2 style="font-size: 2.2rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; margin-bottom: 16px; color: ${modData.color}; text-shadow: 0 0 20px ${modData.glow};">${modData.name}</h2>
+                        <p style="opacity: 0.7; font-size: 1.1rem; margin-bottom: 32px; line-height: 1.6;">${modData.desc}<br/>Module successfully initialized in the virtual workspace.</p>
+                        
+                        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); border-radius: 12px; padding: 20px; font-family: 'JetBrains Mono', monospace; text-align: left; position: relative; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: ${modData.color};"></div>
+                            <span style="color: #64748b;">root@gwa-core:~#</span> <span style="color: ${modData.color};">./execute --node="${modData.name.replace(/\s/g, '_')}"</span>
+                            <br/>
+                            <span style="color: #94a3b8; font-size: 0.9em; display: block; margin-top: 8px;">> System resources allocated. Waiting for dataset...</span>
+                        </div>
+                    </div>
+                `;
+                viewport.appendChild(container);
             });
+            
+            lucide.createIcons(); // Re-render icons inside new divs
         }
 
         function switchModule(index) {
@@ -586,7 +778,7 @@
                 b.classList.toggle('active', b.getAttribute('data-file') === file);
             });
 
-            document.querySelectorAll('iframe').forEach(f => f.classList.remove('active'));
+            document.querySelectorAll('.module-container').forEach(f => f.classList.remove('active'));
             const targetFrame = document.getElementById(`view-${file.replace(/\s/g, '_')}`);
             if (targetFrame) targetFrame.classList.add('active');
 
