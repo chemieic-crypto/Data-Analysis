@@ -26,6 +26,7 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         #map { height: 600px; width: 100%; border-radius: 0.75rem; z-index: 10; }
+        
         /* Custom styles for Leaflet popup to make it look modern */
         .leaflet-popup-content-wrapper { border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
         .leaflet-popup-content { margin: 0; width: 280px !important; }
@@ -59,9 +60,9 @@
             .print-container table { width: 100% !important; table-layout: auto !important; }
             .print-container th, .print-container td { font-size: 10px !important; padding: 5px !important; line-height: 1.3 !important; }
             .print-container .text-lg { font-size: 11px !important; }
-            .print-container .text-\\[15px\\] { font-size: 11px !important; }
+            .print-container .text-\[15px\] { font-size: 11px !important; }
             .print-container .text-xs { font-size: 9px !important; }
-            .print-container .w-28, .print-container .w-32, .print-container .w-1\\/3 { width: auto !important; }
+            .print-container .w-28, .print-container .w-32, .print-container .w-1\/3 { width: auto !important; }
             .print-container .overflow-x-auto, .print-container .overflow-hidden { overflow: visible !important; }
             
             .no-print { display: none !important; }
@@ -113,91 +114,78 @@
         const HEAVY_METALS = ["Cr", "Mn", "Fe", "Ni", "Cu", "Zn", "As", "Se", "Cd", "Pb", "U"];
 
         const RISK_PERCEPTIONS = [
-            { param: "Manganese", text: "Continue use can damage liver, lungs and kidneys, effects the metabolism of iron for formation of hemoglobin and leads to neurological conditions- impaired memory, impaired motor coordination and delayed reaction time-results in disease called Manganism." },
-            { param: "Lead", text: "Continue use can cause cardiovascular effects, increased blood pressure and incidence of hypertension. Decreased kidney function. Reproductive problems (in both men and women)." },
-            { param: "Iron", text: "An excessive amount of exposure to iron can increase the risk of Parkinson's, cardiovascular disease, diabetes mellitus, pigmentation changes, Alzheimer's, as well as renal, liver, respiratory, and neurological issues." },
-            { param: "Arsenic", text: "Arsenic in groundwater poses significant health risks, including skin lesions, cardiovascular disease, and several types of cancer due to long-term exposure. Chronic exposure to arsenic in groundwater can lead to serious health problems, including skin lesions, peripheral neuropathy, and an increased risk of several types of cancer, such as skin, lung, and bladder cancer. Long-term ingestion can cause cardiovascular disease, diabetes, and developmental disorders in children, potentially leading to cognitive and motor impairment." }
+            { id: "Cl-1", param: "Chloride (Cl)", text: "High concentration of chloride concentration in draining water" },
+            { id: "F", param: "Fluoride", text: "Dental and Skeletal Fluorosis: Studies suggest high levels of fluoride may lead to discoloration and damage to teeth and affect bone health" },
+            { id: "NO3-1", param: "Nitrate", text: "High nitrate causes cyanosis (methaemoglobinaemia) or Blue baby disease. It effects digestive system. Development of cancer, especially digestive cancers, such as colorectal stomach and esophagus cancer, complications during pregnancy." },
+            { id: "SO4-2", param: "Sulphate (SO4)", text: "High concentration of sulphate concentration in draining water may be more sensitive to the cathartic effects. Children, transients and the elderly are high risk of dehydration from diarrhoea may be caused by high concentration of sulfate in drinking-water." },
+            { id: "TH", param: "Total Hardness", text: "Reduced lathering of soaps, buildup of scale on heating elements and boilers, reduced water flow in distribution pipes due to scale buildup. High levels of sodium in drinking water may harm your health like Cathartic and diuretic effect." },
+            { id: "As", param: "Arsenic", text: "Long-term exposure of Arsenic is associated with skin, bladder, lung, risk of heart disease and hypertension and other cancers." },
+            { id: "Cd", param: "Cadmium", text: "Cadmium in drinking water is highly toxic and causing significant health risks, primarily it is accumulation in the kidneys. It can lead to kidney damage (tubular dysfunction), bone demineralization (osteoporosis and osteomalacia), and itai-itai disease, while being classified as a carcinogen. Acute symptoms include diarrhea, vomiting, and muscle cramps." },
+            { id: "Fe", param: "Iron", text: "An excessive amount of exposure to iron can increase the risk of Parkinson's, cardiovascular disease, diabetes mellitus, pigmentation changes, Alzheimer's, as well as renal, liver, respiratory, and neurological issues" },
+            { id: "Pb", param: "Lead", text: "Lead Can lead to hypertension, kidney damage, and reproductive issues in adults and Neurological damage; especially harmful to children, lead exposure can cause developmental delays, lower IQ, and behavioural issues." },
+            { id: "Mn", param: "Manganese", text: "Continue use can damage liver, lungs and kidneys, effects the metabolism of iron for formation of hemoglobin and leads to neurological conditions- impaired memory, impaired motor coordination and delayed reaction time- results in disease called Manganism." },
+            { id: "Ni", param: "Nickel", text: "Nickel is used in the nickel/chrome plating and so can occasionally leach into water. High concentration of nickel contaminated water is used for domestic/ drinking purposes, it can cause skin irritation (dermatitis), gastrointestinal issues (nausea, vomiting), and long-term risks like kidney/liver damage, reduced body weight and potential carcinogenicity" },
+            { id: "Se", param: "Selenium", text: "Excessive intake of selenium from drinking water, typically more than permissible limit may causes selenosis, characterized by brittle hair, hair loss, and deformed, discolored nails. Other side effects include gastrointestinal distress (nausea, diarrhea), neurological issues (fatigue, irritability, tremor), and extreme cases can lead to organ failure." },
+            { id: "U", param: "Uranium", text: "The kidney and lungs are found to be the major target organs of Uranium toxicity and it may cause cancer from radioactive uranium. In animal bones, Uranium influences inhibition of osteoblastic activity, thereby reducing bone volume." }
         ];
 
         const MITIGATIONS = [
             {
-                title: "Remedial Measures for pH",
-                sections: [
-                    { subtitle: "Treatment of acidic water:", points: ["Passing through Neutralizing Filter containing Calcite, Magnesia (MgO) or Calcium Carbonate.", "Adding Soda Ash (Na2CO3)"] },
-                    { subtitle: "Treatment of Basic water:", points: ["Installation of an Acid injector (white vinegar)."] }
-                ]
+                id: "F", title: "Mitigation for Fluoride",
+                sections: [{ desc: "Defluoridation techniques can be adopted: Adsorption technique, Ion-exchange technique, Precipitation technique and other techniques, which include electro chemical defluoridation and Reverse Osmosis." }]
             },
             {
-                title: "Remedial Measures for Nitrate",
-                desc: "For removal of nitrate both non-treatment techniques like blending and treatment processes such as ion-exchange, reverse osmosis, biological denitrification and chemical reduction are useful.",
-                sections: [
-                    { 
-                        subtitle: "Methods involving no treatment:", 
-                        desc: "In order to use any of these options the nitrate problem must be local-scale. Common methods are:",
-                        points: ["Raw water source substitution", "Blending with low nitrate waters"],
-                        postDesc: "This greatly reduces expenses and helps to provide safer drinking water to larger numbers of people."
-                    },
-                    { 
-                        subtitle: "Methods involving Treatment:", 
-                        points: ["Adsorption/Ion Exchange", "Reverse Osmosis", "Electrodialysis", "Bio-chemical Denitrification (By using denitrifying bacteria and microbes)", "Catalytic Reduction/Denitrification (using hydrogen gas)"] 
-                    }
-                ]
+                id: "NO3-1", title: "Mitigation for Nitrate",
+                sections: [{ desc: "Reverse osmosis systems for drinking water to be used." }]
             },
             {
-                title: "Remedial Measures for Fluoride",
-                sections: [
-                    { points: ["Adsorption and ion exchange", "Ion-Exchange resins", "Coagulation-precipitation", "Nalgonda Technique"] }
-                ]
+                id: "SO4-2", title: "Mitigation for Sulphate",
+                sections: [{ desc: "The techniques may be adopted: Ion-exchange technique, Nano-filtration technique, Reverse Osmosis and electro-dialysis may be used." }]
             },
             {
-                title: "Removal of Total Hardness, Calcium and Magnesium",
-                sections: [
-                    { points: ["Chemical Process of Boiling Hard Water.", "Adding Slaked Lime (Clark's Process)", "Adding Washing Soda.", "Calgon Process.", "Ion Exchange Process.", "Using Ion Exchange Resins."] },
-                    { subtitle: "Carbonate (Temporary) Hardness also known as Ca Bicarbonate", desc: "Removal by Boiling or adding Lime" },
-                    { subtitle: "Non-Carbonate (Permanent) Hardness", desc: "Removal by Lime-soda, Zeolite or Demineralization Processes" }
-                ]
+                id: "TH", title: "Mitigation for Total Hardness",
+                sections: [{ desc: "Hardness minerals can be removed with a water softener and dilution technique and Reverse Osmosis., which replaces the calcium and magnesium (and iron, manganese, radium and other positive ions) with sodium." }]
             },
             {
-                title: "Removal of Sulphate",
-                sections: [
-                    { points: ["Reverse Osmosis (RO)", "Nano Filter (NF)", "Ion exchange", "Electrocoagulation", "Chemical precipitation", "Blending", "Rain Water Harvesting (RWH)", "Zero valent iron (ZVI) method"] }
-                ]
+                id: "As", title: "Mitigation for Arsenic",
+                sections: [{ desc: "The techniques may be adopted: Adsorption technique, Ion-exchange technique, Reverse Osmosis and using alternative sources such as rainwater harvesting or deep aquifer water." }]
             },
             {
-                title: "Specific Methods for Common Trace Metals",
-                sections: [
-                    { points: [
-                        "Manganese: Treating the water at its source, filtration system and water treatment method.",
-                        "Lead: Reverse osmosis systems, water distillers and carbon filters.",
-                        "Iron: Oxygenation of groundwater followed by precipitation.",
-                        "Arsenic: Ion exchange, Chemical Precipitation.",
-                        "Uranium: Lime Softening, Anion Exchange, Reverse Osmosis, Activated Alumina and coagulation/filtration"
-                    ] }
-                ]
+                id: "Cd", title: "Mitigation for Cadmium",
+                sections: [{ desc: "Effective mitigation of cadmium (Cd) from drinking water primarily reverse osmosis (RO), ion exchange, and coagulation/filtration." }]
+            },
+            {
+                id: "Fe", title: "Mitigation for Iron",
+                sections: [{ desc: "Oxygenation of groundwater followed by precipitation and Reverse osmosis systems." }]
+            },
+            {
+                id: "Pb", title: "Mitigation for Lead",
+                sections: [{ desc: "Implement water treatment methods that reduce corrosion in pipes, such as adjusting pH, alkalinity, and adding inhibitors like orthophosphate." }]
+            },
+            {
+                id: "Mn", title: "Mitigation for Manganese",
+                sections: [{ desc: "Treating the water at its source, filtration system and water treatment method." }]
+            },
+            {
+                id: "Ni", title: "Mitigation for Nickel",
+                sections: [{ desc: "There are several effective methods for removing nickel from water namely: Chemical Precipitation, Ion Exchange, Membrane Filtration, Adsorption on activated carbon, Electrodialysis, UV radiation and Biological treatment." }]
+            },
+            {
+                id: "Se", title: "Mitigation for Selenium",
+                sections: [{ desc: "Effective selenium mitigation from drinking water, involves advanced techniques like reverse osmosis (RO), ion exchange, and adsorption (e.g., activated alumina or iron-based media). Iron electrocoagulation, which generates reactive rust to bind selenium, can remove 98%." }]
+            },
+            {
+                id: "U", title: "Mitigation for Uranium",
+                sections: [{ desc: "The technologies for uranium removal: Coagulation/filtration, Lime softening, Anion exchange, Reverse osmosis and Activated alumina may remove 80-90% uranium from water." }]
             }
         ];
 
         const FULL_PARAM_NAMES = {
-            "pH": "pH",
-            "EC": "Electrical conductivity",
-            "Cl-1": "Chloride",
-            "SO4-2": "Sulphate",
-            "NO3-1": "Nitrate",
-            "F": "Fluoride",
-            "Ca+2": "Calcium",
-            "Mg+2": "Magnesium",
-            "TH": "Total Hardness",
-            "Cr": "Chromium",
-            "Mn": "Manganese",
-            "Fe": "Iron",
-            "Ni": "Nickel",
-            "Cu": "Copper",
-            "Zn": "Zinc",
-            "As": "Arsenic",
-            "Se": "Selenium",
-            "Cd": "Cadmium",
-            "Pb": "Lead",
-            "U": "Uranium"
+            "pH": "pH", "EC": "Electrical conductivity", "Cl-1": "Chloride", "SO4-2": "Sulphate",
+            "NO3-1": "Nitrate", "F": "Fluoride", "Ca+2": "Calcium", "Mg+2": "Magnesium",
+            "TH": "Total Hardness", "Cr": "Chromium", "Mn": "Manganese", "Fe": "Iron",
+            "Ni": "Nickel", "Cu": "Copper", "Zn": "Zinc", "As": "Arsenic", "Se": "Selenium",
+            "Cd": "Cadmium", "Pb": "Lead", "U": "Uranium"
         };
 
         const getFullParamNames = (paramsList) => {
@@ -215,7 +203,7 @@
                     <thead>
                         <tr>
                             <th rowSpan="2" className="border border-black p-2 font-bold">Sl. No.</th>
-                            <th rowSpan="2" className="border border-black p-2 font-bold">Name of {isDistrict ? 'District' : 'State/UT'}</th>
+                            <th rowSpan="2" className="border border-black p-2 font-bold">Name of {isDistrict ? 'District' : 'State/Union Territory'}</th>
                             <th rowSpan="2" className="border border-black p-2 font-bold w-24">Total no.<br/>of samples<br/>analysed</th>
                             <th colSpan="3" className="border border-black p-2 font-bold">No. of samples contaminated</th>
                             <th rowSpan="2" className="border border-black p-2 font-bold w-1/3">Parameters of contamination</th>
@@ -298,7 +286,7 @@
                         <thead>
                             <tr className="bg-gradient-to-b from-indigo-800 to-blue-900 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]">
                                 <th rowSpan="2" className="p-3 border-b-2 border-r border-blue-950 font-extrabold shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">Sl. No.</th>
-                                <th rowSpan="2" className="p-3 border-b-2 border-r border-blue-950 text-left font-extrabold shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">Name of {isDistrict ? 'District' : 'State/UT'}</th>
+                                <th rowSpan="2" className="p-3 border-b-2 border-r border-blue-950 text-left font-extrabold shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">Name of {isDistrict ? 'District' : 'State/Union Territory'}</th>
                                 <th rowSpan="2" className="p-3 border-b-2 border-r border-blue-950 font-extrabold shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] w-28">Total no. of samples analysed</th>
                                 <th colSpan="3" className="p-3 border-b border-r border-blue-950 font-extrabold shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] bg-gradient-to-b from-indigo-700 to-blue-800 tracking-wider text-lg">No. of samples contaminated</th>
                                 <th rowSpan="2" className="p-3 border-b-2 border-blue-950 text-left font-extrabold shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] w-1/3">Parameters of contamination</th>
@@ -390,7 +378,6 @@
             );
         };
 
-        // Map Component
         const MapContainer = ({ data, limits, geoJsonData }) => {
             const mapRef = useRef(null);
             const markersLayer = useRef(L.layerGroup());
@@ -723,6 +710,20 @@
             const reportLocation = isSingleState ? summaryData[0].state : 'All India';
             const reportTableData = isSingleState ? districtSummaryData : summaryData;
 
+            // Dynamically determine which parameters are contaminated across the dataset
+            const activeContaminatedParams = useMemo(() => {
+                const params = new Set();
+                reportTableData.forEach(row => {
+                    row.unsafeList.forEach(p => params.add(p));
+                    row.marginalList.forEach(p => params.add(p));
+                });
+                return Array.from(params);
+            }, [reportTableData]);
+
+            // Filter out risks and mitigations based on actual contaminations
+            const activeRiskPerceptions = RISK_PERCEPTIONS.filter(r => activeContaminatedParams.includes(r.id));
+            const activeMitigations = MITIGATIONS.filter(m => activeContaminatedParams.includes(m.id));
+
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -963,7 +964,7 @@
                                 onClick={() => setActiveTab('state')}
                                 className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 border ${activeTab === 'state' ? 'bg-gradient-to-b from-violet-500 to-violet-700 text-white shadow-[0_5px_0_rgb(76,29,149)] border-violet-800 translate-y-0' : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 shadow-[0_5px_0_rgb(209,213,219)] border-gray-300 hover:from-gray-50 hover:to-gray-200 active:translate-y-[5px] active:shadow-none'}`}
                             >
-                                State Summary
+                                State/UT Summary
                             </button>
                             <button 
                                 onClick={() => setActiveTab('district')}
@@ -1073,7 +1074,7 @@
                                         );
                                     })()}
 
-                                    <p className="mb-4">The following Table shows the {isSingleState ? 'district-wise' : 'state-wise'} details of the contaminations detected. The detailed parameter-wise sample analysis is in the attached excel sheet.</p>
+                                    <p className="mb-4">The following Table shows the {isSingleState ? 'district-wise' : 'State/Union Territory-wise'} details of the contaminants detected in ground water samples. The detailed parameter-wise sample analysis is in the attached excel sheet.</p>
                                     
                                     <h3 className="font-bold underline mb-4">Para I</h3>
                                     
@@ -1081,44 +1082,61 @@
 
                                     <div className="page-break-before pt-8">
                                         <h3 className="font-bold underline mb-4">Para II</h3>
-                                        <p className="mb-6">The anomalies may be termed major in some case.</p>
-
-                                        <h4 className="font-bold text-lg underline mb-4">Risk perception for:</h4>
-                                        <ul className="list-none space-y-4 mb-8">
-                                            {RISK_PERCEPTIONS.map((risk, idx) => (
-                                                <li key={idx} className="text-justify avoid-break">
-                                                    <span className="font-bold">{risk.param}:</span> {risk.text}
-                                                </li>
-                                            ))}
-                                        </ul>
-
-                                        <h4 className="font-bold text-lg underline mb-4">Recommendation for Mitigation</h4>
                                         
-                                        <div className="space-y-6">
-                                            {MITIGATIONS.map((mitigation, idx) => (
-                                                <div key={idx} className="avoid-break">
-                                                    <h5 className="font-bold underline mb-2">{mitigation.title}</h5>
-                                                    {mitigation.desc && <p className="mb-2">{mitigation.desc}</p>}
-                                                    
-                                                    {mitigation.sections.map((sec, sIdx) => (
-                                                        <div key={sIdx} className="mb-3">
-                                                            {sec.subtitle && <p className="font-bold">{sec.subtitle}</p>}
-                                                            {sec.desc && <p>{sec.desc}</p>}
-                                                            
-                                                            {sec.points && (
-                                                                <ul className="list-disc pl-8 mt-1 space-y-1">
-                                                                    {sec.points.map((pt, pIdx) => (
-                                                                        <li key={pIdx}>{pt}</li>
+                                        {activeRiskPerceptions.length > 0 || activeMitigations.length > 0 ? (
+                                            <>
+                                                <p className="mb-6">The anomalies may be termed major in some case.</p>
+
+                                                {activeRiskPerceptions.length > 0 && (
+                                                    <>
+                                                        <h4 className="font-bold text-lg underline mb-4">Risk perception for:</h4>
+                                                        <ul className="list-none space-y-4 mb-8">
+                                                            {activeRiskPerceptions.map((risk, idx) => (
+                                                                <li key={idx} className="text-justify avoid-break">
+                                                                    <span className="font-bold">{risk.param}:</span> {risk.text}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </>
+                                                )}
+
+                                                {activeMitigations.length > 0 && (
+                                                    <>
+                                                        <h4 className="font-bold text-lg underline mb-4">Recommendation for Mitigation</h4>
+                                                        
+                                                        <div className="space-y-6">
+                                                            {activeMitigations.map((mitigation, idx) => (
+                                                                <div key={idx} className="avoid-break">
+                                                                    <h5 className="font-bold underline mb-2">{mitigation.title}</h5>
+                                                                    {mitigation.desc && <p className="mb-2">{mitigation.desc}</p>}
+                                                                    
+                                                                    {mitigation.sections.map((sec, sIdx) => (
+                                                                        <div key={sIdx} className="mb-3">
+                                                                            {sec.subtitle && <p className="font-bold">{sec.subtitle}</p>}
+                                                                            {sec.desc && <p>{sec.desc}</p>}
+                                                                            
+                                                                            {sec.points && (
+                                                                                <ul className="list-disc pl-8 mt-1 space-y-1">
+                                                                                    {sec.points.map((pt, pIdx) => (
+                                                                                        <li key={pIdx}>{pt}</li>
+                                                                                    ))}
+                                                                                </ul>
+                                                                            )}
+                                                                            
+                                                                            {sec.postDesc && <p className="mt-1">{sec.postDesc}</p>}
+                                                                        </div>
                                                                     ))}
-                                                                </ul>
-                                                            )}
-                                                            
-                                                            {sec.postDesc && <p className="mt-1">{sec.postDesc}</p>}
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            ))}
-                                        </div>
+                                                    </>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <p className="italic text-gray-600 mb-6">
+                                                All tested parameters in the provided dataset are within safe limits. No specific risk perceptions or mitigation measures are currently required.
+                                            </p>
+                                        )}
                                     </div>
 
                                 </div>
@@ -1128,7 +1146,7 @@
                         {activeTab === 'state' && (
                             <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-8">
                                 <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center flex-wrap gap-4">
-                                    <h2 className="text-xl font-bold text-gray-800">State-wise Summary</h2>
+                                    <h2 className="text-xl font-bold text-gray-800">State/Union Territory-wise Groundwater Contamination</h2>
                                     <div className="flex items-center gap-6">
                                         <div className="flex gap-4 text-xs">
                                             <span className="flex items-center gap-1"><div className="w-3 h-3 bg-emerald-500 rounded"></div> Safe</span>
