@@ -177,7 +177,7 @@
         };
 
         const PiperPlot = React.memo(({ data, faciesColors, pointColors, pointSizes, getPointKey, faciesNames, stateHeader }) => {
-            const [titleConfig, setTitleConfig] = useState({ text: "Piper Trilinear Diagram", size: 14, color: "#64748b", isBold: true, isItalic: false });
+            const [titleConfig, setTitleConfig] = useState({ text: "PIPER TRILINEAR DIAGRAM", size: 14, color: "#475569", isBold: true, isItalic: false });
             const [editingTitle, setEditingTitle] = useState(false);
             
             const SQRT3 = Math.sqrt(3);
@@ -190,17 +190,17 @@
             const frameColor = '#1f2937';
             
             const defaultLabels = {
-                ca: { text: "Ca²⁺", x: tx(-4), y: ty(-4), align: "end", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
-                nak: { text: "Na⁺ + K⁺", x: tx(104), y: ty(-4), align: "start", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
-                mg: { text: "Mg²⁺", x: tx(50), y: ty(H+5), align: "middle", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
-                hco3: { text: "HCO₃⁻ + CO₃²⁻", x: tx(116), y: ty(-4), align: "end", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
-                cl: { text: "Cl⁻", x: tx(224), y: ty(-4), align: "start", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
-                so4: { text: "SO₄²⁻", x: tx(170), y: ty(H+5), align: "middle", rotate: 0, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
-                diamondL: { text: "SO₄²⁻ + Cl⁻", x: tx(72), y: ty(158), align: "middle", rotate: -60, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
-                diamondR: { text: "Ca²⁺ + Mg²⁺", x: tx(148), y: ty(158), align: "middle", rotate: 60, color: "#64748b", isBold: true, isItalic: false, fontSize: 6 },
-                cations: { text: "CATIONS", x: tx(50), y: ty(-28), align: "middle", rotate: 0, fontSize: 8, color: "#64748b", isBold: true, isItalic: false },
-                anions: { text: "ANIONS", x: tx(170), y: ty(-28), align: "middle", rotate: 0, fontSize: 8, color: "#64748b", isBold: true, isItalic: false },
-                meq: { text: "% meq/l", x: tx(110), y: ty(-25), align: "middle", rotate: 0, fontSize: 6, color: "#64748b", isBold: true, isItalic: false }
+                ca: { text: "Ca²⁺", x: tx(50), y: ty(-8), align: "middle", rotate: 0, color: "#2563eb", isBold: true, isItalic: false, fontSize: 6.5 },
+                nak: { text: "Na⁺ + K⁺", x: tx(82), y: ty(45), align: "middle", rotate: 60, color: "#2563eb", isBold: true, isItalic: false, fontSize: 6.5 },
+                mg: { text: "Mg²⁺", x: tx(18), y: ty(45), align: "middle", rotate: -60, color: "#2563eb", isBold: true, isItalic: false, fontSize: 6.5 },
+                hco3: { text: "HCO₃⁻ + CO₃²⁻", x: tx(138), y: ty(45), align: "middle", rotate: -60, color: "#2563eb", isBold: true, isItalic: false, fontSize: 6.5 },
+                cl: { text: "Cl⁻", x: tx(170), y: ty(-8), align: "middle", rotate: 0, color: "#2563eb", isBold: true, isItalic: false, fontSize: 6.5 },
+                so4: { text: "SO₄²⁻", x: tx(202), y: ty(45), align: "middle", rotate: 60, color: "#2563eb", isBold: true, isItalic: false, fontSize: 6.5 },
+                diamondL: { text: "SO₄²⁻ + Cl⁻", x: tx(75), y: ty(135), align: "middle", rotate: -60, color: "#2563eb", isBold: true, isItalic: false, fontSize: 6.5 },
+                diamondR: { text: "Ca²⁺ + Mg²⁺", x: tx(145), y: ty(135), align: "middle", rotate: 60, color: "#2563eb", isBold: true, isItalic: false, fontSize: 6.5 },
+                cations: { text: "CATIONS", x: tx(50), y: ty(-25), align: "middle", rotate: 0, fontSize: 8, color: "#064e3b", isBold: true, isItalic: false },
+                anions: { text: "ANIONS", x: tx(170), y: ty(-25), align: "middle", rotate: 0, fontSize: 8, color: "#064e3b", isBold: true, isItalic: false },
+                meq: { text: "% meq/l", x: tx(110), y: ty(-22), align: "middle", rotate: 0, fontSize: 6.5, color: "#64748b", isBold: true, isItalic: false }
             };
             const [labels, setLabels] = useState(defaultLabels);
             const [selectedLabel, setSelectedLabel] = useState(null);
@@ -1049,6 +1049,11 @@
 
             const stats = useMemo(() => {
                 const uCounts = {}, fCounts = {}, sCounts = {};
+                
+                // Initialize defaults to show empty categories even before data is loaded
+                Object.keys(INITIAL_USSL_COLORS).forEach(k => uCounts[k] = 0);
+                Object.keys(INITIAL_FACIES_COLORS).forEach(k => fCounts[k] = 0);
+
                 validData.forEach(d => {
                     uCounts[d._calc.ussl] = (uCounts[d._calc.ussl] || 0) + 1;
                     fCounts[d._calc.facies] = (fCounts[d._calc.facies] || 0) + 1;
@@ -1456,42 +1461,49 @@
                     )}
                     {/* ----------------------------- */}
 
-                    <header className={`bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 transition-colors duration-300`}>
-                        <div className="flex flex-col gap-1 text-center md:text-left">
-                            <h1 className="text-3xl font-orange italic tracking-tighter uppercase leading-none text-slate-900">Hydrochemical Facies</h1>
-                            <p className="text-[10px] text-slate-500 font-bold tracking-[0.3em] uppercase">USSL Diagram</p>
-                            <div className={`mt-2 py-1 px-3 ${currentThemeData.tint} border border-slate-200 rounded-lg inline-block self-center md:self-start text-[9px] font-black uppercase text-slate-700`}>Gibbs Diagrams</div>
+                    <header className={`bg-white p-4 md:p-5 rounded-[1.5rem] border border-slate-200 shadow-xl flex flex-col xl:flex-row justify-between items-center gap-4 transition-colors duration-300`}>
+                        <div className="flex flex-col gap-1 text-center xl:text-left shrink-0">
+                            <h1 className="text-2xl md:text-3xl font-black italic tracking-tighter uppercase leading-tight drop-shadow-sm">
+                                <span className="text-blue-700">Hydrochemical Facies</span> 
+                                <span className="text-slate-300 mx-2">&</span> 
+                                <span className="text-rose-600">USSL Diagram</span>
+                            </h1>
                         </div>
-                        <div className="flex gap-3 items-center flex-wrap justify-center">
+                        <div className="flex gap-3 items-center flex-wrap justify-center flex-1 xl:justify-end">
                             
                             {/* Colorful Theme Switcher Dropdown replacement */}
-                            <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 gap-1 mr-2">
+                            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 shadow-inner hidden lg:flex">
                                 {APP_THEMES.map(t => (
                                     <button 
                                         key={t.id}
                                         onClick={() => setActiveThemeId(t.id)} 
-                                        className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm border-b-4 active:border-b-0 active:translate-y-1 ${activeThemeId === t.id ? 'bg-slate-800 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all shadow-sm border-b-[3px] active:border-b-0 active:translate-y-[3px] ${activeThemeId === t.id ? 'bg-slate-800 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
                                         title={t.name}
                                     >
-                                        <i className={`ph ${t.icon} text-lg`}></i>
+                                        <i className={`ph ${t.icon} text-base`}></i>
                                     </button>
                                 ))}
                             </div>
 
-                            {/* Vibrant Upload & Export Buttons */}
-                            <label className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-xl font-bold uppercase text-[10px] cursor-pointer transition-all active:translate-y-1 active:border-b-0 border-b-4 border-indigo-800 shadow-lg shadow-indigo-600/20">
-                                Import Data <input type="file" className="hidden" onChange={handleFileUpload} />
+                            {/* Vibrant Upload & Export 3D Buttons */}
+                            <label className="bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] cursor-pointer transition-all duration-150 shadow-[0_3px_0_0_#3730a3] hover:bg-indigo-400 hover:-translate-y-px active:shadow-none active:translate-y-[3px]">
+                                <div className="flex items-center gap-2"><i className="ph ph-upload-simple text-base"></i> Import Data</div>
+                                <input type="file" className="hidden" onChange={handleFileUpload} />
                             </label>
-                            {processedData.length > 0 && <button onClick={exportExcel} className="bg-teal-600 hover:bg-teal-500 text-white px-5 py-3 rounded-xl font-bold uppercase text-[10px] transition-all active:translate-y-1 active:border-b-0 border-b-4 border-teal-800 shadow-lg shadow-teal-600/20">Excel Export</button>}
+                            {processedData.length > 0 && (
+                                <button onClick={exportExcel} className="bg-teal-500 text-white px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all duration-150 shadow-[0_3px_0_0_#0f766e] hover:bg-teal-400 hover:-translate-y-px active:shadow-none active:translate-y-[3px]">
+                                    <div className="flex items-center gap-2"><i className="ph ph-download-simple text-base"></i> Excel Export</div>
+                                </button>
+                            )}
                             
-                            {/* Multi-Colored Navigation Tabs */}
-                            <div className="bg-slate-100 p-1.5 rounded-2xl flex gap-1 border border-slate-200 transition-colors duration-300 flex-wrap justify-center">
-                                <button onClick={() => setViewMode('summary')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'summary' ? 'bg-emerald-500 text-white border-emerald-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-emerald-50 hover:text-emerald-600'}`}>Visuals</button>
-                                <button onClick={() => setViewMode('analytics_ussl')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'analytics_ussl' ? 'bg-blue-500 text-white border-blue-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-blue-50 hover:text-blue-600'}`}>USSL Matrix</button>
-                                <button onClick={() => setViewMode('analytics_facies')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'analytics_facies' ? 'bg-purple-500 text-white border-purple-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-purple-50 hover:text-purple-600'}`}>Facies Matrix</button>
-                                <button onClick={() => setViewMode('completeness')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'completeness' ? 'bg-orange-500 text-white border-orange-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-orange-50 hover:text-orange-600'}`}>Data Quality</button>
-                                <button onClick={() => setViewMode('table')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'table' ? 'bg-amber-500 text-white border-amber-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50 hover:text-amber-600'}`}>Table</button>
-                                <button onClick={() => setViewMode('map')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border-b-4 active:border-b-0 active:translate-y-1 ${viewMode === 'map' ? 'bg-rose-500 text-white border-rose-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-rose-50 hover:text-rose-600'}`}>GIS Map</button>
+                            {/* Multi-Colored 3D Navigation Tabs */}
+                            <div className="bg-slate-50 p-1.5 rounded-2xl flex gap-1.5 border border-slate-200 transition-colors duration-300 flex-wrap justify-center shadow-inner w-full lg:w-auto mt-2 xl:mt-0">
+                                <button onClick={() => setViewMode('summary')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-150 border border-transparent ${viewMode === 'summary' ? 'bg-lime-600 text-white shadow-none translate-y-[3px]' : 'bg-lime-500 text-white shadow-[0_3px_0_0_#4d7c0f] hover:bg-lime-400 hover:-translate-y-px'}`}>Visuals</button>
+                                <button onClick={() => setViewMode('analytics_ussl')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-150 border border-transparent ${viewMode === 'analytics_ussl' ? 'bg-blue-700 text-white shadow-none translate-y-[3px]' : 'bg-blue-500 text-white shadow-[0_3px_0_0_#1d4ed8] hover:bg-blue-400 hover:-translate-y-px'}`}>USSL Matrix</button>
+                                <button onClick={() => setViewMode('analytics_facies')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-150 border border-transparent ${viewMode === 'analytics_facies' ? 'bg-red-700 text-white shadow-none translate-y-[3px]' : 'bg-red-500 text-white shadow-[0_3px_0_0_#b91c1c] hover:bg-red-400 hover:-translate-y-px'}`}>Facies Matrix</button>
+                                <button onClick={() => setViewMode('completeness')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-150 border border-transparent ${viewMode === 'completeness' ? 'bg-orange-700 text-white shadow-none translate-y-[3px]' : 'bg-orange-500 text-white shadow-[0_3px_0_0_#c2410c] hover:bg-orange-400 hover:-translate-y-px'}`}>Data Quality</button>
+                                <button onClick={() => setViewMode('table')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-150 border border-transparent ${viewMode === 'table' ? 'bg-yellow-500 text-yellow-950 shadow-none translate-y-[3px]' : 'bg-yellow-400 text-yellow-950 shadow-[0_3px_0_0_#a16207] hover:bg-yellow-300 hover:-translate-y-px'}`}>Table</button>
+                                <button onClick={() => setViewMode('map')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-150 border border-transparent ${viewMode === 'map' ? 'bg-emerald-700 text-white shadow-none translate-y-[3px]' : 'bg-emerald-500 text-white shadow-[0_3px_0_0_#047857] hover:bg-emerald-400 hover:-translate-y-px'}`}>GIS Map</button>
                             </div>
                         </div>
                     </header>
@@ -1518,11 +1530,21 @@
                         </div>
                     )}
 
-                    {processedData.length > 0 ? (
-                        viewMode === 'summary' ? (
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-500 w-full">
-                                <div className="lg:col-span-8 flex flex-col gap-8">
-                                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 -mb-4">
+                    {}
+                    {rawData.length === 0 && (
+                        <div className="bg-indigo-50 border border-indigo-200 text-indigo-700 px-6 py-4 rounded-[2rem] flex items-center gap-4 shadow-sm w-full transition-all animate-fade-in">
+                            <i className="ph ph-info text-3xl animate-pulse"></i>
+                            <div className="flex flex-col">
+                                <span className="text-sm font-black uppercase tracking-widest">No Data Loaded</span>
+                                <span className="text-xs font-bold opacity-80">Import an Excel file to populate the charts and analytics. The diagrams below are currently showing empty templates.</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {viewMode === 'summary' ? (
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-500 w-full">
+                            <div className="lg:col-span-8 flex flex-col gap-8">
+                                <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 -mb-4">
                                         <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2"><i className="ph ph-palette text-blue-500"></i> Scatter Color By:</span>
                                         <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 gap-1">
                                             <button onClick={() => setScatterColorBy('facies')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border-b-4 active:border-b-0 active:translate-y-1 ${scatterColorBy === 'facies' ? 'bg-emerald-500 text-white border-emerald-700 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>Hydro Facies</button>
@@ -1738,7 +1760,7 @@
                                                             ) : null}
                                                             <td className="p-3 font-bold text-slate-900 border-r border-slate-100 sticky left-0 bg-white group-hover:bg-slate-50 z-10 whitespace-nowrap shadow-[2px_0_5px_rgba(0,0,0,0.05)]">{row.Name}</td>
                                                             <td className="p-3 font-black text-center text-blue-600 border-r border-slate-100 bg-blue-50/50">{row.Total}</td>
-                                                        
+                                                            
                                                             {viewMode === 'analytics_ussl' && stats.ussl.map(s => (
                                                                 <React.Fragment key={s.key}>
                                                                     <td className="p-3 text-center border-r border-slate-100 text-slate-600 font-medium">{row[`${s.key}_count`] || '-'}</td>
@@ -1892,7 +1914,7 @@
                                     <div className="absolute bottom-6 right-6 z-[500] bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-200 max-h-[250px] overflow-y-auto custom-scrollbar min-w-[180px]">
                                         <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-3 border-b border-slate-100 pb-2 sticky top-0 bg-white/95 backdrop-blur-md">Interactive Legend</h4>
                                         <div className="space-y-2 text-[10px] font-bold text-slate-700">
-                                            {(colorBy === 'state' && stats.states ? stats.states : colorBy === 'ussl' ? stats.ussl : stats.facies).filter(s => s.count > 0).map(s => {
+                                            {(colorBy === 'state' && stats.states ? stats.states : colorBy === 'ussl' ? stats.ussl : stats.facies).filter(s => s.count > 0 || rawData.length === 0).map(s => {
                                                 const currentColor = (colorBy === 'state' ? stateColors[s.key] : colorBy === 'ussl' ? usslColors[s.key] : faciesColors[s.key]) || '#334155';
                                                 const currentSize = (colorBy === 'state' ? stateSizes[s.key] : colorBy === 'ussl' ? usslSizes[s.key] : faciesSizes[s.key]) || 1.0;
                                                 return (
@@ -1935,13 +1957,7 @@
                                 </div>
                             </div>
                         )
-                    ) : (
-                        <div className="py-32 text-center border-2 border-dashed border-slate-300 rounded-[3rem] bg-white/50 w-full">
-                            <p className="text-slate-500 font-black uppercase tracking-widest text-xs italic animate-pulse">
-                                {rawData.length > 0 ? "No data matches current filter criteria" : "Waiting for data upload to generate analytics"}
-                            </p>
-                        </div>
-                    )}
+                    }
                 </div>
             );
         }
