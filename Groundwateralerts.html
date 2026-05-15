@@ -81,15 +81,18 @@
         const COLUMNS = [
             "S No", "State", "District", "Block", "Village/Town", "Latitude", "Longitude", 
             "Sample Collection Structure", "Depth of the Structure from Ground Level in Meters", 
-            "Sample Collection Date", "Sample Analysis Date", "pH", "EC (µS/cm at 25 C)", 
-            "Cl-1 (mg/L)", "SO4-2 (mg/L)", "NO3-1 (mg/L)", "F", "Ca+2 (mg/L)", "Mg+2 (mg/L)", 
+            "Sample Collection Date", "Sample Analysis Date", "pH", "TDS (mg/L)", "Turbidity (NTU)", "Alkalinity (mg/L)", 
+            "EC (µS/cm at 25 C)", "Cl-1 (mg/L)", "SO4-2 (mg/L)", "NO3-1 (mg/L)", "F", "Ca+2 (mg/L)", "Mg+2 (mg/L)", 
             "TH *as CaCO3 (mg/L)", "Cr (mg/L)", "Mn (mg/L)", "Fe (mg/L)", "Ni (mg/L)", 
-            "Cu (mg/L)", "Zn (mg/L)", "As (µg/L)", "Se (µg/L)", "Cd (µg/L)", "Pb (µg/L)", 
-            "U (µg/L)", "Remarks"
+            "Cu (mg/L)", "Zn (mg/L)", "As (ppb)", "Se (mg/L)", "Cd (mg/L)", "Pb (mg/L)", 
+            "U (ppb)", "Hg (mg/L)", "Al (mg/L)", "Ba (mg/L)", "B (mg/L)", "Mo (mg/L)", "Remarks"
         ];
 
         const DEFAULT_LIMITS = {
             "pH": { acc: 6.5, perm: 8.5, isStrictRange: true },
+            "TDS (mg/L)": { acc: 500, perm: 2000 },
+            "Turbidity (NTU)": { acc: 1, perm: 5 },
+            "Alkalinity (mg/L)": { acc: 200, perm: 600 },
             "EC (µS/cm at 25 C)": { acc: 750, perm: 3000 },
             "Cl-1 (mg/L)": { acc: 250, perm: 1000 },
             "SO4-2 (mg/L)": { acc: 200, perm: 400 },
@@ -100,92 +103,216 @@
             "TH *as CaCO3 (mg/L)": { acc: 200, perm: 600 },
             "Cr (mg/L)": { acc: 0.05, perm: 0.05 },
             "Mn (mg/L)": { acc: 0.1, perm: 0.3 },
-            "Fe (mg/L)": { acc: 0.3, perm: 1.0 },
+            "Fe (mg/L)": { acc: 1.0, perm: 1.0 },
             "Ni (mg/L)": { acc: 0.02, perm: 0.02 },
             "Cu (mg/L)": { acc: 0.05, perm: 1.5 },
             "Zn (mg/L)": { acc: 5.0, perm: 15.0 },
-            "As (µg/L)": { acc: 10, perm: 10 },
-            "Se (µg/L)": { acc: 10, perm: 10 },
-            "Cd (µg/L)": { acc: 3, perm: 3 },
-            "Pb (µg/L)": { acc: 10, perm: 10 },
-            "U (µg/L)": { acc: 30, perm: 30 }
+            "As (ppb)": { acc: 10, perm: 10 },
+            "Se (mg/L)": { acc: 0.01, perm: 0.01 },
+            "Cd (mg/L)": { acc: 0.003, perm: 0.003 },
+            "Pb (mg/L)": { acc: 0.01, perm: 0.01 },
+            "U (ppb)": { acc: 30, perm: 30 },
+            "Hg (mg/L)": { acc: 0.001, perm: 0.001 },
+            "Al (mg/L)": { acc: 0.03, perm: 0.2 },
+            "Ba (mg/L)": { acc: 0.7, perm: 0.7 },
+            "B (mg/L)": { acc: 0.5, perm: 2.4 },
+            "Mo (mg/L)": { acc: 0.05, perm: 0.07 }
         };
 
-        const HEAVY_METALS = ["Cr", "Mn", "Fe", "Ni", "Cu", "Zn", "As", "Se", "Cd", "Pb", "U"];
+        const HEAVY_METALS = ["Cr", "Mn", "Fe", "Ni", "Cu", "Zn", "As", "Se", "Cd", "Pb", "U", "Hg", "Al", "Ba", "Mo"];
 
-        const RISK_PERCEPTIONS = [
-            { id: "Cl-1", param: "Chloride (Cl)", text: "High concentration of chloride concentration in draining water" },
-            { id: "F", param: "Fluoride", text: "Dental and Skeletal Fluorosis: Studies suggest high levels of fluoride may lead to discoloration and damage to teeth and affect bone health" },
-            { id: "NO3-1", param: "Nitrate", text: "High nitrate causes cyanosis (methaemoglobinaemia) or Blue baby disease. It effects digestive system. Development of cancer, especially digestive cancers, such as colorectal stomach and esophagus cancer, complications during pregnancy." },
-            { id: "SO4-2", param: "Sulphate (SO4)", text: "High concentration of sulphate concentration in draining water may be more sensitive to the cathartic effects. Children, transients and the elderly are high risk of dehydration from diarrhoea may be caused by high concentration of sulfate in drinking-water." },
-            { id: "TH", param: "Total Hardness", text: "Reduced lathering of soaps, buildup of scale on heating elements and boilers, reduced water flow in distribution pipes due to scale buildup. High levels of sodium in drinking water may harm your health like Cathartic and diuretic effect." },
-            { id: "As", param: "Arsenic", text: "Long-term exposure of Arsenic is associated with skin, bladder, lung, risk of heart disease and hypertension and other cancers." },
-            { id: "Cd", param: "Cadmium", text: "Cadmium in drinking water is highly toxic and causing significant health risks, primarily it is accumulation in the kidneys. It can lead to kidney damage (tubular dysfunction), bone demineralization (osteoporosis and osteomalacia), and itai-itai disease, while being classified as a carcinogen. Acute symptoms include diarrhea, vomiting, and muscle cramps." },
-            { id: "Fe", param: "Iron", text: "An excessive amount of exposure to iron can increase the risk of Parkinson's, cardiovascular disease, diabetes mellitus, pigmentation changes, Alzheimer's, as well as renal, liver, respiratory, and neurological issues" },
-            { id: "Pb", param: "Lead", text: "Lead Can lead to hypertension, kidney damage, and reproductive issues in adults and Neurological damage; especially harmful to children, lead exposure can cause developmental delays, lower IQ, and behavioural issues." },
-            { id: "Mn", param: "Manganese", text: "Continue use can damage liver, lungs and kidneys, effects the metabolism of iron for formation of hemoglobin and leads to neurological conditions- impaired memory, impaired motor coordination and delayed reaction time- results in disease called Manganism." },
-            { id: "Ni", param: "Nickel", text: "Nickel is used in the nickel/chrome plating and so can occasionally leach into water. High concentration of nickel contaminated water is used for domestic/ drinking purposes, it can cause skin irritation (dermatitis), gastrointestinal issues (nausea, vomiting), and long-term risks like kidney/liver damage, reduced body weight and potential carcinogenicity" },
-            { id: "Se", param: "Selenium", text: "Excessive intake of selenium from drinking water, typically more than permissible limit may causes selenosis, characterized by brittle hair, hair loss, and deformed, discolored nails. Other side effects include gastrointestinal distress (nausea, diarrhea), neurological issues (fatigue, irritability, tremor), and extreme cases can lead to organ failure." },
-            { id: "U", param: "Uranium", text: "The kidney and lungs are found to be the major target organs of Uranium toxicity and it may cause cancer from radioactive uranium. In animal bones, Uranium influences inhibition of osteoblastic activity, thereby reducing bone volume." }
+        const PARAM_COLORS = [
+            { bg: "from-blue-400 to-blue-600", border: "border-blue-700", shadow: "shadow-[0_2px_0_rgb(29,78,216)]" },
+            { bg: "from-purple-400 to-purple-600", border: "border-purple-700", shadow: "shadow-[0_2px_0_rgb(126,34,206)]" },
+            { bg: "from-rose-400 to-rose-600", border: "border-rose-700", shadow: "shadow-[0_2px_0_rgb(190,18,60)]" },
+            { bg: "from-amber-400 to-amber-600", border: "border-amber-700", shadow: "shadow-[0_2px_0_rgb(180,83,9)]" },
+            { bg: "from-teal-400 to-teal-600", border: "border-teal-700", shadow: "shadow-[0_2px_0_rgb(15,118,110)]" },
+            { bg: "from-fuchsia-400 to-fuchsia-600", border: "border-fuchsia-700", shadow: "shadow-[0_2px_0_rgb(162,28,175)]" },
+            { bg: "from-cyan-400 to-cyan-600", border: "border-cyan-700", shadow: "shadow-[0_2px_0_rgb(14,116,144)]" },
+            { bg: "from-orange-400 to-orange-600", border: "border-orange-700", shadow: "shadow-[0_2px_0_rgb(194,65,12)]" },
+            { bg: "from-indigo-400 to-indigo-600", border: "border-indigo-700", shadow: "shadow-[0_2px_0_rgb(67,56,202)]" },
+            { bg: "from-pink-400 to-pink-600", border: "border-pink-700", shadow: "shadow-[0_2px_0_rgb(190,24,93)]" },
+            { bg: "from-emerald-400 to-emerald-600", border: "border-emerald-700", shadow: "shadow-[0_2px_0_rgb(4,120,87)]" },
+            { bg: "from-sky-400 to-sky-600", border: "border-sky-700", shadow: "shadow-[0_2px_0_rgb(3,105,161)]" },
+            { bg: "from-violet-400 to-violet-600", border: "border-violet-700", shadow: "shadow-[0_2px_0_rgb(109,40,217)]" },
+            { bg: "from-red-400 to-red-600", border: "border-red-700", shadow: "shadow-[0_2px_0_rgb(185,28,28)]" },
+            { bg: "from-lime-500 to-lime-600", border: "border-lime-700", shadow: "shadow-[0_2px_0_rgb(77,124,15)]" }
         ];
 
-        const MITIGATIONS = [
+        const REMEDIAL_MEASURES = [
             {
-                id: "F", title: "Mitigation for Fluoride",
-                sections: [{ desc: "Defluoridation techniques can be adopted: Adsorption technique, Ion-exchange technique, Precipitation technique and other techniques, which include electro chemical defluoridation and Reverse Osmosis." }]
+                id: "pH", title: "Remedial Measures for pH",
+                sections: [{ desc: "Treatment of acidic water: Passing through Neutralizing Filter containing Calcite or Magnesia, or adding Soda Ash. Treatment of basic water: Installation of an acid injector (e.g., white vinegar or citric acid)." }]
             },
             {
-                id: "NO3-1", title: "Mitigation for Nitrate",
-                sections: [{ desc: "Reverse osmosis systems for drinking water to be used." }]
+                id: "TDS", title: "Remedial Measures for TDS",
+                sections: [{ desc: "Reverse Osmosis (RO), Electrodialysis, and Distillation are the most effective methods for reducing Total Dissolved Solids." }]
             },
             {
-                id: "SO4-2", title: "Mitigation for Sulphate",
+                id: "Turbidity", title: "Remedial Measures for Turbidity",
+                sections: [{ desc: "Coagulation, flocculation, sedimentation, and filtration (sand or multimedia filters) are used to remove suspended particles causing turbidity." }]
+            },
+            {
+                id: "Alkalinity", title: "Remedial Measures for Alkalinity",
+                sections: [{ desc: "Can be reduced by Reverse Osmosis (RO) or by carefully adding a weak acid to lower the pH and neutralize the excess alkalinity." }]
+            },
+            {
+                id: "EC", title: "Remedial Measures for EC",
+                sections: [{ desc: "Since Electrical Conductivity is directly related to dissolved ions (TDS), methods like Reverse Osmosis (RO) and Deionization (Ion Exchange) effectively lower it." }]
+            },
+            {
+                id: "Cl-1", title: "Remedial Measures for Chloride",
+                sections: [{ desc: "Reverse Osmosis (RO), Distillation, and specific Ion Exchange (anion exchange) resins are effective for chloride removal. Standard boiling does not remove chlorides." }]
+            },
+            {
+                id: "F", title: "Remedial Measures for Fluoride",
+                sections: [{ desc: "Defluoridation techniques can be adopted: Nalgonda technique, Adsorption technique, Ion-exchange technique, Precipitation technique and other techniques, which include electro chemical defluoridation and Reverse Osmosis." }]
+            },
+            {
+                id: "NO3-1", title: "Remedial Measures for Nitrate",
+                sections: [{ desc: "Reverse osmosis systems for drinking water to be used. Biological denitrification and ion-exchange can also be applied." }]
+            },
+            {
+                id: "SO4-2", title: "Remedial Measures for Sulphate",
                 sections: [{ desc: "The techniques may be adopted: Ion-exchange technique, Nano-filtration technique, Reverse Osmosis and electro-dialysis may be used." }]
             },
             {
-                id: "TH", title: "Mitigation for Total Hardness",
+                id: "Ca+2", title: "Remedial Measures for Calcium",
+                sections: [{ desc: "Water softening using cation exchange resins, Reverse Osmosis (RO), or chemical lime softening." }]
+            },
+            {
+                id: "Mg+2", title: "Remedial Measures for Magnesium",
+                sections: [{ desc: "Water softening using cation exchange resins, Reverse Osmosis (RO), or chemical lime softening." }]
+            },
+            {
+                id: "TH", title: "Remedial Measures for Total Hardness",
                 sections: [{ desc: "Hardness minerals can be removed with a water softener and dilution technique and Reverse Osmosis., which replaces the calcium and magnesium (and iron, manganese, radium and other positive ions) with sodium." }]
             },
             {
-                id: "As", title: "Mitigation for Arsenic",
+                id: "Cr", title: "Remedial Measures for Chromium",
+                sections: [{ desc: "Hexavalent chromium can be removed by Reverse Osmosis (RO), Anion Exchange, or reduction to trivalent chromium followed by coagulation and filtration." }]
+            },
+            {
+                id: "Cu", title: "Remedial Measures for Copper",
+                sections: [{ desc: "Reverse Osmosis (RO), Cation Exchange (water softeners), and raising the pH of the water (to prevent pipe corrosion which is a common source of copper)." }]
+            },
+            {
+                id: "Zn", title: "Remedial Measures for Zinc",
+                sections: [{ desc: "Ion Exchange (water softeners), Reverse Osmosis (RO), and Distillation are highly effective at removing zinc from drinking water." }]
+            },
+            {
+                id: "As", title: "Remedial Measures for Arsenic",
                 sections: [{ desc: "The techniques may be adopted: Adsorption technique, Ion-exchange technique, Reverse Osmosis and using alternative sources such as rainwater harvesting or deep aquifer water." }]
             },
             {
-                id: "Cd", title: "Mitigation for Cadmium",
+                id: "Cd", title: "Remedial Measures for Cadmium",
                 sections: [{ desc: "Effective mitigation of cadmium (Cd) from drinking water primarily reverse osmosis (RO), ion exchange, and coagulation/filtration." }]
             },
             {
-                id: "Fe", title: "Mitigation for Iron",
+                id: "Fe", title: "Remedial Measures for Iron",
                 sections: [{ desc: "Oxygenation of groundwater followed by precipitation and Reverse osmosis systems." }]
             },
             {
-                id: "Pb", title: "Mitigation for Lead",
-                sections: [{ desc: "Implement water treatment methods that reduce corrosion in pipes, such as adjusting pH, alkalinity, and adding inhibitors like orthophosphate." }]
+                id: "Pb", title: "Remedial Measures for Lead",
+                sections: [{ desc: "Implement water treatment methods that reduce corrosion in pipes, such as adjusting pH, alkalinity, and adding inhibitors like orthophosphate. RO is also highly effective." }]
             },
             {
-                id: "Mn", title: "Mitigation for Manganese",
+                id: "Mn", title: "Remedial Measures for Manganese",
                 sections: [{ desc: "Treating the water at its source, filtration system and water treatment method." }]
             },
             {
-                id: "Ni", title: "Mitigation for Nickel",
+                id: "Ni", title: "Remedial Measures for Nickel",
                 sections: [{ desc: "There are several effective methods for removing nickel from water namely: Chemical Precipitation, Ion Exchange, Membrane Filtration, Adsorption on activated carbon, Electrodialysis, UV radiation and Biological treatment." }]
             },
             {
-                id: "Se", title: "Mitigation for Selenium",
+                id: "Se", title: "Remedial Measures for Selenium",
                 sections: [{ desc: "Effective selenium mitigation from drinking water, involves advanced techniques like reverse osmosis (RO), ion exchange, and adsorption (e.g., activated alumina or iron-based media). Iron electrocoagulation, which generates reactive rust to bind selenium, can remove 98%." }]
             },
             {
-                id: "U", title: "Mitigation for Uranium",
+                id: "U", title: "Remedial Measures for Uranium",
                 sections: [{ desc: "The technologies for uranium removal: Coagulation/filtration, Lime softening, Anion exchange, Reverse osmosis and Activated alumina may remove 80-90% uranium from water." }]
+            },
+            {
+                id: "Hg", title: "Remedial Measures for Mercury",
+                sections: [{ desc: "Reverse Osmosis (RO), Granular Activated Carbon (GAC) filtration, and specific Ion Exchange resins are effective for mercury removal." }]
+            },
+            {
+                id: "Al", title: "Remedial Measures for Aluminium",
+                sections: [{ desc: "Reverse Osmosis (RO), Electrodialysis, and distillation. Optimization of coagulation processes in municipal plants is also critical." }]
+            },
+            {
+                id: "Ba", title: "Remedial Measures for Barium",
+                sections: [{ desc: "Ion Exchange (water softening), Reverse Osmosis (RO), and Electrodialysis are highly effective in removing barium." }]
+            },
+            {
+                id: "B", title: "Remedial Measures for Boron",
+                sections: [{ desc: "Specific Boron-selective Ion Exchange resins and Reverse Osmosis (RO) (most effective at higher pH levels) are used for boron removal." }]
+            },
+            {
+                id: "Mo", title: "Remedial Measures for Molybdenum",
+                sections: [{ desc: "Reverse Osmosis (RO) and Anion Exchange resins are the primary treatments for elevated molybdenum levels." }]
+            }
+        ];
+
+        const STANDARD_TREATMENTS = [
+            {
+                title: "Reverse Osmosis (RO)",
+                desc: "Forces water through a semi-permeable membrane. This is one of the most effective methods for removing heavy metals, dissolved solids (TDS), fluoride, nitrate, and various chemicals.",
+                chemistry: "Osmotic pressure (> osmotic pressure of feed) drives H₂O through a semipermeable membrane (pore size ~0.0001 µm). Rejects hydrated ions (Na⁺, Pb²⁺, SO₄²⁻) via size exclusion and dielectric repulsion.",
+                color: "from-blue-500 to-blue-700"
+            },
+            {
+                title: "Activated Carbon Filtration (ACF)",
+                desc: "Uses highly porous carbon with massive surface area to trap impurities. Highly effective at removing chlorine, VOCs, pesticides, and odors. Often used as a pre/post-filter.",
+                chemistry: "1. Physical Adsorption: Non-polar organics trapped in micropores via Van der Waals forces.\n2. Chemisorption (Chlorine): Catalytic reduction at the carbon surface (C* + HOCl → C*O + H⁺ + Cl⁻).",
+                color: "from-slate-600 to-slate-800"
+            },
+            {
+                title: "Ultraviolet (UV) Disinfection",
+                desc: "A chemical-free process that inactivates biological pathogens (bacteria, viruses, protozoa). Requires clear water (low turbidity) so particles don't 'shadow' the microbes.",
+                chemistry: "Photochemical Damage: UV-C photons (254 nm) penetrate cells and are absorbed by nucleic acids. Causes adjacent thymine bases in DNA to bond (pyrimidine dimers), preventing replication.",
+                color: "from-purple-500 to-purple-700"
+            },
+            {
+                title: "Chlorination",
+                desc: "The standard municipal method of adding chlorine to kill pathogenic microorganisms. It provides residual protection, ensuring water remains safe as it travels through extensive distribution pipes.",
+                chemistry: "Oxidation. Cl₂ or NaOCl reacts with water to form Hypochlorous acid (HOCl): Cl₂ + H₂O ⇌ HOCl + H⁺ + Cl⁻. HOCl rapidly oxidizes microbial cell structures.",
+                color: "from-teal-500 to-teal-700"
+            },
+            {
+                title: "Ion Exchange (Deionization & Softening)",
+                desc: "Removes specific dissolved ions by exchanging them for less harmful ones. Cation resins remove hardness (Ca, Mg) and heavy metals. Anion resins remove nitrates, sulfates, and fluoride.",
+                chemistry: "1. Cation Exchange: R⁻-Na⁺ + M²⁺ ⇌ R⁻-M²⁺ + 2Na⁺ (Removes cations: Ca²⁺, Mg²⁺, Pb²⁺).\n2. Anion Exchange: R⁺-Cl⁻ + A⁻ ⇌ R⁺-A⁻ + Cl⁻ (Removes anions: NO₃⁻, SO₄²⁻, F⁻).\n*R = insoluble polymeric resin.",
+                color: "from-amber-500 to-amber-700"
+            },
+            {
+                title: "Boiling",
+                desc: "A highly reliable household method for biological purification. Bringing water to a rolling boil for 1-3 minutes effectively kills pathogens, though it concentrates heavy metals if present.",
+                chemistry: "Thermal denaturation of pathogenic proteins. Also precipitates temporary hardness: Ca(HCO₃)₂ + Heat → CaCO₃↓ + H₂O + CO₂↑.",
+                color: "from-rose-500 to-rose-700"
+            },
+            {
+                title: "Coagulation & Flocculation",
+                desc: "Chemicals with a positive charge are added to the water. They bind with negatively charged particles/dirt to form larger particles (floc) which then settle to the bottom for easy removal.",
+                chemistry: "Charge neutralization. Coagulants like Alum (Al₂(SO₄)₃) release Al³⁺ ions that neutralize negatively charged colloids, forming a gelatinous Al(OH)₃ sweep floc.",
+                color: "from-indigo-500 to-indigo-700"
+            },
+            {
+                title: "Sediment Filtration",
+                desc: "A physical barrier that catches large particles like sand, rust, and silt. It protects subsequent, finer filters and sensitive treatment appliances from premature clogging and damage.",
+                chemistry: "Primarily mechanical straining (particle size > pore size) coupled with weak electrostatic adsorption to the filter media surface.",
+                color: "from-orange-500 to-orange-700"
             }
         ];
 
         const FULL_PARAM_NAMES = {
-            "pH": "pH", "EC": "Electrical conductivity", "Cl-1": "Chloride", "SO4-2": "Sulphate",
+            "pH": "pH", "TDS": "Total Dissolved Solids", "Turbidity": "Turbidity", "Alkalinity": "Total Alkalinity",
+            "EC": "Electrical conductivity", "Cl-1": "Chloride", "SO4-2": "Sulphate",
             "NO3-1": "Nitrate", "F": "Fluoride", "Ca+2": "Calcium", "Mg+2": "Magnesium",
             "TH": "Total Hardness", "Cr": "Chromium", "Mn": "Manganese", "Fe": "Iron",
             "Ni": "Nickel", "Cu": "Copper", "Zn": "Zinc", "As": "Arsenic", "Se": "Selenium",
-            "Cd": "Cadmium", "Pb": "Lead", "U": "Uranium"
+            "Cd": "Cadmium", "Pb": "Lead", "U": "Uranium", "Hg": "Mercury", "Al": "Aluminium", 
+            "Ba": "Barium", "B": "Boron", "Mo": "Molybdenum"
         };
 
         const getFullParamNames = (paramsList) => {
@@ -587,8 +714,7 @@
         const App = () => {
             const [rawData, setRawData] = useState([]);
             const [limits, setLimits] = useState(DEFAULT_LIMITS);
-            const [showLimits, setShowLimits] = useState(false);
-            const [activeTab, setActiveTab] = useState('report'); // 'state', 'district', 'map' or 'report'
+            const [activeTab, setActiveTab] = useState('report'); // 'state', 'district', 'map', 'report', 'standards', or 'treatments'
             const [geoJsonData, setGeoJsonData] = useState(null);
             const [uploadError, setUploadError] = useState('');
 
@@ -720,9 +846,8 @@
                 return Array.from(params);
             }, [reportTableData]);
 
-            // Filter out risks and mitigations based on actual contaminations
-            const activeRiskPerceptions = RISK_PERCEPTIONS.filter(r => activeContaminatedParams.includes(r.id));
-            const activeMitigations = MITIGATIONS.filter(m => activeContaminatedParams.includes(m.id));
+            // Filter out remedial measures based on actual contaminations
+            const activeRemedialMeasures = REMEDIAL_MEASURES.filter(m => activeContaminatedParams.includes(m.id));
 
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
@@ -978,6 +1103,18 @@
                             >
                                 Spatial Map
                             </button>
+                            <button 
+                                onClick={() => setActiveTab('standards')}
+                                className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 border ${activeTab === 'standards' ? 'bg-gradient-to-b from-rose-500 to-rose-700 text-white shadow-[0_5px_0_rgb(159,18,57)] border-rose-800 translate-y-0' : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 shadow-[0_5px_0_rgb(209,213,219)] border-gray-300 hover:from-gray-50 hover:to-gray-200 active:translate-y-[5px] active:shadow-none'}`}
+                            >
+                                Standards & Remedial Measures
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('treatments')}
+                                className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 border ${activeTab === 'treatments' ? 'bg-gradient-to-b from-cyan-500 to-cyan-700 text-white shadow-[0_5px_0_rgb(8,145,178)] border-cyan-800 translate-y-0' : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 shadow-[0_5px_0_rgb(209,213,219)] border-gray-300 hover:from-gray-50 hover:to-gray-200 active:translate-y-[5px] active:shadow-none'}`}
+                            >
+                                Standard Treatments
+                            </button>
                         </div>
 
                         {activeTab === 'report' && (
@@ -1083,58 +1220,41 @@
                                     <div className="page-break-before pt-8">
                                         <h3 className="font-bold underline mb-4">Para II</h3>
                                         
-                                        {activeRiskPerceptions.length > 0 || activeMitigations.length > 0 ? (
+                                        {activeRemedialMeasures.length > 0 ? (
                                             <>
                                                 <p className="mb-6">The anomalies may be termed major in some case.</p>
 
-                                                {activeRiskPerceptions.length > 0 && (
-                                                    <>
-                                                        <h4 className="font-bold text-lg underline mb-4">Risk perception for:</h4>
-                                                        <ul className="list-none space-y-4 mb-8">
-                                                            {activeRiskPerceptions.map((risk, idx) => (
-                                                                <li key={idx} className="text-justify avoid-break">
-                                                                    <span className="font-bold">{risk.param}:</span> {risk.text}
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </>
-                                                )}
-
-                                                {activeMitigations.length > 0 && (
-                                                    <>
-                                                        <h4 className="font-bold text-lg underline mb-4">Recommendation for Mitigation</h4>
-                                                        
-                                                        <div className="space-y-6">
-                                                            {activeMitigations.map((mitigation, idx) => (
-                                                                <div key={idx} className="avoid-break">
-                                                                    <h5 className="font-bold underline mb-2">{mitigation.title}</h5>
-                                                                    {mitigation.desc && <p className="mb-2">{mitigation.desc}</p>}
+                                                <h4 className="font-bold text-lg underline mb-4">Remedial Measures</h4>
+                                                
+                                                <div className="space-y-6">
+                                                    {activeRemedialMeasures.map((measure, idx) => (
+                                                        <div key={idx} className="avoid-break">
+                                                            <h5 className="font-bold underline mb-2">{measure.title}</h5>
+                                                            {measure.desc && <p className="mb-2">{measure.desc}</p>}
+                                                            
+                                                            {measure.sections.map((sec, sIdx) => (
+                                                                <div key={sIdx} className="mb-3">
+                                                                    {sec.subtitle && <p className="font-bold">{sec.subtitle}</p>}
+                                                                    {sec.desc && <p>{sec.desc}</p>}
                                                                     
-                                                                    {mitigation.sections.map((sec, sIdx) => (
-                                                                        <div key={sIdx} className="mb-3">
-                                                                            {sec.subtitle && <p className="font-bold">{sec.subtitle}</p>}
-                                                                            {sec.desc && <p>{sec.desc}</p>}
-                                                                            
-                                                                            {sec.points && (
-                                                                                <ul className="list-disc pl-8 mt-1 space-y-1">
-                                                                                    {sec.points.map((pt, pIdx) => (
-                                                                                        <li key={pIdx}>{pt}</li>
-                                                                                    ))}
-                                                                                </ul>
-                                                                            )}
-                                                                            
-                                                                            {sec.postDesc && <p className="mt-1">{sec.postDesc}</p>}
-                                                                        </div>
-                                                                    ))}
+                                                                    {sec.points && (
+                                                                        <ul className="list-disc pl-8 mt-1 space-y-1">
+                                                                            {sec.points.map((pt, pIdx) => (
+                                                                                <li key={pIdx}>{pt}</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    )}
+                                                                    
+                                                                    {sec.postDesc && <p className="mt-1">{sec.postDesc}</p>}
                                                                 </div>
                                                             ))}
                                                         </div>
-                                                    </>
-                                                )}
+                                                    ))}
+                                                </div>
                                             </>
                                         ) : (
                                             <p className="italic text-gray-600 mb-6">
-                                                All tested parameters in the provided dataset are within safe limits. No specific risk perceptions or mitigation measures are currently required.
+                                                All tested parameters in the provided dataset are within safe limits. No specific remedial measures are currently required.
                                             </p>
                                         )}
                                     </div>
@@ -1215,34 +1335,98 @@
                             </div>
                         )}
 
-                        {/* Limits Config */}
-                        <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden no-print mt-8">
-                            <button onClick={() => setShowLimits(!showLimits)} className="w-full bg-slate-50 hover:bg-slate-100 px-6 py-4 flex justify-between items-center transition">
-                                <h3 className="font-bold text-slate-700">Standards Configuration (IS 10500:2012)</h3>
-                                <span className="text-sm text-blue-600 font-bold">{showLimits ? 'Hide' : 'View/Edit'} Standards</span>
-                            </button>
-                            {showLimits && (
-                                <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-white border-t border-gray-100">
-                                    {Object.keys(limits).map(param => (
-                                        <div key={param} className={`p-3 border rounded-lg ${limits[param].isStrictRange ? 'bg-blue-50 border-blue-200' : 'bg-slate-50'}`}>
-                                            <div className="text-[10px] font-bold text-slate-500 mb-2 truncate uppercase tracking-tighter">
-                                                {param}
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <div className="flex-1">
-                                                    <label className="text-[9px] block text-gray-400 font-bold">ACC.</label>
-                                                    <input type="number" step="0.01" value={limits[param].acc} onChange={(e) => updateLimit(param, 'acc', e.target.value)} className="w-full p-1 border rounded text-xs font-bold" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <label className="text-[9px] block text-gray-400 font-bold">PERM.</label>
-                                                    <input type="number" step="0.01" value={limits[param].perm} onChange={(e) => updateLimit(param, 'perm', e.target.value)} className="w-full p-1 border rounded text-xs font-bold" />
+                        {activeTab === 'standards' && (
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-8">
+                                <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-4 border-b border-gray-200 flex justify-between items-center shadow-inner">
+                                    <div>
+                                        <h2 className="text-lg font-black text-white drop-shadow-md">BIS 10500:2012 Standards & Remedial Measures</h2>
+                                        <p className="text-xs text-slate-300 mt-0.5 font-medium">Fixed acceptable and permissible limits with corresponding remedial measures strategies.</p>
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto p-3 bg-slate-100">
+                                    <table className="w-full text-left border-separate min-w-[700px]" style={{ borderSpacing: '0 6px' }}>
+                                        <thead>
+                                            <tr className="text-slate-500 text-[10px] uppercase tracking-widest">
+                                                <th className="px-3 pb-1 font-black w-32">Parameter</th>
+                                                <th className="px-2 pb-1 font-black w-24 text-center">Acceptable Limit</th>
+                                                <th className="px-2 pb-1 font-black w-24 text-center">Permissible Limit</th>
+                                                <th className="px-3 pb-1 font-black">Remedial Measure</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {Object.keys(limits).map((param, index) => {
+                                                const limit = limits[param];
+                                                const shortName = param.split(' ')[0];
+                                                const measure = REMEDIAL_MEASURES.find(m => m.id === shortName);
+                                                const color = PARAM_COLORS[index % PARAM_COLORS.length];
+                                                
+                                                return (
+                                                    <tr key={param} className="bg-white hover:bg-slate-50 transition-colors group rounded-xl shadow-[0_2px_5px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.06)]">
+                                                        <td className="p-2 rounded-l-xl border border-r-0 border-gray-100 align-middle">
+                                                            <div className={`inline-flex flex-col min-w-[70px] bg-gradient-to-b ${color.bg} text-white px-2 py-1.5 rounded-lg ${color.shadow} border ${color.border} transform group-hover:-translate-y-0.5 transition-transform`}>
+                                                                <span className="font-black text-sm drop-shadow-md tracking-wide"><FormatParam param={shortName} /></span>
+                                                                {param.includes('(') && <span className="text-[8px] font-bold text-white/80 mt-0.5 uppercase tracking-tighter leading-tight">{param.substring(param.indexOf('('))}</span>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-2 border-t border-b border-gray-100 text-center align-middle">
+                                                            <div className="mx-auto min-w-[50px] w-max bg-gradient-to-b from-emerald-400 to-emerald-600 text-white px-2 py-1 rounded-lg shadow-[0_2px_0_rgb(4,120,87)] border border-emerald-700 font-black text-sm transform group-hover:-translate-y-0.5 transition-transform flex items-center justify-center">
+                                                                {limit.acc}
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-2 border-t border-b border-gray-100 text-center align-middle">
+                                                            <div className="mx-auto min-w-[50px] w-max bg-gradient-to-b from-rose-500 to-rose-700 text-white px-2 py-1 rounded-lg shadow-[0_2px_0_rgb(159,18,57)] border border-rose-800 font-black text-sm transform group-hover:-translate-y-0.5 transition-transform flex items-center justify-center">
+                                                                {limit.perm}
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-2 rounded-r-xl border border-l-0 border-gray-100 align-middle">
+                                                            <div className="bg-slate-50/80 border-l-2 border-slate-300 p-2 rounded-lg shadow-inner text-xs text-slate-700 font-medium leading-relaxed">
+                                                                {measure ? (
+                                                                    measure.sections.map((s, i) => <div key={i}>{s.desc}</div>)
+                                                                ) : (
+                                                                    <span className="text-gray-400 italic">Standard water treatment measures apply.</span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'treatments' && (
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-8">
+                                <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-4 border-b border-gray-200 flex justify-between items-center shadow-inner">
+                                    <div>
+                                        <h2 className="text-lg font-black text-white drop-shadow-md">Standard Water Treatment Measures</h2>
+                                        <p className="text-xs text-slate-300 mt-0.5 font-medium">Commonly applied water purification and treatment techniques for general water safety.</p>
+                                    </div>
+                                </div>
+                                <div className="p-6 bg-slate-100/50 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                                    {STANDARD_TREATMENTS.map((treatment, idx) => (
+                                        <div key={idx} className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-gray-100 overflow-hidden hover:shadow-[0_8px_16px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 group flex flex-col">
+                                            <div className={`h-2.5 w-full bg-gradient-to-r ${treatment.color}`}></div>
+                                            <div className="p-5 flex-1 flex flex-col">
+                                                <h3 className={`text-base font-black mb-3 bg-clip-text text-transparent bg-gradient-to-r ${treatment.color}`}>
+                                                    {treatment.title}
+                                                </h3>
+                                                <p className="text-xs text-slate-600 leading-relaxed font-medium mb-4">
+                                                    {treatment.desc}
+                                                </p>
+                                                <div className="mt-auto bg-slate-50/80 border border-slate-100 p-3 rounded-lg shadow-inner">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Chemistry / Mechanism</span>
+                                                    <p className="text-[10px] text-slate-700 font-mono leading-relaxed whitespace-pre-line">
+                                                        {treatment.chemistry}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
