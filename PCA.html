@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCA Pro - Geochemical Analytics Dashboard</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Numeric.js for Matrix Math (PCA/SVD/Eigen) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
+
+    <!-- Highcharts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/highcharts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/highcharts-3d.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/highcharts-more.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/modules/heatmap.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/modules/exporting.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/modules/offline-exporting.js"></script>
+
+    <!-- ExcelJS for Advanced Formatted Exports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+
+    <style>
+        body { background-color: #0b0e14; color: #334155; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        
+        .light-panel { background-color: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); border-radius: 1.25rem; }
+        .dark-sidebar { background-color: #13161f; border: 1px solid #2a2f45; box-shadow: 4px 0 15px rgba(0,0,0,0.3); border-radius: 1.25rem; }
+        .dark-card { background-color: #1c212f; border: 1px solid #2a2f45; border-radius: 1rem; }
+
+        .btn-violet-solid { background-color: #7c3aed; color: #ffffff; border: 1px solid #6d28d9; border-radius: 0.5rem; font-weight: 700; transition: all 0.2s ease; }
+        .btn-violet-solid:hover:not(:disabled) { background-color: #6d28d9; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4); }
+        .btn-violet-solid:disabled { background-color: #2a2f45; color: #64748b; border-color: #334155; cursor: not-allowed; opacity: 0.7; }
+
+        .btn-orange-solid { background-color: #f97316; color: #ffffff; border: 1px solid #ea580c; border-radius: 0.5rem; font-weight: 700; transition: all 0.2s ease; }
+        .btn-orange-solid:hover:not(:disabled) { background-color: #ea580c; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4); }
+
+        .btn-dark-action { background-color: #2a2f45; color: #cbd5e1; border: 1px solid #3f4766; border-radius: 0.5rem; transition: all 0.2s; }
+        .btn-dark-action:hover { background-color: #3f4766; color: #ffffff; }
+
+        .btn-white { background-color: #ffffff; color: #475569; border: 1px solid #cbd5e1; border-bottom: 3px solid #94a3b8; border-radius: 0.5rem; font-weight: bold; transition: all 0.1s; }
+        .btn-white:active { transform: translateY(2px); border-bottom-width: 1px; margin-bottom: 2px; }
+
+        .param-btn-3d { background: #ffffff; border: 2px solid #e2e8f0; border-radius: 10px; padding: 3px; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; box-shadow: 0 3px 5px rgba(0,0,0,0.05), 0 4px 0 #cbd5e1; cursor: pointer; height: 42px; width: 100%; }
+        .param-btn-3d:active { transform: translateY(3px); box-shadow: 0 1px 2px rgba(0,0,0,0.05), 0 1px 0 #cbd5e1; margin-bottom: 3px; }
+        .param-btn-3d-inactive { background: #f8fafc; border-color: #cbd5e1; box-shadow: 0 2px 3px rgba(0,0,0,0.05), 0 2px 0 #94a3b8; transform: translateY(2px); margin-bottom: 2px; opacity: 0.6; filter: grayscale(85%); }
+        
+        .glossy-icon-circle { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; box-shadow: inset 0 3px 4px rgba(255,255,255,0.8), inset 0 -3px 4px rgba(0,0,0,0.2), 0 2px 3px rgba(0,0,0,0.2); border: 2px solid transparent; }
+        .glossy-blue { background: radial-gradient(circle at 50% 20%, #bfdbfe, #3b82f6); border-color: #2563eb; color: #1e3a8a; }
+        .glossy-cyan { background: radial-gradient(circle at 50% 20%, #a5f3fc, #0ea5e9); border-color: #0284c7; color: #0c4a6e; }
+        .glossy-green { background: radial-gradient(circle at 50% 20%, #bbf7d0, #22c55e); border-color: #16a34a; color: #14532d; }
+        .glossy-amber { background: radial-gradient(circle at 50% 20%, #fde68a, #f59e0b); border-color: #d97706; color: #78350f; }
+        .glossy-red { background: radial-gradient(circle at 50% 20%, #fecaca, #ef4444); border-color: #dc2626; color: #7f1d1d; }
+        .glossy-purple { background: radial-gradient(circle at 50% 20%, #e9d5ff, #a855f7); border-color: #9333ea; color: #4c1d95; }
+        .glossy-pink { background: radial-gradient(circle at 50% 20%, #fbcfe8, #ec4899); border-color: #db2777; color: #831843; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        .tab-btn { transition: all 0.2s; font-weight: 800; border-radius: 0.5rem 0.5rem 0 0; margin-right: 4px; padding: 0.75rem 1rem; }
+        .tab-active { background-color: #ffffff; border-top: 3px solid #7c3aed; color: #1e293b; }
+        .tab-inactive { background-color: transparent; color: #64748b; }
+        .tab-inactive:hover { background-color: rgba(255,255,255,0.5); color: #1e293b; }
+
+        .tabs-scrollable { overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap; scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+        
+        .method-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .dark-select { background-color: #0b0e14; color: #e2e8f0; border: 1px solid #3f4766; }
+
+        .report-header { border-bottom: 2px solid #7c3aed; margin-bottom: 1.5rem; padding-bottom: 0.5rem; }
+        .report-section-title { font-weight: 900; color: #1e1b4b; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; margin-top: 2rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .report-section-title::before { content: ''; width: 4px; height: 18px; background: #7c3aed; border-radius: 2px; }
+        .report-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-bottom: 1rem; }
+        .report-table th { background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.5rem; text-align: left; font-weight: 800; color: #475569; }
+        .report-table td { border: 1px solid #e2e8f0; padding: 0.5rem; color: #334155; }
+        
+        .sample-badge { display: inline-block; padding: 0.15rem 0.5rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 9999px; font-family: monospace; font-size: 0.65rem; font-weight: 700; color: #475569; margin: 0.1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col h-screen overflow-hidden bg-[#0b0e14]">
+
+    <main class="flex-grow flex flex-col md:flex-row p-4 gap-4 overflow-hidden h-full">
+        <!-- Sidebar -->
+        <aside class="w-full md:w-1/3 lg:w-1/4 flex flex-col gap-4 overflow-y-auto custom-scrollbar shrink-0 dark-sidebar p-4 text-xs">
+            <div id="alertBox" class="hidden rounded-xl px-4 py-3 border-l-4 bg-[#1c212f]">
+                <div class="flex items-start">
+                    <i id="alertIcon" class="mt-1 mr-2"></i>
+                    <div>
+                        <h3 id="alertTitle" class="text-sm font-bold text-white"></h3>
+                        <p id="alertMessage" class="text-xs mt-1 text-slate-400"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dark-card p-5">
+                <h2 class="text-[10px] font-black mb-4 text-violet-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="fas fa-database"></i> 1. Source Data
+                </h2>
+                <button id="templateBtn" class="btn-dark-action w-full text-sm py-3 font-bold mb-4 flex items-center justify-center">
+                    <i class="fas fa-download text-violet-400 mr-2"></i> Data Template
+                </button>
+                <div class="relative mb-3">
+                    <label for="fileUpload" class="btn-orange-solid flex items-center justify-center w-full px-4 py-3 cursor-pointer">
+                        <i class="fas fa-file-excel mr-2 text-lg"></i>
+                        <span id="fileNameDisplay" class="text-sm truncate">Upload Excel</span>
+                        <input id="fileUpload" type="file" accept=".xlsx, .xls" class="hidden">
+                    </label>
+                </div>
+                <button id="calcBtn" class="btn-violet-solid w-full text-sm py-3 disabled:opacity-50" disabled>
+                    <i class="fas fa-project-diagram mr-2"></i> Run PCA Analysis
+                </button>
+                <button id="downloadBtn" class="w-full text-sm py-3 mt-3 hidden bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-600 rounded-lg font-bold transition-all shadow-sm">
+                    <i class="fas fa-file-excel mr-2"></i> Download PCA Scores
+                </button>
+            </div>
+
+            <!-- Cascading Filters -->
+            <div id="filterPanel" class="dark-card p-5 hidden border-l-4 border-l-indigo-500">
+                <h2 class="text-[10px] font-black mb-4 text-indigo-400 uppercase tracking-widest flex justify-between items-center">
+                    2. Cascading Filters
+                    <span id="filterCountBadge" class="text-[9px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full"></span>
+                </h2>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-[9px] text-slate-500 uppercase mb-1 block">State / UT</label>
+                        <select id="stateFilter" class="w-full dark-select rounded-md px-3 py-2 font-bold cursor-pointer transition-colors outline-none focus:border-violet-500">
+                            <option value="ALL">All States</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-slate-500 uppercase mb-1 block">District</label>
+                        <select id="districtFilter" class="w-full dark-select rounded-md px-3 py-2 font-bold cursor-pointer transition-colors outline-none focus:border-violet-500" disabled>
+                            <option value="ALL">All Districts</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-slate-500 uppercase mb-1 block">Block</label>
+                        <select id="blockFilter" class="w-full dark-select rounded-md px-3 py-2 font-bold cursor-pointer transition-colors outline-none focus:border-violet-500" disabled>
+                            <option value="ALL">All Blocks</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="light-panel flex-grow flex flex-col min-h-[300px] border border-slate-200 mt-2">
+                <div class="p-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-[1.25rem]">
+                    <h2 class="text-[11px] font-black text-slate-700 uppercase tracking-widest">3. Feature Space</h2>
+                    <button onclick="toggleAllParams()" id="selectAllBtn" class="text-[9px] bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded-full font-bold">Deselect All</button>
+                </div>
+                <div id="paramGrid" class="flex-grow overflow-y-auto p-3 custom-scrollbar bg-[#f8fafc] grid grid-cols-4 gap-2"></div>
+            </div>
+        </aside>
+
+        <main class="w-full md:w-2/3 lg:w-3/4 light-panel flex flex-col overflow-hidden">
+            <div class="flex tabs-scrollable border-b border-slate-200 shrink-0 px-2 pt-2 bg-slate-50/80">
+                <button onclick="switchTab('analyticsTab')" id="btn-analyticsTab" class="tab-btn tab-active"><i class="fas fa-chart-line mr-2 text-indigo-500"></i>PCA Analytics</button>
+                <button onclick="switchTab('summaryTab')" id="btn-summaryTab" class="tab-btn tab-inactive"><i class="fas fa-file-alt mr-2 text-orange-500"></i>Interpretation Summary</button>
+                <button onclick="switchTab('methodologyTab')" id="btn-methodologyTab" class="tab-btn tab-inactive"><i class="fas fa-project-diagram mr-2 text-violet-500"></i>Methodology</button>
+            </div>
+
+            <div class="relative flex-grow p-4 bg-white min-h-0 overflow-hidden">
+                <!-- Analytics Tab -->
+                <div id="analyticsTab" class="h-full flex flex-col overflow-y-auto custom-scrollbar space-y-4 pr-2">
+                    <div id="statsCards" class="grid grid-cols-4 gap-4 shrink-0"></div>
+                    
+                    <!-- Dynamic Component Controls -->
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center justify-between shrink-0 hidden" id="dynamicControls">
+                        <div class="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                            <i class="fas fa-sliders-h mr-2 text-violet-500"></i> Plot Controls
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs font-bold text-slate-500">X-Axis:</label>
+                                <select id="xAxisSelect" class="border rounded p-1 text-xs outline-none focus:border-violet-500 bg-white shadow-sm" onchange="renderCharts()"></select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs font-bold text-slate-500">Y-Axis:</label>
+                                <select id="yAxisSelect" class="border rounded p-1 text-xs outline-none focus:border-violet-500 bg-white shadow-sm" onchange="renderCharts()"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-grow">
+                        <div class="light-panel p-4 h-[400px]" id="heatmap-container">
+                            <div class="chart-placeholder"><i class="fas fa-th"></i><p>Correlation Heatmap<br><span class="text-[10px]">Awaits Data</span></p></div>
+                        </div>
+                        <div class="light-panel p-4 h-[400px]" id="scree-container">
+                            <div class="chart-placeholder"><i class="fas fa-chart-area"></i><p>Scree Plot<br><span class="text-[10px]">Awaits Data</span></p></div>
+                        </div>
+                        <div class="light-panel p-4 h-[400px]" id="score-container">
+                            <div class="chart-placeholder"><i class="fas fa-project-diagram"></i><p>2D Sample Score Plot<br><span class="text-[10px]">Awaits Data</span></p></div>
+                        </div>
+                        <div class="light-panel p-4 h-[400px]" id="loadings-container">
+                            <div class="chart-placeholder"><i class="fas fa-vector-square"></i><p>2D Loading Plot<br><span class="text-[10px]">Awaits Data</span></p></div>
+                        </div>
+                        <div class="light-panel p-4 h-[400px]" id="biplot-container">
+                            <div class="chart-placeholder"><i class="fas fa-layer-group"></i><p>Biplot (Scores + Loadings)<br><span class="text-[10px]">Awaits Data</span></p></div>
+                        </div>
+                        <div class="light-panel p-4 h-[400px]" id="score3d-container">
+                            <div class="chart-placeholder"><i class="fas fa-cube"></i><p>3D Sample Plot<br><span class="text-[10px]">Awaits Data</span></p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Tab -->
+                <div id="summaryTab" class="hidden h-full flex-col overflow-y-auto custom-scrollbar">
+                    <div id="summaryContent" class="max-w-4xl mx-auto p-8 bg-white border border-slate-200 rounded-2xl shadow-sm text-slate-800">
+                        <div class="text-center py-20 text-slate-400">
+                            <i class="fas fa-chart-pie text-4xl mb-3"></i>
+                            <p class="font-bold">Run Analysis to generate the Hydrogeochemical Interpretation Report.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Methodology Tab -->
+                <div id="methodologyTab" class="hidden h-full flex-col overflow-y-auto p-4 space-y-8 custom-scrollbar bg-slate-50/50">
+                    
+                    <!-- Dynamic Live Results (Kept from original) -->
+                    <div id="methodologyResultsContainer" class="w-full transition-all duration-300">
+                        <div class="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-6 text-center">
+                             <p class="text-slate-400 font-bold mt-2"><i class="fas fa-bolt mr-2 text-amber-400"></i>Run Analysis to view live statistical results here.</p>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Live Step-By-Step Math Trace Container -->
+                    <div id="liveMathTraceContainer" class="hidden w-full transition-all duration-500"></div>
+
+                    <!-- 3D Hero Header -->
+                    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-violet-900 to-slate-900 p-8 shadow-[0_20px_50px_rgba(88,28,135,0.3)] text-white transform transition-transform hover:-translate-y-1">
+                        <div class="absolute -top-24 -right-24 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl"></div>
+                        <div class="absolute bottom-0 right-10 w-32 h-32 bg-violet-500 opacity-10 rounded-full blur-2xl"></div>
+                        
+                        <div class="flex justify-between items-start relative z-10">
+                            <div class="max-w-3xl">
+                                <h1 class="text-3xl font-black mb-4 flex items-center gap-3">
+                                    <i class="fas fa-layer-group text-violet-400"></i> 
+                                    Mastering Principal Component Analysis
+                                </h1>
+                                <p class="text-sm font-medium leading-relaxed text-indigo-100 mb-4">
+                                    PCA is the ultimate tool for "Dimensionality Reduction" in hydrogeochemistry. It is designed to strip away the noise and reveal the hidden, underlying processes controlling your groundwater quality.
+                                </p>
+                                <div class="mt-4 p-4 bg-white/10 rounded-2xl border border-white/10 backdrop-blur-md shadow-inner flex gap-4 items-center">
+                                    <div class="text-3xl text-amber-300"><i class="fas fa-lightbulb"></i></div>
+                                    <div>
+                                        <p class="font-black text-amber-200 uppercase tracking-widest text-[10px] mb-1">The Shadow Analogy</p>
+                                        <p class="text-xs text-indigo-50 font-medium">Imagine shining a flashlight on a 3D teapot to cast a 2D shadow on a wall. Depending on where you hold the light, the shadow might look like a circle, or it might look like a teapot. <b>PCA is the mathematical flashlight.</b> It automatically finds the perfect angle to shine the light so the resulting "shadow" (your 2D plot) retains the absolute maximum amount of original information.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 1 & 2 Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- 1. Why PCA Is Needed -->
+                        <div class="bg-white rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] border border-slate-100 p-6 transform transition-all hover:-translate-y-1 hover:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.12)]">
+                            <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center mb-4"><span class="glossy-icon-circle glossy-red mr-3"><i class="fas fa-question"></i></span>1. The Problem of "Too Much Data"</h2>
+                            <p class="text-xs text-slate-600 mb-4 leading-relaxed">When testing groundwater across a basin, you might analyze <b>pH, EC, TDS, F, NO3, Cl, SO4, Fe, As, U, Ca, Mg, Na</b> across hundreds of villages.</p>
+                            <div class="bg-gradient-to-r from-red-50 to-rose-50 p-4 rounded-xl border border-red-100 mb-4 shadow-sm">
+                                <p class="text-sm font-bold text-red-800 text-center">100 villages × 20 parameters = <span class="text-xl font-black">2000</span> interacting data points!</p>
+                            </div>
+                            <p class="text-xs font-bold text-slate-700 mb-2">The human brain cannot visualize 20 dimensions. We struggle to answer:</p>
+                            <ul class="text-[11px] text-slate-600 space-y-2 ml-2 mb-4 font-medium">
+                                <li class="flex items-center"><i class="fas fa-times-circle text-red-400 mr-2"></i>Which parameters are duplicating the same information?</li>
+                                <li class="flex items-center"><i class="fas fa-times-circle text-red-400 mr-2"></i>What are the hidden sources causing contamination?</li>
+                                <li class="flex items-center"><i class="fas fa-times-circle text-red-400 mr-2"></i>Which villages share the exact same chemical DNA?</li>
+                            </ul>
+                            <div class="p-3 bg-emerald-50 rounded-lg text-emerald-800 text-xs font-bold text-center border border-emerald-200">
+                                <i class="fas fa-check-circle mr-2"></i>PCA mathematically compresses these 20 dimensions into 2 or 3 core "Factors".
+                            </div>
+                        </div>
+
+                        <!-- 2. Basic Principle -->
+                        <div class="bg-white rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] border border-slate-100 p-6 transform transition-all hover:-translate-y-1 hover:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.12)]">
+                            <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center mb-4"><span class="glossy-icon-circle glossy-blue mr-3"><i class="fas fa-link"></i></span>2. The Principle of Redundancy</h2>
+                            <p class="text-xs text-slate-600 mb-4 font-medium leading-relaxed">PCA hunts for <b class="text-blue-600">Redundancy</b> (correlation). If two parameters always move together, we don't need both to tell the story.</p>
+                            
+                            <table class="w-full text-[11px] text-center border-collapse rounded-lg overflow-hidden shadow-sm mb-4">
+                                <thead class="bg-blue-900 text-white font-bold tracking-wider">
+                                    <tr><th class="p-2 text-left">Location</th><th class="p-2">Salinity (EC)</th><th class="p-2">Fluoride (F)</th><th class="p-2">Uranium (U)</th></tr>
+                                </thead>
+                                <tbody class="bg-blue-50/50">
+                                    <tr class="border-b border-blue-100"><td class="p-2 font-bold text-left">Village A</td><td class="p-2 text-emerald-600 font-bold">Low</td><td class="p-2 text-emerald-600 font-bold">Low</td><td class="p-2 text-emerald-600 font-bold">Low</td></tr>
+                                    <tr class="border-b border-blue-100"><td class="p-2 font-bold text-left">Village B</td><td class="p-2 text-amber-600 font-bold">Medium</td><td class="p-2 text-amber-600 font-bold">Medium</td><td class="p-2 text-amber-600 font-bold">Medium</td></tr>
+                                    <tr><td class="p-2 font-bold text-left">Village C</td><td class="p-2 text-red-600 font-bold">High</td><td class="p-2 text-red-600 font-bold">High</td><td class="p-2 text-red-600 font-bold">High</td></tr>
+                                </tbody>
+                            </table>
+                            
+                            <p class="text-[11px] text-slate-600 mb-2 font-medium">PCA detects this synchronized behavior. Instead of treating EC, F, and U as three separate problems, it fuses them into a single, unified metric:</p>
+                            <div class="p-3 bg-indigo-50 border-l-4 border-indigo-500 text-xs font-bold text-indigo-900 mb-2 text-center shadow-inner">
+                                Principal Component 1 (PC1)
+                            </div>
+                            <p class="text-[10px] text-slate-500 text-center italic">This new "PC1" variable now represents the overall "Geogenic Mineralization" process.</p>
+                        </div>
+                    </div>
+
+                    <!-- 3. Real-Life Analogy -->
+                    <div class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-orange-100 p-6 transform transition-all hover:scale-[1.01]">
+                        <h2 class="text-sm font-black text-orange-900 uppercase tracking-widest flex items-center mb-4"><span class="glossy-icon-circle glossy-amber mr-3"><i class="fas fa-users"></i></span>3. The "Student Report Card" Analogy</h2>
+                        <p class="text-xs text-slate-700 mb-4 font-medium">Suppose 100 students are graded across 5 subjects: <b>Math, Physics, Chemistry, English, and History</b>. Rather than looking at 5 individual scores, your brain naturally creates summary factors. PCA does exactly this mathematically:</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-white p-5 rounded-2xl shadow-md border-b-4 border-b-blue-500 text-center transform transition hover:-translate-y-1">
+                                <div class="w-10 h-10 mx-auto bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-lg mb-2"><i class="fas fa-atom"></i></div>
+                                <h3 class="font-black text-blue-800 text-[11px] uppercase tracking-widest mb-2">PC1: Science Factor</h3>
+                                <p class="text-[11px] text-slate-500 font-medium">Summarizes the highly correlated marks from <span class="text-blue-600 font-bold">Math, Physics, and Chemistry</span>.</p>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl shadow-md border-b-4 border-b-emerald-500 text-center transform transition hover:-translate-y-1">
+                                <div class="w-10 h-10 mx-auto bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-lg mb-2"><i class="fas fa-book-open"></i></div>
+                                <h3 class="font-black text-emerald-800 text-[11px] uppercase tracking-widest mb-2">PC2: Language Factor</h3>
+                                <p class="text-[11px] text-slate-500 font-medium">Captures the independent variance from <span class="text-emerald-600 font-bold">English</span> proficiency.</p>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl shadow-md border-b-4 border-b-purple-500 text-center transform transition hover:-translate-y-1">
+                                <div class="w-10 h-10 mx-auto bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-lg mb-2"><i class="fas fa-landmark"></i></div>
+                                <h3 class="font-black text-purple-800 text-[11px] uppercase tracking-widest mb-2">PC3: Humanities Factor</h3>
+                                <p class="text-[11px] text-slate-500 font-medium">Captures the remaining variance from <span class="text-purple-600 font-bold">History</span>.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- The Math Engine -->
+                    <div class="bg-white rounded-3xl shadow-[0_15px_50px_-15px_rgba(0,0,0,0.1)] border-t-8 border-t-violet-600 p-6 sm:p-8 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-8 opacity-5 text-violet-900 text-9xl pointer-events-none"><i class="fas fa-calculator"></i></div>
+                        
+                        <h2 class="text-lg font-black text-slate-800 uppercase tracking-widest mb-2">The Mathematical Engine</h2>
+                        <p class="text-xs text-slate-500 mb-8 border-b-2 border-slate-100 pb-4">How PCA transforms raw numbers into components (The exact steps running in the background).</p>
+
+                        <!-- Step 1 & 2 -->
+                        <div class="mb-8 pl-4 border-l-4 border-blue-400">
+                            <h3 class="text-xs font-black text-blue-600 uppercase tracking-wider mb-2">STEP 1 & 2 — Mean Centering (Finding the Baseline)</h3>
+                            <p class="text-[11px] text-slate-600 mb-3 leading-relaxed">PCA first finds the "Average Groundwater Condition" by calculating the mean for every parameter. It then subtracts this mean from every sample. <br><b>Result:</b> A value of <span class="text-red-500 font-bold">0</span> now means "Average". Negative means "Below Average", Positive means "Above Average".</p>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="mb-8 pl-4 border-l-4 border-amber-400 bg-amber-50/30 p-4 rounded-r-2xl">
+                            <h3 class="text-xs font-black text-amber-600 uppercase tracking-wider mb-2">STEP 3 — Standardization (Z-Scores)</h3>
+                            <p class="text-[11px] text-slate-700 mb-2 leading-relaxed"><b>The Scale Problem:</b> EC is measured in thousands (e.g., 1500 µS/cm), while Fluoride is tiny (e.g., 1.5 mg/L). If left alone, PCA would only care about EC because the numbers are bigger. <br><b>The Solution:</b> Divide the centered data by the standard deviation (σ).</p>
+                            <div class="flex items-center gap-4 mb-2">
+                                <div class="bg-white p-3 rounded-xl shadow-sm border border-amber-200 flex items-center justify-center">
+                                    <span class="text-lg font-black text-slate-800 mr-2">Z = </span>
+                                    <div class="inline-flex flex-col text-center align-middle font-mono font-bold text-slate-700">
+                                        <span class="border-b-2 border-slate-700 px-2 pb-1">X - μ</span>
+                                        <span class="px-2 pt-1">σ</span>
+                                    </div>
+                                </div>
+                                <div class="text-[10px] text-slate-600 font-medium">
+                                    <p>Now, ALL parameters operate on a fair scale, typically ranging from -3 to +3, regardless of their original units (mg/L, µg/L, etc.).</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 4 -->
+                        <div class="mb-8 pl-4 border-l-4 border-emerald-400">
+                            <h3 class="text-xs font-black text-emerald-600 uppercase tracking-wider mb-2">STEP 4 — The Covariance Matrix</h3>
+                            <p class="text-[11px] text-slate-600 mb-2 leading-relaxed">The algorithm checks how every standardized parameter "dances" with every other parameter. If Nitrate goes up, does Potassium go up too? This creates a massive grid measuring the strength of synchronization between all variables.</p>
+                        </div>
+
+                        <!-- Step 5 & 6 -->
+                        <div class="mb-4 pl-4 border-l-4 border-purple-500">
+                            <h3 class="text-xs font-black text-purple-700 uppercase tracking-wider mb-2">STEP 5 & 6 — Eigenvalues and Eigenvectors (The Magic Step)</h3>
+                            <p class="text-[11px] text-slate-600 mb-3 leading-relaxed">Linear algebra is applied to the Covariance Matrix to extract two crucial pieces of information:</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                                    <h4 class="text-[10px] font-black text-purple-800 mb-1">1. Eigenvalues (The "Strength Score")</h4>
+                                    <p class="text-[10px] text-slate-700">Tells us how much total variance (information) a specific Principal Component captures. An eigenvalue of 3.5 means that component alone accounts for the variance of 3.5 original parameters.</p>
+                                </div>
+                                <div class="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                                    <h4 class="text-[10px] font-black text-purple-800 mb-1">2. Eigenvectors (The "Recipe Book")</h4>
+                                    <p class="text-[10px] text-slate-700">The specific weights (Loadings) showing how the original parameters mix together to form the component. e.g., <i>PC1 = 0.6(EC) + 0.5(F) + 0.1(pH)</i>.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Plot Interpretation -->
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800 uppercase tracking-widest mb-4">How to Read the PCA Plots Like an Expert</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            
+                            <!-- Score Plot -->
+                            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow relative overflow-hidden group">
+                                <div class="absolute -right-4 -bottom-4 opacity-[0.03] text-8xl group-hover:scale-110 transition-transform"><i class="fas fa-braille"></i></div>
+                                <h3 class="font-black text-indigo-700 text-xs uppercase tracking-widest mb-2 flex items-center"><i class="fas fa-map-marker-alt text-indigo-500 mr-2 text-lg"></i> The Sample Score Plot</h3>
+                                <p class="text-[11px] font-medium text-slate-600 mb-3">Plots the actual villages/samples based on their new PC scores. It is essentially a map of chemical similarity rather than geographical distance.</p>
+                                <div class="bg-indigo-50 p-3 rounded-xl border-l-2 border-indigo-400">
+                                    <p class="text-[10px] font-black text-indigo-900 mb-1">Expert Tip:</p>
+                                    <ul class="text-[10px] text-slate-700 space-y-1 list-disc pl-3">
+                                        <li><b>Clusters:</b> Dots grouped tightly together represent waters with identical hydrochemical evolution.</li>
+                                        <li><b>Outliers:</b> A dot far away from the rest is an anomaly (e.g., a highly polluted well or uniquely deep aquifer).</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Loading Plot -->
+                            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow relative overflow-hidden group">
+                                <div class="absolute -right-4 -bottom-4 opacity-[0.03] text-8xl group-hover:scale-110 transition-transform"><i class="fas fa-project-diagram"></i></div>
+                                <h3 class="font-black text-pink-700 text-xs uppercase tracking-widest mb-2 flex items-center"><i class="fas fa-vector-square text-pink-500 mr-2 text-lg"></i> The Loading Plot</h3>
+                                <p class="text-[11px] font-medium text-slate-600 mb-3">Shows how strongly each original parameter influences the principal components. Values range from -1.0 to +1.0.</p>
+                                <div class="bg-pink-50 p-3 rounded-xl border-l-2 border-pink-400">
+                                    <p class="text-[10px] font-black text-pink-900 mb-1">Expert Tip:</p>
+                                    <ul class="text-[10px] text-slate-700 space-y-1 list-disc pl-3">
+                                        <li><b>Distance from Center:</b> The further a parameter is from zero (0,0), the more important it is.</li>
+                                        <li><b>Proximity:</b> Parameters clustered together (e.g., EC and TDS) are highly correlated. Parameters at 90° angles to each other are completely independent.</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Biplot -->
+                            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow md:col-span-2 relative overflow-hidden group">
+                                <div class="absolute right-0 bottom-0 opacity-[0.02] text-9xl group-hover:scale-110 transition-transform"><i class="fas fa-layer-group"></i></div>
+                                <h3 class="font-black text-violet-700 text-xs uppercase tracking-widest mb-2 flex items-center"><i class="fas fa-compress text-violet-500 mr-2 text-lg"></i> The Biplot (The Master Graph)</h3>
+                                <p class="text-[11px] font-medium text-slate-600 mb-3">Overlays the Score Plot (Samples) and the Loading Plot (Vectors) onto the exact same graph. It connects the "Who" (villages) with the "Why" (parameters).</p>
+                                <div class="bg-violet-50 p-3 rounded-xl border-l-2 border-violet-400">
+                                    <p class="text-[10px] font-black text-violet-900 mb-1">Expert Tip: Follow the Arrow</p>
+                                    <p class="text-[10px] text-slate-700">If a vector arrow for "Nitrate" points toward the top-right quadrant, and "Village A" is plotted in the top-right quadrant, it means Village A is heavily contaminated by Nitrate. If "Village B" is in the exact opposite direction of the arrow, it has exceptionally low Nitrate.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hydrogeochemical Interpretation Cards -->
+                    <div class="mt-8">
+                        <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 px-2">Common Hydrochemical Signatures (Cheat Sheet)</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            
+                            <!-- Salinity / Geogenic -->
+                            <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 shadow-lg text-white transform transition hover:-translate-y-1 hover:shadow-xl border-t-2 border-emerald-400">
+                                <div class="text-emerald-400 mb-2"><i class="fas fa-gem text-xl"></i></div>
+                                <h4 class="text-[11px] font-black text-emerald-300 mb-2 border-b border-slate-700 pb-2">EC + F + U + Na</h4>
+                                <ul class="text-[10px] space-y-1.5 text-slate-300 font-medium leading-tight">
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-emerald-500"></i> Prolonged Rock-Water Interaction</li>
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-emerald-500"></i> Deep aquifer / high residence time</li>
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-emerald-500"></i> Geogenic mineral dissolution</li>
+                                </ul>
+                            </div>
+
+                            <!-- Anthropogenic -->
+                            <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 shadow-lg text-white transform transition hover:-translate-y-1 hover:shadow-xl border-t-2 border-amber-400">
+                                <div class="text-amber-400 mb-2"><i class="fas fa-tractor text-xl"></i></div>
+                                <h4 class="text-[11px] font-black text-amber-300 mb-2 border-b border-slate-700 pb-2">NO3 + K + Cl</h4>
+                                <ul class="text-[10px] space-y-1.5 text-slate-300 font-medium leading-tight">
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-amber-500"></i> Anthropogenic surface pollution</li>
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-amber-500"></i> Agricultural fertilizer leaching</li>
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-amber-500"></i> Domestic wastewater infiltration</li>
+                                </ul>
+                            </div>
+
+                            <!-- Hardness / Carbonate -->
+                            <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 shadow-lg text-white transform transition hover:-translate-y-1 hover:shadow-xl border-t-2 border-blue-400">
+                                <div class="text-blue-400 mb-2"><i class="fas fa-cubes text-xl"></i></div>
+                                <h4 class="text-[11px] font-black text-blue-300 mb-2 border-b border-slate-700 pb-2">Ca + Mg + Alkalinity</h4>
+                                <ul class="text-[10px] space-y-1.5 text-slate-300 font-medium leading-tight">
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-blue-500"></i> Carbonate weathering (Limestone)</li>
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-blue-500"></i> Temporary hardness dynamics</li>
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-blue-500"></i> Recent recharge zones</li>
+                                </ul>
+                            </div>
+
+                            <!-- Redox Metals -->
+                            <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 shadow-lg text-white transform transition hover:-translate-y-1 hover:shadow-xl border-t-2 border-red-400">
+                                <div class="text-red-400 mb-2"><i class="fas fa-flask text-xl"></i></div>
+                                <h4 class="text-[11px] font-black text-red-300 mb-2 border-b border-slate-700 pb-2">Fe + Mn + As</h4>
+                                <ul class="text-[10px] space-y-1.5 text-slate-300 font-medium leading-tight">
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-red-500"></i> Reducing/anoxic aquifer conditions</li>
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-red-500"></i> Redox-controlled mobilization</li>
+                                    <li class="flex items-start"><i class="fas fa-caret-right mt-0.5 mr-1.5 text-red-500"></i> Stagnant groundwater pockets</li>
+                                </ul>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Final Summary Banner -->
+                    <div class="bg-violet-600 rounded-2xl shadow-xl p-6 text-white text-center mt-6 border border-violet-500">
+                        <h2 class="text-sm font-black uppercase tracking-widest mb-4 text-violet-200">The 3 Ultimate Goals of PCA</h2>
+                        <div class="flex flex-col md:flex-row justify-center gap-8 text-[11px] font-bold">
+                            <div class="flex-1 hover:scale-105 transition-transform"><i class="fas fa-search-plus text-3xl mb-3 text-violet-300 block"></i> 1. Identify Connected Parameters</div>
+                            <div class="flex-1 border-y md:border-y-0 md:border-x border-violet-500 py-4 md:py-0 hover:scale-105 transition-transform"><i class="fas fa-cogs text-3xl mb-3 text-violet-300 block"></i> 2. Expose Hidden Chemical Processes</div>
+                            <div class="flex-1 hover:scale-105 transition-transform"><i class="fas fa-map-marker-alt text-3xl mb-3 text-violet-300 block"></i> 3. Classify & Group Polluted Regions</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </main>
+
+    <!-- Column Mapping Modal -->
+    <div id="mappingModal" class="fixed inset-0 z-[2000] hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="light-panel w-full max-w-2xl p-6 flex flex-col max-h-[90vh]">
+            <h2 class="text-xl font-black text-slate-800 mb-4">Map Data Columns</h2>
+            <div id="mappingContainer" class="flex-grow overflow-y-auto space-y-2 mb-4 pr-2 custom-scrollbar"></div>
+            <div class="flex justify-end gap-3 border-t pt-4">
+                <button onclick="closeMappingModal()" class="btn-white px-5 py-2">Cancel</button>
+                <button id="runCalcBtn" class="btn-violet-solid px-6 py-2">Run PCA</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const paramConfig = {
+            'pH': { name: 'pH Level', keywords: ['ph', 'pH'], selected: true },
+            'TDS': { name: 'TDS', keywords: ['tds'], selected: true },
+            'Turbidity': { name: 'Turbidity', keywords: ['turbidity'], selected: true },
+            'Alkalinity': { name: 'Alkalinity', keywords: ['alkalinity'], selected: true },
+            'TH': { name: 'Hardness', keywords: ['th', 'hardness'], selected: true },
+            'EC': { name: 'EC', keywords: ['ec', 'cond'], selected: true },
+            'Cl': { name: 'Chloride', keywords: ['cl', 'chloride'], selected: true },
+            'NO3': { name: 'Nitrate', keywords: ['no3'], selected: true },
+            'F': { name: 'Fluoride', keywords: ['f', 'fluoride'], selected: true },
+            'Fe': { name: 'Iron', keywords: ['fe'], selected: true },
+            'As': { name: 'Arsenic', keywords: ['as'], selected: true },
+            'U': { name: 'Uranium', keywords: ['u'], selected: true },
+            'Zn': { name: 'Zinc', keywords: ['zn'], selected: true },
+            'Cu': { name: 'Copper', keywords: ['cu'], selected: true },
+            'Pb': { name: 'Lead', keywords: ['Pb'], selected: true },
+            'Cd': { name: 'Cadmium', keywords: ['cd'], selected: true },
+            'Cr': { name: 'Chromium', keywords: ['cr'], selected: true },
+            'Hg': { name: 'Mercury', keywords: ['hg'], selected: true },
+            'Ni': { name: 'Nickel', keywords: ['ni'], selected: true },
+            'Se': { name: 'Selenium', keywords: ['se'], selected: true },
+            'Ca': { name: 'Calcium', keywords: ['ca'], selected: true },
+            'Mg': { name: 'Magnesium', keywords: ['mg'], selected: true },
+            'SO4': { name: 'Sulphate', keywords: ['so4'], selected: true },
+            'Mn': { name: 'Manganese', keywords: ['Mn'], selected: true }
+        };
+
+        const iconConfig = {
+            'pH': 'blue', 'EC': 'blue', 'TH': 'purple', 'Cl': 'green', 'F': 'green', 'SO4': 'amber', 'NO3': 'red', 'Ca': 'purple', 'Mg': 'pink'
+        };
+
+        let pcaResults, allOriginalData = [], currentFilteredData = [], currentMappedFields = [];
+
+        function initApp() {
+            renderParamGrid();
+            initFilterEvents();
+        }
+
+        function renderParamGrid() {
+            const grid = document.getElementById('paramGrid');
+            grid.innerHTML = '';
+            Object.keys(paramConfig).forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = paramConfig[p].selected ? 'param-btn-3d' : 'param-btn-3d param-btn-3d-inactive';
+                btn.innerHTML = `<div class="glossy-icon-circle glossy-${iconConfig[p] || 'blue'}">${p}</div>`;
+                btn.onclick = () => { paramConfig[p].selected = !paramConfig[p].selected; renderParamGrid(); };
+                grid.appendChild(btn);
+            });
+        }
+
+        window.toggleAllParams = function() {
+            const keys = Object.keys(paramConfig);
+            const allSelected = keys.every(k => paramConfig[k].selected);
+            keys.forEach(k => paramConfig[k].selected = !allSelected);
+            renderParamGrid();
+        };
+
+        function initFilterEvents() {
+            document.getElementById('stateFilter').addEventListener('change', populateDistricts);
+            document.getElementById('districtFilter').addEventListener('change', populateBlocks);
+            document.getElementById('blockFilter').addEventListener('change', triggerAnalysisUpdate);
+        }
+
+        window.switchTab = function(id) {
+            ['analyticsTab', 'summaryTab', 'methodologyTab'].forEach(t => {
+                const el = document.getElementById(t);
+                const btn = document.getElementById('btn-' + t);
+                el.classList.add('hidden');
+                el.classList.remove('flex');
+                btn.classList.remove('tab-active');
+                btn.classList.add('tab-inactive');
+            });
+            const target = document.getElementById(id);
+            const btn = document.getElementById('btn-' + id);
+            target.classList.remove('hidden');
+            target.classList.add('flex');
+            btn.classList.add('tab-active');
+            btn.classList.remove('tab-inactive');
+            
+            // Fix: Force Highcharts to redraw perfectly when switching back to the Analytics tab
+            if(id === 'analyticsTab' && pcaResults) {
+                setTimeout(renderCharts, 50);
+            }
+        };
+
+        document.getElementById('fileUpload').onchange = (e) => {
+            const file = e.target.files[0];
+            if(!file) {
+                // Bug fix: Handle cancellation
+                document.getElementById('calcBtn').disabled = true;
+                document.getElementById('fileNameDisplay').textContent = 'Upload Excel';
+                return;
+            }
+            document.getElementById('fileNameDisplay').textContent = file.name;
+            document.getElementById('calcBtn').disabled = false;
+        };
+
+        document.getElementById('calcBtn').onclick = () => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const workbook = XLSX.read(e.target.result, { type: 'array' });
+                const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const headers = Object.keys(data[0] || {});
+                showMappingModal(headers, data);
+            };
+            reader.readAsArrayBuffer(document.getElementById('fileUpload').files[0]);
+        };
+
+        function showMappingModal(headers, data) {
+            const active = Object.keys(paramConfig).filter(p => paramConfig[p].selected);
+            const container = document.getElementById('mappingContainer');
+            container.innerHTML = '';
+            
+            const geoFields = ['State', 'District', 'Block'];
+            const allFields = ['Sample_ID', ...geoFields, ...active];
+            
+            allFields.forEach(f => {
+                const isGeo = geoFields.includes(f);
+                const isID = f === 'Sample_ID';
+                const div = document.createElement('div');
+                
+                // Color code the mapping rows for better user experience
+                let bgClass = '';
+                if(isGeo) bgClass = 'bg-indigo-50/50 border-indigo-100';
+                else if(isID) bgClass = 'bg-slate-100 border-slate-200';
+                
+                div.className = `flex justify-between items-center p-3 border-b text-xs rounded-lg mb-1 ${bgClass}`;
+                div.innerHTML = `
+                    <div class="flex flex-col">
+                        <span class="font-black text-slate-800 text-[13px]">${f}</span>
+                        ${isGeo ? '<span class="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mt-1"><i class="fas fa-map-marker-alt mr-1"></i> Location Field</span>' : ''}
+                        ${isID ? '<span class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1"><i class="fas fa-fingerprint mr-1"></i> Identifier</span>' : ''}
+                    </div>
+                    <select id="map_${f}" class="border-2 border-slate-200 rounded-lg p-2 w-64 bg-white font-bold text-slate-700 outline-none focus:border-violet-500 transition-colors cursor-pointer shadow-sm">
+                        <option value="">-- Ignore / Not Present --</option>
+                        ${headers.map(h => `<option value="${h}">${h}</option>`).join('')}
+                    </select>`;
+                container.appendChild(div);
+                
+                const match = headers.find(h => h.toLowerCase().trim() === f.toLowerCase().trim());
+                if(match) document.getElementById(`map_${f}`).value = match;
+            });
+            
+            const modal = document.getElementById('mappingModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            document.getElementById('runCalcBtn').onclick = () => {
+                currentMappedFields = allFields;
+                allOriginalData = data;
+                processDataInitial(data, allFields);
+            };
+        }
+
+        function processDataInitial(data, allFields) {
+            const mapping = {};
+            allFields.forEach(f => mapping[f] = document.getElementById(`map_${f}`).value);
+            
+            allOriginalData = data.map(row => {
+                const r = { ...row };
+                r._state = row[mapping['State']] || 'N/A';
+                r._district = row[mapping['District']] || 'N/A';
+                r._block = row[mapping['Block']] || 'N/A';
+                r._sample_id = row[mapping['Sample_ID']] || 'N/A';
+                return r;
+            });
+
+            populateStates();
+            triggerAnalysisUpdate();
+            closeMappingModal();
+            document.getElementById('filterPanel').classList.remove('hidden');
+        }
+
+        function populateStates() {
+            const stateSelect = document.getElementById('stateFilter');
+            const states = [...new Set(allOriginalData.map(d => d._state))].sort();
+            stateSelect.innerHTML = '<option value="ALL">All States</option>' + 
+                states.map(s => `<option value="${s}">${s}</option>`).join('');
+            
+            document.getElementById('districtFilter').disabled = true;
+            document.getElementById('blockFilter').disabled = true;
+        }
+
+        function populateDistricts() {
+            const state = document.getElementById('stateFilter').value;
+            const distSelect = document.getElementById('districtFilter');
+            
+            if(state === 'ALL') {
+                distSelect.innerHTML = '<option value="ALL">All Districts</option>';
+                distSelect.disabled = true;
+                populateBlocks();
+                return;
+            }
+
+            const districts = [...new Set(allOriginalData.filter(d => d._state === state).map(d => d._district))].sort();
+            distSelect.innerHTML = '<option value="ALL">All Districts</option>' + 
+                districts.map(d => `<option value="${d}">${d}</option>`).join('');
+            distSelect.disabled = false;
+            populateBlocks();
+        }
+
+        function populateBlocks() {
+            const state = document.getElementById('stateFilter').value;
+            const district = document.getElementById('districtFilter').value;
+            const blockSelect = document.getElementById('blockFilter');
+            
+            if(district === 'ALL') {
+                blockSelect.innerHTML = '<option value="ALL">All Blocks</option>';
+                blockSelect.disabled = true;
+                triggerAnalysisUpdate();
+                return;
+            }
+
+            const blocks = [...new Set(allOriginalData.filter(d => d._state === state && d._district === district).map(d => d._block))].sort();
+            blockSelect.innerHTML = '<option value="ALL">All Blocks</option>' + 
+                blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+            blockSelect.disabled = false;
+            triggerAnalysisUpdate();
+        }
+
+        function triggerAnalysisUpdate() {
+            const state = document.getElementById('stateFilter').value;
+            const district = document.getElementById('districtFilter').value;
+            const block = document.getElementById('blockFilter').value;
+
+            let filtered = allOriginalData;
+            if(state !== 'ALL') filtered = filtered.filter(d => d._state === state);
+            if(district !== 'ALL') filtered = filtered.filter(d => d._district === district);
+            if(block !== 'ALL') filtered = filtered.filter(d => d._block === block);
+
+            document.getElementById('filterCountBadge').textContent = `${filtered.length} samples`;
+
+            if(filtered.length < 3) {
+                showAlert('warning', 'Insufficient Data', 'Select a subset with at least 3 samples to perform PCA.');
+                return;
+            }
+
+            // Bug fix: Prevent PCA matrix math crash
+            const activeParams = Object.keys(paramConfig).filter(p => paramConfig[p].selected);
+            if(activeParams.length < 2) {
+                showAlert('warning', 'Insufficient Parameters', 'Please select at least 2 parameters from the Feature Space to perform PCA.');
+                return;
+            }
+
+            hideAlert();
+            performPCA(filtered);
+        }
+
+        function performPCA(dataSubset) {
+            const activeParams = Object.keys(paramConfig).filter(p => paramConfig[p].selected);
+            if(activeParams.length < 2) {
+                showAlert('warning', 'Insufficient Parameters', 'Please select at least 2 parameters to perform PCA.');
+                return;
+            }
+
+            const mapping = {};
+            currentMappedFields.forEach(f => mapping[f] = document.getElementById(`map_${f}`).value);
+
+            const stats = activeParams.map(p => {
+                const vals = dataSubset.map(r => parseFloat(r[mapping[p]])).filter(v => !isNaN(v));
+                const mean = vals.length > 0 ? vals.reduce((a,b) => a+b, 0) / vals.length : 0;
+                const std = vals.length > 1 ? Math.sqrt(vals.reduce((a,b) => a + Math.pow(b-mean, 2), 0) / (vals.length - 1)) : 1;
+                return {p, mean, std: std || 1, mapKey: mapping[p]};
+            });
+
+            const stdMatrix = dataSubset.map(row => {
+                return stats.map(s => {
+                    const v = parseFloat(row[s.mapKey]);
+                    return (isNaN(v) ? 0 : (v - s.mean) / s.std);
+                });
+            });
+
+            // Calculate Correlation Matrix for the Heatmap
+            const corrMatrix = [];
+            for (let i = 0; i < activeParams.length; i++) {
+                let row = [];
+                for (let j = 0; j < activeParams.length; j++) {
+                    if (i === j) { row.push(1); continue; }
+                    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+                    let n = stdMatrix.length;
+                    for (let k = 0; k < n; k++) {
+                        let x = stdMatrix[k][i]; let y = stdMatrix[k][j];
+                        sumX += x; sumY += y; sumXY += x * y; sumX2 += x * x; sumY2 += y * y;
+                    }
+                    let num = (n * sumXY) - (sumX * sumY);
+                    let den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+                    row.push(den === 0 ? 0 : num / den);
+                }
+                corrMatrix.push(row);
+            }
+
+            try {
+                const cov = numeric.div(numeric.dot(numeric.transpose(stdMatrix), stdMatrix), stdMatrix.length - 1);
+                const eig = numeric.eig(cov);
+                const eigenvalues = eig.lambda.x;
+                const eigenvectors = eig.E.x;
+
+                const indices = eigenvalues.map((v, i) => i).sort((a,b) => eigenvalues[b] - eigenvalues[a]);
+                const sortedValues = indices.map(i => eigenvalues[i]);
+                const totalEig = sortedValues.reduce((a,b) => a+b, 0);
+                const variance = sortedValues.map(v => (v / (totalEig || 1)) * 100);
+
+                const scores = numeric.dot(stdMatrix, eigenvectors);
+                
+                // Assign scores dynamically for ALL components
+                dataSubset.forEach((r, i) => {
+                    indices.forEach((origIdx, rank) => {
+                        r[`PC${rank+1}`] = scores[i][origIdx];
+                    });
+                });
+
+                pcaResults = {
+                    params: activeParams,
+                    eigenvalues: sortedValues,
+                    eigenvectors: eigenvectors,
+                    indices: indices,
+                    variance: variance,
+                    correlation: corrMatrix
+                };
+
+                currentFilteredData = dataSubset;
+                setupDynamicControls();
+                renderCharts();
+                renderSummaryInterpretation();
+                renderMethodologyData();
+                renderLiveStepByStepMath(dataSubset, stats, stdMatrix);
+                
+                document.getElementById('downloadBtn').classList.remove('hidden');
+            } catch(e) {
+                showAlert('error', 'Calculation Error', 'PCA failed. Ensure your data is numeric.');
+                console.error(e);
+            }
+        }
+
+        function setupDynamicControls() {
+            const xSelect = document.getElementById('xAxisSelect');
+            const ySelect = document.getElementById('yAxisSelect');
+            if(!xSelect || !ySelect) return;
+            
+            xSelect.innerHTML = ''; ySelect.innerHTML = '';
+            
+            pcaResults.variance.forEach((v, i) => {
+                const optX = document.createElement('option');
+                optX.value = i; optX.text = `PC${i+1} (${v.toFixed(1)}%)`;
+                xSelect.add(optX);
+                
+                const optY = document.createElement('option');
+                optY.value = i; optY.text = `PC${i+1} (${v.toFixed(1)}%)`;
+                ySelect.add(optY);
+            });
+            
+            xSelect.selectedIndex = 0; 
+            ySelect.selectedIndex = pcaResults.variance.length > 1 ? 1 : 0; 
+            document.getElementById('dynamicControls').classList.remove('hidden');
+        }
+
+        function renderCharts() {
+            if(!pcaResults) return;
+
+            const xSelect = document.getElementById('xAxisSelect');
+            const ySelect = document.getElementById('yAxisSelect');
+            const xIdx = xSelect ? parseInt(xSelect.value) : 0;
+            const yIdx = ySelect ? parseInt(ySelect.value) : (pcaResults.variance.length > 1 ? 1 : 0);
+            
+            const pcXName = `PC${xIdx+1}`; const pcYName = `PC${yIdx+1}`;
+            const varX = pcaResults.variance[xIdx].toFixed(1); const varY = pcaResults.variance[yIdx].toFixed(1);
+
+            if(document.getElementById('heatmap-container')) {
+                let hmData = [];
+                for(let i=0; i<pcaResults.params.length; i++) {
+                    for(let j=0; j<pcaResults.params.length; j++) {
+                        hmData.push([j, i, Math.round(pcaResults.correlation[i][j] * 100) / 100]);
+                    }
+                }
+                Highcharts.chart('heatmap-container', {
+                    chart: { type: 'heatmap', backgroundColor: 'transparent' },
+                    title: { text: 'Parameter Correlation Matrix', style: { fontSize: '13px', fontWeight: 'bold' } },
+                    xAxis: { categories: pcaResults.params, labels: { rotation: -45, style: { fontSize: '10px', fontWeight: 'bold' } } },
+                    yAxis: { categories: pcaResults.params, title: null, reversed: true, labels: { style: { fontSize: '10px', fontWeight: 'bold' } } },
+                    colorAxis: { stops: [[0, '#3b82f6'], [0.5, '#ffffff'], [1, '#ef4444']], min: -1, max: 1 },
+                    tooltip: {
+                        formatter: function () {
+                            return `<div style="text-align:center"><span style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:bold;">Correlation</span><br/><b>${this.series.xAxis.categories[this.point.x]}</b> ↔ <b>${this.series.yAxis.categories[this.point.y]}</b><br/><span style="font-size:14px;font-weight:900;color:${this.point.value > 0 ? '#ef4444' : '#3b82f6'}">${this.point.value > 0 ? '+' : ''}${this.point.value}</span></div>`;
+                        },
+                        useHTML: true
+                    },
+                    series: [{ name: 'Correlation', borderWidth: 1, borderColor: '#f8fafc', data: hmData, dataLabels: { enabled: true, color: '#000000', style: { fontSize: '8px', textOutline: 'none' } } }],
+                    credits: { enabled: false }
+                });
+            }
+
+            if(document.getElementById('scree-container')) {
+                const categories = pcaResults.variance.slice(0, 10).map((_, i) => `PC${i+1}`);
+                let cumulative = 0;
+                const cumData = pcaResults.variance.slice(0, 10).map(v => { cumulative += v; return parseFloat(cumulative.toFixed(2)); });
+
+                Highcharts.chart('scree-container', {
+                    chart: { backgroundColor: 'transparent' },
+                    title: { text: 'Scree & Cumulative Variance', style: { fontSize: '13px', fontWeight: 'bold' } },
+                    xAxis: { categories },
+                    yAxis: [{ title: { text: 'Individual (%)' } }, { title: { text: 'Cumulative (%)' }, opposite: true, max: 100 }],
+                    tooltip: { shared: true },
+                    series: [
+                        { type: 'column', name: 'Individual', data: pcaResults.variance.slice(0, 10).map(v => parseFloat(v.toFixed(2))), color: '#a78bfa' },
+                        { type: 'line', name: 'Cumulative', data: cumData, color: '#4c1d95', yAxis: 1 }
+                    ],
+                    credits: { enabled: false }
+                });
+            }
+
+            if(document.getElementById('score-container')) {
+                Highcharts.chart('score-container', {
+                    chart: { type: 'scatter', zoomType: 'xy', backgroundColor: 'transparent' },
+                    title: { text: `Sample Score Plot (${pcXName} vs ${pcYName})`, style: { fontSize: '13px', fontWeight: 'bold' } },
+                    xAxis: { title: { text: `${pcXName} (${varX}%)` }, plotLines: [{ value: 0, width: 1, color: '#cbd5e1', dashStyle: 'dash' }] },
+                    yAxis: { title: { text: `${pcYName} (${varY}%)` }, plotLines: [{ value: 0, width: 1, color: '#cbd5e1', dashStyle: 'dash' }] },
+                    tooltip: { pointFormat: 'ID: <b>{point.name}</b><br>{series.xAxis.options.title.text}: {point.x:.2f}<br>{series.yAxis.options.title.text}: {point.y:.2f}' },
+                    series: [{ name: 'Samples', data: currentFilteredData.map(r => ({ x: r[pcXName], y: r[pcYName], name: r._sample_id })), color: 'rgba(124, 58, 237, 0.6)', marker: { radius: 4 } }],
+                    credits: { enabled: false }
+                });
+            }
+
+            let loadingData = [];
+            if(document.getElementById('loadings-container')) {
+                loadingData = pcaResults.params.map((p, i) => ({
+                    name: p,
+                    x: pcaResults.eigenvectors[i][pcaResults.indices[xIdx]],
+                    y: pcaResults.eigenvectors[i][pcaResults.indices[yIdx]]
+                }));
+
+                Highcharts.chart('loadings-container', {
+                    chart: { type: 'scatter', backgroundColor: 'transparent' },
+                    title: { text: `Loading Plot (${pcXName} vs ${pcYName})`, style: { fontSize: '13px', fontWeight: 'bold' } },
+                    xAxis: { title: { text: `${pcXName} Loading` }, min: -1.1, max: 1.1, plotLines: [{ value: 0, width: 1, color: '#cbd5e1', dashStyle: 'dash' }] },
+                    yAxis: { title: { text: `${pcYName} Loading` }, min: -1.1, max: 1.1, plotLines: [{ value: 0, width: 1, color: '#cbd5e1', dashStyle: 'dash' }] },
+                    series: [{ name: 'Variables', data: loadingData, color: '#f59e0b', marker: { radius: 5, symbol: 'diamond' }, dataLabels: { enabled: true, format: '{point.name}', style: { fontSize: '10px', color: '#1e293b' } } }],
+                    credits: { enabled: false }
+                });
+            }
+
+            if(document.getElementById('biplot-container')) {
+                const maxX = Math.max(...currentFilteredData.map(r => Math.abs(r[pcXName] || 0)));
+                const maxY = Math.max(...currentFilteredData.map(r => Math.abs(r[pcYName] || 0)));
+                const scale = Math.max(maxX, maxY) * 0.8 || 1;
+
+                // Fixed: Added sample interactivity to the Biplot map
+                const biplotSeries = [{ 
+                    name: 'Samples', 
+                    type: 'scatter', 
+                    data: currentFilteredData.map(r => ({ x: r[pcXName], y: r[pcYName], name: r._sample_id })), 
+                    color: 'rgba(148, 163, 184, 0.5)', 
+                    marker: { radius: 3 }, 
+                    tooltip: { pointFormat: 'Sample: <b>{point.name}</b>' }
+                }];
+                
+                loadingData.forEach(p => {
+                    biplotSeries.push({ 
+                        name: p.name, 
+                        type: 'line', 
+                        data: [[0,0], [p.x * scale, p.y * scale]], 
+                        color: '#7c3aed', 
+                        lineWidth: 2, 
+                        marker: { enabled: false }, 
+                        tooltip: { pointFormat: 'Vector: <b>' + p.name + '</b>' },
+                        dataLabels: { enabled: true, formatter: function() { return this.point.index === 1 ? p.name : ''; }, style: { fontSize: '9px', color: '#4c1d95', fontWeight: 'bold' } } 
+                    });
+                });
+
+                Highcharts.chart('biplot-container', {
+                    chart: { backgroundColor: 'transparent', zoomType: 'xy' },
+                    title: { text: `PCA Biplot (Overlaid)`, style: { fontSize: '13px', fontWeight: 'bold' } },
+                    xAxis: { title: { text: pcXName }, plotLines: [{ value: 0, width: 1, color: '#cbd5e1' }] },
+                    yAxis: { title: { text: pcYName }, plotLines: [{ value: 0, width: 1, color: '#cbd5e1' }] },
+                    legend: { enabled: false },
+                    series: biplotSeries,
+                    credits: { enabled: false }
+                });
+            }
+
+            if(document.getElementById('score3d-container')) {
+                if (pcaResults.variance.length >= 3) {
+                    Highcharts.chart('score3d-container', {
+                        chart: { 
+                            type: 'scatter3d', 
+                            backgroundColor: 'transparent', 
+                            options3d: { 
+                                enabled: true, 
+                                alpha: 15, 
+                                beta: 25, 
+                                depth: 300, 
+                                viewDistance: 10, 
+                                fitToPlot: true, 
+                                frame: { 
+                                    bottom: { size: 1, color: 'rgba(226, 232, 240, 0.3)' }, 
+                                    back: { size: 1, color: 'rgba(241, 245, 249, 0.3)' }, 
+                                    side: { size: 1, color: 'rgba(248, 250, 252, 0.3)' } 
+                                } 
+                            } 
+                        },
+                        title: { text: '3D Spatial Map (PC1-PC2-PC3)', style: { fontSize: '13px', fontWeight: 'bold' } },
+                        xAxis: { title: { text: 'PC1' }, gridLineWidth: 1, gridLineColor: '#e2e8f0' },
+                        yAxis: { title: { text: 'PC2' }, gridLineWidth: 1, gridLineColor: '#e2e8f0' },
+                        zAxis: { title: { text: 'PC3' }, gridLineWidth: 1, gridLineColor: '#e2e8f0' },
+                        tooltip: { pointFormat: 'Sample: <b>{point.name}</b><br>PC1: {point.x:.2f}<br>PC2: {point.y:.2f}<br>PC3: {point.z:.2f}' },
+                        series: [{ 
+                            name: 'Samples', 
+                            colorByPoint: true, 
+                            marker: { radius: 5, symbol: 'circle', lineColor: '#ffffff', lineWidth: 1 },
+                            data: currentFilteredData.map(r => ({ x: r.PC1, y: r.PC2, z: r.PC3, name: r._sample_id })) 
+                        }],
+                        credits: { enabled: false }
+                    });
+                } else {
+                    document.getElementById('score3d-container').innerHTML = '<div class="chart-placeholder"><i class="fas fa-exclamation-triangle"></i><p>3D Plot Unavailable<br><span class="text-[10px]">Requires at least 3 parameters</span></p></div>';
+                }
+            }
+
+            const cards = document.getElementById('statsCards');
+            if(cards) {
+                cards.innerHTML = `
+                    <div class="light-panel p-4 text-center border-t-4 border-violet-500 shadow-sm">
+                        <div class="text-2xl font-black text-violet-600">${pcaResults.variance[0].toFixed(1)}%</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase">PC1 Variance</div>
+                    </div>
+                    <div class="light-panel p-4 text-center border-t-4 border-indigo-500 shadow-sm">
+                        <div class="text-2xl font-black text-indigo-600">${pcaResults.variance[1] ? pcaResults.variance[1].toFixed(1) : 0}%</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase">PC2 Variance</div>
+                    </div>
+                    <div class="light-panel p-4 text-center border-t-4 border-emerald-500 shadow-sm">
+                        <div class="text-2xl font-black text-emerald-600">${currentFilteredData.length}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase">Selected Samples</div>
+                    </div>
+                    <div class="light-panel p-4 text-center border-t-4 border-orange-500 shadow-sm">
+                        <div class="text-2xl font-black text-orange-600">${pcaResults.params.length}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase">Parameters</div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderSummaryInterpretation() {
+            const container = document.getElementById('summaryContent');
+            const state = document.getElementById('stateFilter').value;
+            const locName = state === 'ALL' ? 'Selected Region' : state;
+
+            // 1. Calculate Component Rankings (Absolute for narrative, retaining sign for display)
+            const getPCLoads = (idx) => pcaResults.params.map((p, i) => ({ 
+                name: p, 
+                val: pcaResults.eigenvectors[i][pcaResults.indices[idx]],
+                absVal: Math.abs(pcaResults.eigenvectors[i][pcaResults.indices[idx]])
+            })).sort((a,b) => b.absVal - a.absVal);
+            
+            const pc1Loads = getPCLoads(0);
+            const pc2Loads = getPCLoads(1);
+            const pc3Loads = pcaResults.variance.length > 2 ? getPCLoads(2) : null;
+
+            // 2. Identify Zone Representatives
+            const sortedByPC1 = [...currentFilteredData].sort((a,b) => b.PC1 - a.PC1);
+            const highMineralized = sortedByPC1.slice(0, 5).map(d => d._sample_id);
+            const moderateMineralized = sortedByPC1.slice(Math.floor(sortedByPC1.length/2) - 2, Math.floor(sortedByPC1.length/2) + 3).map(d => d._sample_id);
+            const lowMineralized = [...sortedByPC1].reverse().slice(0, 5).map(d => d._sample_id);
+
+            // 3. Upgraded Narrative logic
+            const getFactorNarrative = (loads, pcName) => {
+                if(!loads) return null;
+                const top = loads.slice(0, 4).map(l => l.name);
+                if (top.some(n => ['EC', 'TDS', 'Cl', 'TH', 'Na', 'SO4', 'Ca', 'Mg'].includes(n))) 
+                    return { factor: 'Salinity & Mineralization', desc: 'Driven by major ions, this component represents baseline groundwater mineralization, natural weathering, and intense rock-water interactions.', icon: 'fa-water', color: 'violet', bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700' };
+                if (top.some(n => ['NO3', 'K', 'PO4'].includes(n))) 
+                    return { factor: 'Anthropogenic Impact', desc: 'Indicates surface-level contamination, highly likely originating from agricultural runoff, fertilizer leaching, or domestic wastewater infiltration.', icon: 'fa-tractor', color: 'amber', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' };
+                if (top.some(n => ['Fe', 'Mn', 'As'].includes(n))) 
+                    return { factor: 'Redox & Trace Metals', desc: 'Reflects reducing conditions in the aquifer mobilizing specific trace metals, often indicating stagnation or localized iron-bearing minerals.', icon: 'fa-flask', color: 'red', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' };
+                if (top.some(n => ['F', 'U'].includes(n))) 
+                    return { factor: 'Geogenic Enrichment', desc: 'Suggests dissolution of specific trace minerals (like fluorite or uranium-bearing rocks) inherent to the local geological formations.', icon: 'fa-gem', color: 'emerald', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' };
+                
+                return { factor: 'Secondary Geochemical Variance', desc: 'Captures independent hydrochemical variance and localized, mixed geochemical processes within the aquifer system.', icon: 'fa-random', color: 'blue', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' };
+            };
+
+            const pc1Story = getFactorNarrative(pc1Loads, 'PC1');
+            const pc2Story = getFactorNarrative(pc2Loads, 'PC2');
+            const pc3Story = pc3Loads ? getFactorNarrative(pc3Loads, 'PC3') : null;
+
+            // Helper to format loaders with signs
+            const formatLoaders = (loads) => {
+                return loads.slice(0, 5).map(l => {
+                    const sign = l.val > 0 ? '+' : '-';
+                    const colorClass = l.val > 0 ? 'text-emerald-600' : 'text-rose-500';
+                    return `<span class="font-bold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm whitespace-nowrap">${l.name} <span class="${colorClass}">${sign}${(l.absVal).toFixed(2)}</span></span>`;
+                }).join(' ');
+            };
+
+            const var1 = pcaResults.variance[0].toFixed(1);
+            const var2 = pcaResults.variance[1] ? pcaResults.variance[1].toFixed(1) : 0;
+            const var3 = pc3Loads ? pcaResults.variance[2].toFixed(1) : 0;
+            const cumVar = (pcaResults.variance[0] + (pcaResults.variance[1] || 0) + (pcaResults.variance[2] || 0)).toFixed(1);
+
+            container.innerHTML = `
+                <div class="report-header text-center mb-8 relative">
+                    <div class="absolute top-0 right-0 opacity-10 text-6xl text-violet-900"><i class="fas fa-file-invoice"></i></div>
+                    <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tight">Hydrogeochemical Interpretation</h1>
+                    <p class="text-sm font-bold text-violet-600 uppercase tracking-widest mt-2 bg-violet-50 inline-block px-4 py-1 rounded-full border border-violet-100"><i class="fas fa-map-marker-alt mr-2"></i> ${locName}</p>
+                    <p class="text-xs text-slate-500 mt-3 max-w-2xl mx-auto">Automated insights generated from ${currentFilteredData.length} samples analyzing ${pcaResults.params.length} distinct geochemical parameters.</p>
+                </div>
+
+                <div class="report-section-title"><i class="fas fa-chart-bar mr-2 text-violet-500"></i> Variance Breakdown (Data Compression)</div>
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 mb-8 shadow-inner">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <div class="flex justify-between text-[10px] font-black uppercase mb-1"><span class="text-slate-600">PC1</span><span class="text-violet-600">${var1}%</span></div>
+                            <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-violet-600 h-2.5 rounded-full" style="width: ${var1}%"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[10px] font-black uppercase mb-1"><span class="text-slate-600">PC2</span><span class="text-indigo-500">${var2}%</span></div>
+                            <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-indigo-500 h-2.5 rounded-full" style="width: ${var2}%"></div></div>
+                        </div>
+                        ${pc3Loads ? `
+                        <div>
+                            <div class="flex justify-between text-[10px] font-black uppercase mb-1"><span class="text-slate-600">PC3</span><span class="text-blue-500">${var3}%</span></div>
+                            <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-blue-500 h-2.5 rounded-full" style="width: ${var3}%"></div></div>
+                        </div>` : ''}
+                    </div>
+                    <div class="mt-4 text-center text-xs font-bold text-slate-600 bg-white py-2 rounded-lg border border-slate-100">
+                        <i class="fas fa-compress-arrows-alt text-emerald-500 mr-2"></i> The primary components capture <span class="text-slate-900 font-black">${cumVar}%</span> of the total hydrochemical variability.
+                    </div>
+                </div>
+
+                <div class="report-section-title"><i class="fas fa-layer-group mr-2 text-violet-500"></i> Interpretation of Principal Components</div>
+                <div class="space-y-4 mb-8">
+                    <!-- PC1 Card -->
+                    <div class="p-5 ${pc1Story.bg} rounded-2xl border ${pc1Story.border} shadow-sm relative overflow-hidden transition-all hover:shadow-md">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 text-5xl ${pc1Story.text}"><i class="fas ${pc1Story.icon}"></i></div>
+                        <h4 class="font-black ${pc1Story.text} text-sm mb-1 uppercase tracking-widest flex items-center">PC1: ${pc1Story.factor} Factor</h4>
+                        <p class="text-xs text-slate-600 mb-4 pr-12 leading-relaxed font-medium">${pc1Story.desc}</p>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Primary Loading Drivers (Top 5)</span>
+                            <div class="flex flex-wrap gap-2 text-[10px] mt-1">${formatLoaders(pc1Loads)}</div>
+                        </div>
+                    </div>
+
+                    <!-- PC2 Card -->
+                    <div class="p-5 ${pc2Story.bg} rounded-2xl border ${pc2Story.border} shadow-sm relative overflow-hidden transition-all hover:shadow-md">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 text-5xl ${pc2Story.text}"><i class="fas ${pc2Story.icon}"></i></div>
+                        <h4 class="font-black ${pc2Story.text} text-sm mb-1 uppercase tracking-widest flex items-center">PC2: ${pc2Story.factor} Factor</h4>
+                        <p class="text-xs text-slate-600 mb-4 pr-12 leading-relaxed font-medium">${pc2Story.desc}</p>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Primary Loading Drivers (Top 5)</span>
+                            <div class="flex flex-wrap gap-2 text-[10px] mt-1">${formatLoaders(pc2Loads)}</div>
+                        </div>
+                    </div>
+
+                    <!-- PC3 Card -->
+                    ${pc3Loads ? `
+                    <div class="p-5 ${pc3Story.bg} rounded-2xl border ${pc3Story.border} shadow-sm relative overflow-hidden transition-all hover:shadow-md">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 text-5xl ${pc3Story.text}"><i class="fas ${pc3Story.icon}"></i></div>
+                        <h4 class="font-black ${pc3Story.text} text-sm mb-1 uppercase tracking-widest flex items-center">PC3: ${pc3Story.factor} Factor</h4>
+                        <p class="text-xs text-slate-600 mb-4 pr-12 leading-relaxed font-medium">${pc3Story.desc}</p>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Primary Loading Drivers (Top 5)</span>
+                            <div class="flex flex-wrap gap-2 text-[10px] mt-1">${formatLoaders(pc3Loads)}</div>
+                        </div>
+                    </div>` : ''}
+                </div>
+
+                <!-- NEW: Analytical Maps included in the Summary -->
+                <div class="report-section-title"><i class="fas fa-map mr-2 text-violet-500"></i> Analytical Maps (Principal Projections)</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-2 h-[350px]" id="summary-score-map"></div>
+                    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-2 h-[350px]" id="summary-biplot-map"></div>
+                </div>
+
+                <div class="report-section-title"><i class="fas fa-map-marked-alt mr-2 text-violet-500"></i> Sample Classification (Based on PC1 Scores)</div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div class="p-4 border-t-4 border-t-red-500 bg-white border border-slate-100 shadow-sm rounded-xl">
+                        <h5 class="font-black text-[10px] uppercase text-slate-800 mb-1">High Mineralization (Extreme PC1)</h5>
+                        <p class="text-[9px] text-slate-500 mb-3">Samples showing the strongest influence of the PC1 factor.</p>
+                        <div class="flex flex-wrap">${highMineralized.map(id => `<span class="sample-badge">${id}</span>`).join('')}</div>
+                    </div>
+                    <div class="p-4 border-t-4 border-t-blue-500 bg-white border border-slate-100 shadow-sm rounded-xl">
+                        <h5 class="font-black text-[10px] uppercase text-slate-800 mb-1">Moderate Signature</h5>
+                        <p class="text-[9px] text-slate-500 mb-3">Samples representing the average/median geochemical condition.</p>
+                        <div class="flex flex-wrap">${moderateMineralized.map(id => `<span class="sample-badge">${id}</span>`).join('')}</div>
+                    </div>
+                    <div class="p-4 border-t-4 border-t-emerald-500 bg-white border border-slate-100 shadow-sm rounded-xl">
+                        <h5 class="font-black text-[10px] uppercase text-slate-800 mb-1">Fresh / Low Mineralization</h5>
+                        <p class="text-[9px] text-slate-500 mb-3">Samples least affected by the dominant PC1 processes.</p>
+                        <div class="flex flex-wrap">${lowMineralized.map(id => `<span class="sample-badge">${id}</span>`).join('')}</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <div>
+                        <div class="report-section-title mt-0"><i class="fas fa-link mr-2 text-violet-500"></i> Critical Correlations</div>
+                        <div class="bg-slate-800 p-5 rounded-2xl text-slate-300 shadow-lg">
+                            <ul class="text-xs space-y-4">
+                                <li class="flex items-start gap-3">
+                                    <div class="mt-0.5 bg-slate-700 p-1.5 rounded text-indigo-300"><i class="fas fa-project-diagram"></i></div> 
+                                    <div><b class="text-white">${pc1Loads[0].name} & ${pc1Loads[1].name}:</b> The strongest paired drivers in PC1. Their synchronized fluctuation dictates the primary geochemical evolution in this area.</div>
+                                </li>
+                                ${pc2Loads[0].name === 'NO3' || pc2Loads[0].name === 'K' ? `
+                                <li class="flex items-start gap-3">
+                                    <div class="mt-0.5 bg-slate-700 p-1.5 rounded text-amber-300"><i class="fas fa-exclamation-triangle"></i></div> 
+                                    <div><b class="text-white">Surface Vulnerability:</b> The prominence of ${pc2Loads[0].name} in PC2 indicates localized, non-point source anthropogenic impacts bypassing natural filtration.</div>
+                                </li>` : ''}
+                                <li class="flex items-start gap-3">
+                                    <div class="mt-0.5 bg-slate-700 p-1.5 rounded text-emerald-300"><i class="fas fa-vector-square"></i></div> 
+                                    <div><b class="text-white">Spatial Grouping:</b> Samples plotted closely together in the Biplot possess nearly identical hydrochemical DNA, regardless of physical geographic distance.</div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="report-section-title mt-0"><i class="fas fa-flag-checkered mr-2 text-violet-500"></i> Executive Conclusion</div>
+                        <div class="bg-violet-50 p-5 rounded-2xl border border-violet-100 text-slate-700 h-full">
+                            <p class="text-xs leading-relaxed mb-3">The Principal Component Analysis successfully reduced the ${pcaResults.params.length}-dimensional dataset into manageable, independent controlling factors.</p>
+                            <ul class="list-none space-y-2 text-xs">
+                                <li class="flex items-center gap-2"><i class="fas fa-check-circle text-violet-500"></i> <span class="font-bold">Base Process:</span> PC1 confirms that <span class="text-violet-700 font-bold lowercase">${pc1Story.factor}</span> is the dominant control.</li>
+                                <li class="flex items-center gap-2"><i class="fas fa-check-circle text-violet-500"></i> <span class="font-bold">Secondary Impact:</span> PC2 highlights the role of <span class="text-violet-700 font-bold lowercase">${pc2Story.factor}</span>.</li>
+                                <li class="flex items-center gap-2"><i class="fas fa-check-circle text-violet-500"></i> <span class="font-bold">Recommendation:</span> Water management interventions in ${locName} should prioritize targeting the parameters heavily loaded in PC1.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                if (document.getElementById('summary-score-map')) {
+                    Highcharts.chart('summary-score-map', {
+                        chart: { type: 'scatter', zoomType: 'xy', backgroundColor: 'transparent' },
+                        title: { text: `Sample Score Map (PC1 vs PC2)`, style: { fontSize: '13px', fontWeight: 'bold' } },
+                        xAxis: { title: { text: `PC1 (${var1}%)` }, plotLines: [{ value: 0, width: 1, color: '#cbd5e1', dashStyle: 'dash' }] },
+                        yAxis: { title: { text: `PC2 (${var2}%)` }, plotLines: [{ value: 0, width: 1, color: '#cbd5e1', dashStyle: 'dash' }] },
+                        tooltip: { pointFormat: 'ID: <b>{point.name}</b><br>PC1: {point.x:.2f}<br>PC2: {point.y:.2f}' },
+                        series: [{ name: 'Samples', data: currentFilteredData.map(r => ({ x: r.PC1, y: r.PC2, name: r._sample_id })), color: 'rgba(124, 58, 237, 0.6)', marker: { radius: 4 } }],
+                        credits: { enabled: false }
+                    });
+                }
+
+                if (document.getElementById('summary-biplot-map')) {
+                    const loadingData = pcaResults.params.map((p, i) => ({
+                        name: p, x: pcaResults.eigenvectors[i][pcaResults.indices[0]], y: pcaResults.eigenvectors[i][pcaResults.indices[1]]
+                    }));
+                    const maxX = Math.max(...currentFilteredData.map(r => Math.abs(r.PC1 || 0)));
+                    const maxY = Math.max(...currentFilteredData.map(r => Math.abs(r.PC2 || 0)));
+                    const scale = Math.max(maxX, maxY) * 0.8 || 1;
+
+                    const biplotSeries = [{ 
+                        name: 'Samples', type: 'scatter', 
+                        data: currentFilteredData.map(r => ({ x: r.PC1, y: r.PC2, name: r._sample_id })), 
+                        color: 'rgba(148, 163, 184, 0.5)', marker: { radius: 3 }, 
+                        tooltip: { pointFormat: 'Sample: <b>{point.name}</b>' }
+                    }];
+                    loadingData.forEach(p => {
+                        biplotSeries.push({ 
+                            name: p.name, type: 'line', 
+                            data: [[0,0], [p.x * scale, p.y * scale]], 
+                            color: '#7c3aed', lineWidth: 2, marker: { enabled: false }, 
+                            tooltip: { pointFormat: 'Vector: <b>' + p.name + '</b>' },
+                            dataLabels: { enabled: true, formatter: function() { return this.point.index === 1 ? p.name : ''; }, style: { fontSize: '9px', color: '#4c1d95', fontWeight: 'bold' } } 
+                        });
+                    });
+
+                    Highcharts.chart('summary-biplot-map', {
+                        chart: { backgroundColor: 'transparent', zoomType: 'xy' },
+                        title: { text: `Biplot Vector Map`, style: { fontSize: '13px', fontWeight: 'bold' } },
+                        xAxis: { title: { text: 'PC1' }, plotLines: [{ value: 0, width: 1, color: '#cbd5e1' }] },
+                        yAxis: { title: { text: 'PC2' }, plotLines: [{ value: 0, width: 1, color: '#cbd5e1' }] },
+                        legend: { enabled: false },
+                        series: biplotSeries,
+                        credits: { enabled: false }
+                    });
+                }
+            }, 100);
+        }
+
+        function renderMethodologyData() {
+            const container = document.getElementById('methodologyResultsContainer');
+            container.innerHTML = `
+                <div class="p-5 h-full flex flex-col justify-center">
+                    <h3 class="font-black text-violet-800 mb-4 uppercase text-[10px] tracking-widest"><i class="fas fa-microchip mr-2"></i> Dynamic Statistical Output</h3>
+                    <div class="space-y-4">
+                        <div class="bg-white p-3 rounded text-xs border border-slate-200 shadow-sm">
+                            <p class="font-bold text-slate-500 uppercase mb-2 text-[9px]">Top Eigenvalues Computed</p>
+                            <p class="font-mono text-slate-700 font-bold">${pcaResults.eigenvalues.slice(0, 4).map(v => v.toFixed(3)).join(' &nbsp;|&nbsp; ')}</p>
+                        </div>
+                        <div class="bg-indigo-50 p-3 rounded text-xs border border-indigo-100 shadow-sm">
+                            <p class="font-bold text-indigo-500 uppercase mb-2 text-[9px]">Total Variance Captured</p>
+                            <p class="font-mono text-indigo-900 font-bold">First 2 PCs: ${(pcaResults.variance[0] + (pcaResults.variance[1] || 0)).toFixed(1)}%</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderLiveStepByStepMath(dataSubset, stats, stdMatrix) {
+            const container = document.getElementById('liveMathTraceContainer');
+            if (!pcaResults || !currentFilteredData.length) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            const displaySamples = currentFilteredData.slice(0, 10);
+            const displayParams = pcaResults.params; // ALL parameters included
+            const paramIndices = displayParams.map(p => pcaResults.params.indexOf(p));
+
+            let html = `
+                <div class="bg-slate-900 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-700 p-6 sm:p-8 relative overflow-hidden mt-2">
+                    <div class="absolute top-0 right-0 p-6 opacity-5 text-white text-9xl pointer-events-none"><i class="fas fa-subscript"></i></div>
+                    <h2 class="text-sm font-black text-white uppercase tracking-widest mb-2 flex items-center gap-2"><i class="fas fa-microscope text-violet-400"></i> Live Step-by-Step Calculation Trace</h2>
+                    <p class="text-[10px] text-slate-400 mb-6 max-w-2xl">Tracing the exact mathematics applied to the first <b>${displaySamples.length} samples</b> of your specific uploaded dataset. Showing calculations for <b>all selected parameters</b> (scroll tables horizontally to view all data).</p>
+            `;
+
+            // 1. Raw Data Matrix (X)
+            html += `
+                    <div class="mb-8">
+                        <h3 class="text-[11px] font-bold text-violet-300 mb-2 border-b border-slate-700 pb-1">STEP 1: Original Data Matrix (X)</h3>
+                        <div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left text-[10px] font-mono text-slate-300 whitespace-nowrap">
+                            <thead class="bg-slate-800 text-slate-200"><tr><th class="p-2">Sample ID</th>${displayParams.map(p => `<th class="p-2">${p}</th>`).join('')}</tr></thead>
+                            <tbody class="divide-y divide-slate-800/50">
+                                ${displaySamples.map(row => `<tr><td class="p-2 font-bold text-slate-500">${row._sample_id}</td>${displayParams.map(p => `<td class="p-2">${parseFloat(row[p]).toFixed(2)}</td>`).join('')}</tr>`).join('')}
+                            </tbody>
+                        </table></div>
+                    </div>
+            `;
+
+            // 2. Descriptive Statistics
+            html += `
+                    <div class="mb-8">
+                        <h3 class="text-[11px] font-bold text-blue-300 mb-2 border-b border-slate-700 pb-1">STEP 2: Descriptive Statistics (μ & σ)</h3>
+                        <div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left text-[10px] font-mono text-slate-300 whitespace-nowrap">
+                            <thead class="bg-slate-800 text-slate-200"><tr><th class="p-2">Statistic</th>${displayParams.map(p => `<th class="p-2">${p}</th>`).join('')}</tr></thead>
+                            <tbody class="divide-y divide-slate-800/50">
+                                <tr><td class="p-2 font-bold text-slate-500">Mean (μ)</td>${displayParams.map(p => { const s = stats.find(st=>st.p===p); return `<td class="p-2 text-blue-200">${s.mean.toFixed(3)}</td>`; }).join('')}</tr>
+                                <tr><td class="p-2 font-bold text-slate-500">Std Dev (σ)</td>${displayParams.map(p => { const s = stats.find(st=>st.p===p); return `<td class="p-2 text-blue-200">${s.std.toFixed(3)}</td>`; }).join('')}</tr>
+                            </tbody>
+                        </table></div>
+                    </div>
+            `;
+
+            // 3. Standardized Z-Scores
+            html += `
+                    <div class="mb-8">
+                        <h3 class="text-[11px] font-bold text-emerald-300 mb-2 border-b border-slate-700 pb-1">STEP 3: Standardized Data Matrix [ Z = (X - μ) / σ ]</h3>
+                        <div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left text-[10px] font-mono text-slate-300 whitespace-nowrap">
+                            <thead class="bg-slate-800 text-slate-200"><tr><th class="p-2">Sample ID</th>${displayParams.map(p => `<th class="p-2">Z(${p})</th>`).join('')}</tr></thead>
+                            <tbody class="divide-y divide-slate-800/50">
+                                ${displaySamples.map((row, i) => `<tr><td class="p-2 font-bold text-slate-500">${row._sample_id}</td>${paramIndices.map(pIdx => `<td class="p-2 ${stdMatrix[i][pIdx] >= 0 ? 'text-emerald-300' : 'text-rose-300'}">${stdMatrix[i][pIdx].toFixed(3)}</td>`).join('')}</tr>`).join('')}
+                            </tbody>
+                        </table></div>
+                    </div>
+            `;
+
+            // 4. Eigenvectors
+            html += `
+                    <div class="mb-8">
+                        <h3 class="text-[11px] font-bold text-amber-300 mb-2 border-b border-slate-700 pb-1">STEP 4: Extracted Eigenvectors (Parameter Weights)</h3>
+                        <div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left text-[10px] font-mono text-slate-300 whitespace-nowrap">
+                            <thead class="bg-slate-800 text-slate-200"><tr><th class="p-2">Parameter</th><th class="p-2">PC1 Weight</th><th class="p-2">PC2 Weight</th></tr></thead>
+                            <tbody class="divide-y divide-slate-800/50">
+                                ${displayParams.map((p, idx) => {
+                                    const actualPIdx = paramIndices[idx];
+                                    const pc1w = pcaResults.eigenvectors[actualPIdx][pcaResults.indices[0]];
+                                    const pc2w = pcaResults.eigenvectors[actualPIdx][pcaResults.indices[1]];
+                                    return `<tr>
+                                        <td class="p-2 font-bold text-slate-500">${p}</td>
+                                        <td class="p-2 ${pc1w >= 0 ? 'text-amber-200' : 'text-rose-300'}">${pc1w >= 0 ? '+' : ''}${pc1w.toFixed(4)}</td>
+                                        <td class="p-2 ${pc2w >= 0 ? 'text-amber-200' : 'text-rose-300'}">${pc2w >= 0 ? '+' : ''}${pc2w.toFixed(4)}</td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table></div>
+                    </div>
+            `;
+
+            // 5. Final Scores
+            html += `
+                    <div>
+                        <h3 class="text-[11px] font-bold text-fuchsia-300 mb-2 border-b border-slate-700 pb-1">STEP 5: Final Calculated PC Scores (Z Matrix × Eigenvectors)</h3>
+                        <div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left text-[10px] font-mono text-slate-300 whitespace-nowrap">
+                            <thead class="bg-slate-800 text-slate-200"><tr><th class="p-2">Sample ID</th><th class="p-2">PC1 Score</th><th class="p-2">PC2 Score</th></tr></thead>
+                            <tbody class="divide-y divide-slate-800/50">
+                                ${displaySamples.map(row => `<tr>
+                                    <td class="p-2 font-bold text-slate-500">${row._sample_id}</td>
+                                    <td class="p-2 font-black ${row.PC1 >= 0 ? 'text-fuchsia-300' : 'text-fuchsia-500'}">${row.PC1 >= 0 ? '+' : ''}${row.PC1.toFixed(4)}</td>
+                                    <td class="p-2 font-black ${row.PC2 >= 0 ? 'text-fuchsia-300' : 'text-fuchsia-500'}">${row.PC2 >= 0 ? '+' : ''}${row.PC2.toFixed(4)}</td>
+                                </tr>`).join('')}
+                            </tbody>
+                        </table></div>
+                        <p class="mt-4 text-[9px] font-bold text-slate-500 italic bg-slate-800/50 p-2 rounded"><i class="fas fa-info-circle mr-1 text-slate-400"></i> These final scores represent the exact geometric coordinates used to plot the samples on your PCA Maps in the Analytics tab.</p>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+            container.classList.remove('hidden');
+        }
+
+        document.getElementById('downloadBtn').onclick = async () => {
+            const btn = document.getElementById('downloadBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Exporting...';
+            
+            const wb = new ExcelJS.Workbook();
+            const ws = wb.addWorksheet("PCA_Subset_Results");
+            
+            let pcHeaders = [];
+            for(let i=0; i<pcaResults.variance.length; i++) pcHeaders.push(`PC${i+1}_Score`);
+
+            const headers = ['Sample_ID', 'State', 'District', 'Block', ...pcHeaders, ...pcaResults.params];
+            ws.addRow(headers);
+            
+            currentFilteredData.forEach(row => {
+                let pcValues = [];
+                for(let i=0; i<pcaResults.variance.length; i++) pcValues.push(row[`PC${i+1}`]);
+                ws.addRow([row._sample_id, row._state, row._district, row._block, ...pcValues, ...pcaResults.params.map(p => row[p])]);
+            });
+
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'PCA_Analysis_Subset_Complete.xlsx'; a.click();
+            btn.innerHTML = '<i class="fas fa-file-excel mr-2"></i>Download PCA Scores';
+        };
+
+        document.getElementById('templateBtn').onclick = () => {
+            const columns = ["Sample_ID", "State", "District", "Block", "pH", "TDS", "Alkalinity", "TH", "EC", "Cl", "NO3", "F", "Fe"];
+            const ws = XLSX.utils.aoa_to_sheet([columns]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Template");
+            XLSX.writeFile(wb, "PCA_Data_Template.xlsx");
+        };
+
+        function closeMappingModal() { document.getElementById('mappingModal').classList.add('hidden'); document.getElementById('mappingModal').classList.remove('flex'); }
+        function showAlert(type, title, message) {
+            const box = document.getElementById('alertBox');
+            box.classList.remove('hidden', 'border-red-500', 'border-amber-500');
+            box.classList.add(type === 'error' ? 'border-red-500' : 'border-amber-500');
+            document.getElementById('alertTitle').textContent = title;
+            document.getElementById('alertMessage').textContent = message;
+        }
+        function hideAlert() { document.getElementById('alertBox').classList.add('hidden'); }
+
+        initApp();
+    </script>
+</body>
+</html>
