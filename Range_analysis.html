@@ -11,6 +11,7 @@
     <!-- Highcharts for 3D Graphics and Exporting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/highcharts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/highcharts-3d.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/modules/cylinder.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/modules/exporting.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.0/modules/offline-exporting.min.js"></script>
     
@@ -237,6 +238,7 @@
             <button id="tab-btn-multi" onclick="switchTab('multi')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-slate-700 transition-all">All Parameters Dashboard</button>
             <button id="tab-btn-bar" onclick="switchTab('bar')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-slate-700 transition-all">Comparative Exceedance (Bar)</button>
             <button id="tab-btn-aisummary" onclick="switchTab('aisummary')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-indigo-600 transition-all flex items-center gap-1"><i data-lucide="sparkles" class="w-4 h-4"></i> Summary</button>
+            <button id="tab-btn-bulletin" onclick="switchTab('bulletin')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-indigo-600 transition-all flex items-center gap-1"><i data-lucide="file-text" class="w-4 h-4"></i> Bulletin Generator</button>
             <button id="tab-btn-about" onclick="switchTab('about')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-slate-700 transition-all">About Tool</button>
             <button id="tab-btn-guidelines" onclick="switchTab('guidelines')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-rose-600 transition-all flex items-center gap-1"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Data Guidelines</button>
         </div>
@@ -558,6 +560,69 @@
             </div>
         </div>
 
+        <!-- Tab Content: Bulletin Generator -->
+        <div id="view-bulletin" class="hidden">
+            <div class="glossy-panel p-6 rounded-3xl mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <h3 class="text-lg font-black text-slate-800 flex items-center gap-2 drop-shadow-sm">
+                        <i data-lucide="file-text" class="w-5 h-5 text-indigo-500"></i>
+                        Official Groundwater Quality Bulletin Generator
+                    </h3>
+                </div>
+                
+                <div class="bg-white/40 shadow-inner p-6 rounded-2xl mb-6 border border-white/60">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block drop-shadow-sm">1. Select Region</label>
+                            <select id="bulletinScope" onchange="renderBulletinPreview()" class="w-full glossy-input rounded-xl p-3 font-bold text-slate-700">
+                                <option value="National">National (All India)</option>
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block drop-shadow-sm">2. Season & Year Title</label>
+                            <input type="text" id="bulletinSeason" value="Pre-Monsoon 2025" oninput="renderBulletinPreview()" class="w-full glossy-input rounded-xl p-3 font-bold text-slate-700">
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block drop-shadow-sm">3. Select Parameters</label>
+                            <div class="relative" id="bulletinParamContainer">
+                                <button onclick="document.getElementById('bulletinParamDropdown').classList.toggle('hidden')" class="w-full glossy-input rounded-xl p-3 font-bold text-slate-700 flex justify-between items-center text-left">
+                                    <span id="bulletinParamDropdownText" class="truncate">All Parameters Selected</span>
+                                    <i data-lucide="chevron-down" class="w-4 h-4 ml-2 shrink-0"></i>
+                                </button>
+                                <div id="bulletinParamDropdown" class="hidden absolute top-full mt-2 w-full bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.2)] rounded-xl z-[100] max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <!-- Dynamic Checkboxes -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2 justify-end">
+                            <button onclick="downloadBulletinDocx()" class="glossy-btn-indigo px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 w-full">
+                                <i data-lucide="download-cloud" class="w-4 h-4"></i> Download DOCX
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Maps Upload Area (Dynamic based on selected parameters) -->
+                    <div id="bulletinMapUploadsContainer" style="display: none;" class="pt-4 border-t border-slate-200/50">
+                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-3 drop-shadow-sm">4. Upload Maps for Selected Parameters (Optional)</label>
+                        <div id="bulletinMapUploadsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <!-- dynamic inputs populated in JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bulletin Preview Container -->
+                <div class="bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-slate-200 overflow-y-auto max-h-[800px] custom-scrollbar text-black" style="font-family: 'Times New Roman', Times, serif;">
+                    <div id="bulletin-preview-content" class="max-w-4xl mx-auto space-y-6">
+                        <div class="flex flex-col items-center justify-center py-20 gap-4 opacity-60">
+                            <i data-lucide="file-text" class="w-16 h-16 text-slate-400"></i>
+                            <p class="font-bold text-slate-500 uppercase tracking-widest text-center" style="font-family: 'Plus Jakarta Sans', sans-serif;">Please upload and map data to generate the bulletin preview.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Tab Content: About Tool -->
         <div id="view-about" class="hidden">
             <div class="glossy-panel p-8 rounded-3xl mb-6 space-y-6">
@@ -709,7 +774,7 @@
             'Turbidity': { b1: 1, b2: 5, unit: 'NTU', name: 'Turbidity', keywords: ['turbidity'] },
             'Alkalinity': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Alkalinity', keywords: ['alkalinity', 'total alkalinity'] },
             'TH': { b1: 200, b2: 600, unit: 'mg/l as CaCO3', name: 'Total Hardness', keywords: ['th', 'total hardness', 'hardness'] },
-            'EC': { b1: 750, b2: 3000, unit: 'µS/cm at 25°C  ', name: 'Electrical Conductivity', keywords: ['ec', 'cond', 'conductivity', 'electrical conductivity'] },
+            'EC': { b1: 750, b2: 3000, unit: 'µS/cm at 25°C', name: 'Electrical Conductivity', keywords: ['ec', 'cond', 'conductivity', 'electrical conductivity'] },
             'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride', keywords: ['cl', 'chloride'] },
             'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate', keywords: ['no3', 'nitrate'] },
             'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride', keywords: ['f', 'fluoride'] },
@@ -739,6 +804,7 @@
         let headerMap = {}; // Maps Excel Header -> Config Key
         let chart = null;
         let uploadedHeaders = []; // Stores raw excel headers
+        let bulletinMaps = {}; // Stores user-uploaded map images as base64 mapped to configKeys
 
         window.onload = () => lucide.createIcons();
 
@@ -760,6 +826,12 @@
             const multiDropdown = document.getElementById('multiParamDropdown');
             if (multiDropContainer && multiDropdown && !multiDropContainer.contains(event.target)) {
                 multiDropdown.classList.add('hidden');
+            }
+
+            const bulletinDropContainer = document.getElementById('bulletinParamContainer');
+            const bulletinDropdown = document.getElementById('bulletinParamDropdown');
+            if (bulletinDropContainer && bulletinDropdown && !bulletinDropContainer.contains(event.target)) {
+                bulletinDropdown.classList.add('hidden');
             }
         });
 
@@ -1007,10 +1079,12 @@
             // Proceed with rendering the application
             initParamSelector();
             populateStateFilter();
+            populateBulletinStates(); 
             document.getElementById('visual-summary').classList.remove('hidden');
             updateReport();
             renderMultiDashboard();
             renderBarChart();
+            renderBulletinPreview(); 
             showToast("Data mapped & loaded successfully!", "success");
         }
 
@@ -1021,7 +1095,7 @@
         }
 
         function switchTab(activeTab) {
-            const tabs = ['single', 'multi', 'bar', 'aisummary', 'about', 'guidelines'];
+            const tabs = ['single', 'multi', 'bar', 'aisummary', 'about', 'guidelines', 'bulletin']; 
             tabs.forEach(tab => {
                 const btn = document.getElementById(`tab-btn-${tab}`);
                 const view = document.getElementById(`view-${tab}`);
@@ -1038,6 +1112,7 @@
 
             if (activeTab === 'multi') renderMultiDashboard();
             if (activeTab === 'bar') renderBarChart();
+            if (activeTab === 'bulletin') renderBulletinPreview(); 
             
             // Render icons for newly un-hidden tabs
             lucide.createIcons();
@@ -1162,6 +1237,23 @@
                 `).join('');
                 updateMultiParamText();
             }
+
+            // Bulletin Params
+            const bulletinDrop = document.getElementById('bulletinParamDropdown');
+            if (bulletinDrop) {
+                bulletinDrop.innerHTML = `
+                    <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer border-b border-slate-100 mb-1">
+                        <input type="checkbox" id="selectAllBulletinParams" checked onchange="toggleAllBulletinParams(this); renderBulletinPreview();" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                        <span class="text-xs font-black text-slate-700">Select All</span>
+                    </label>
+                ` + dataHeaders.params.map(p => `
+                    <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
+                        <input type="checkbox" value="${p}" checked onchange="updateBulletinParamText(); renderBulletinPreview();" class="bulletin-param-cb rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                        <span class="text-xs font-bold text-slate-600">${p}</span>
+                    </label>
+                `).join('');
+                updateBulletinParamText();
+            }
         }
 
         // --- Start Checkbox Handlers ---
@@ -1251,12 +1343,87 @@
                 if(selectAll) selectAll.checked = false;
             }
         }
+
+        function toggleAllBulletinParams(source) {
+            const cbs = document.querySelectorAll('.bulletin-param-cb');
+            cbs.forEach(cb => cb.checked = source.checked);
+            updateBulletinParamText();
+        }
+
+        function updateBulletinParamText() {
+            const cbs = document.querySelectorAll('.bulletin-param-cb');
+            const checked = Array.from(cbs).filter(cb => cb.checked);
+            const textEl = document.getElementById('bulletinParamDropdownText');
+            const selectAll = document.getElementById('selectAllBulletinParams');
+            
+            // Handle Map Uploads UI
+            const mapContainer = document.getElementById('bulletinMapUploadsContainer');
+            const mapGrid = document.getElementById('bulletinMapUploadsGrid');
+            
+            if (!textEl) return;
+
+            if (checked.length === cbs.length && cbs.length > 0) {
+                textEl.innerText = "All Parameters Selected";
+                if(selectAll) selectAll.checked = true;
+            } else if (checked.length === 0) {
+                textEl.innerText = "No Parameters Selected";
+                if(selectAll) selectAll.checked = false;
+            } else if (checked.length <= 2) {
+                textEl.innerText = checked.map(c => c.value).join(', ');
+                if(selectAll) selectAll.checked = false;
+            } else {
+                textEl.innerText = `${checked.length} Parameters Selected`;
+                if(selectAll) selectAll.checked = false;
+            }
+
+            // Update map uploads section
+            if (checked.length > 0 && mapContainer && mapGrid) {
+                mapContainer.style.display = 'block';
+                mapGrid.innerHTML = checked.map(cb => {
+                    const paramKey = headerMap[cb.value];
+                    const config = PARAM_CONFIG[paramKey];
+                    return `
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                            <span class="text-xs font-bold text-slate-700 block mb-2">${config.name} (${cb.value})</span>
+                            <input type="file" accept="image/*" class="text-xs w-full cursor-pointer file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" onchange="handleMapUpload(event, '${paramKey}')">
+                            ${bulletinMaps[paramKey] ? `<span class="text-[10px] text-emerald-600 font-bold mt-2 block flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> Image Uploaded</span>` : ''}
+                        </div>
+                    `;
+                }).join('');
+                lucide.createIcons();
+            } else if (mapContainer) {
+                mapContainer.style.display = 'none';
+            }
+        }
+
+        // Map Image Upload handler
+        function handleMapUpload(event, paramKey) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    bulletinMaps[paramKey] = e.target.result;
+                    renderBulletinPreview();
+                    updateBulletinParamText(); // Refresh the upload UI to show success checkmark
+                    showToast(`Map for ${paramKey} loaded successfully!`, "success");
+                };
+                reader.readAsDataURL(file);
+            }
+        }
         // --- End Checkbox Handlers ---
 
         function populateStateFilter() {
             const sel = document.getElementById('stateFilter');
             if (!sel) return;
             sel.innerHTML = '<option value="">All States</option>';
+            const states = [...new Set(rawData.map(d => String(d[dataHeaders.state] || '').trim()))].filter(v => v).sort();
+            states.forEach(v => sel.add(new Option(v, v)));
+        }
+
+        function populateBulletinStates() {
+            const sel = document.getElementById('bulletinScope');
+            if (!sel) return;
+            sel.innerHTML = '<option value="National">National (All India)</option>';
             const states = [...new Set(rawData.map(d => String(d[dataHeaders.state] || '').trim()))].filter(v => v).sort();
             states.forEach(v => sel.add(new Option(v, v)));
         }
@@ -2558,22 +2725,22 @@
                     let pct = (stats.fail / stats.total) * 100;
                     
                     if (pct === 0) buckets.noContam.push(rName);
-                    else if (pct < 1.0) buckets.lessThan1.push(`${rName} (${pct.toFixed(2)}%)`);
-                    else if (pct < 5.0) buckets.oneToFive.push(`${rName} (${pct.toFixed(1)}%)`);
-                    else if (pct < 10.0) buckets.fiveToTen.push(`${rName} (${pct.toFixed(1)}%)`);
-                    else if (pct < 15.0) buckets.tenToFifteen.push(`${rName} (${pct.toFixed(1)}%)`);
+                    else if (pct <= 5.0) buckets.lessThan1.push(`${rName} (${pct.toFixed(2)}%)`);
+                    else if (pct <= 10.0) buckets.oneToFive.push(`${rName} (${pct.toFixed(1)}%)`);
+                    else if (pct <= 15.0) buckets.fiveToTen.push(`${rName} (${pct.toFixed(1)}%)`);
+                    else if (pct <= 20.0) buckets.tenToFifteen.push(`${rName} (${pct.toFixed(1)}%)`);
                     else buckets.moreThan15.push(`${rName} (${pct.toFixed(1)}%)`);
                 }
 
                 regionalContaminationText = `\n${breakdownName}-wise Contamination Breakdown (% of samples exceeding permissible limits):
 - No Contamination (0%): ${buckets.noContam.join(', ') || 'None'}
-- Less than 1.0% Contamination: ${buckets.lessThan1.join(', ') || 'None'}
-- 1% to 5% Contamination: ${buckets.oneToFive.join(', ') || 'None'}
-- 5% to 10% Contamination: ${buckets.fiveToTen.join(', ') || 'None'}
-- 10% to 15% Contamination: ${buckets.tenToFifteen.join(', ') || 'None'}
-- More than 15% Contamination: ${buckets.moreThan15.join(', ') || 'None'}\n`;
+- >0% to 5% Contamination: ${buckets.lessThan1.join(', ') || 'None'}
+- >5% to 10% Contamination: ${buckets.oneToFive.join(', ') || 'None'}
+- >10% to 15% Contamination: ${buckets.fiveToTen.join(', ') || 'None'}
+- >15% to 20% Contamination: ${buckets.tenToFifteen.join(', ') || 'None'}
+- >20% Contamination: ${buckets.moreThan15.join(', ') || 'None'}\n`;
 
-                regionalContaminationInstruction = `\n4. **${breakdownName}-wise Contamination Breakdown:** Present a beautifully formatted HTML section or bulleted list detailing the ${breakdownName.toLowerCase()}s grouped by their contamination severity brackets (No Contamination, <1%, 1-5%, 5-10%, 10-15%, >15%) based strictly on the provided data breakdown.`;
+                regionalContaminationInstruction = `\n4. **${breakdownName}-wise Contamination Breakdown:** Present a beautifully formatted HTML section or bulleted list detailing the ${breakdownName.toLowerCase()}s grouped by their contamination severity brackets (0%, >0-5%, >5-10%, >10-15%, >15-20%, >20%) based strictly on the provided data breakdown. Make sure 0% regions are distinctly separated from regions with >0-5% contamination.`;
             }
 
             // Prompt Construction
@@ -2640,6 +2807,469 @@ IMPORTANT FORMATTING RULES:
                 generateBtn.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i> Generate Detailed Summary`;
                 lucide.createIcons();
             }
+        }
+
+        // ==========================================
+        // NEW OFFICIAL BULLETIN GENERATOR LOGIC
+        // ==========================================
+
+        function generateHighchartsSVG(title, dataPoints) {
+            if (!dataPoints || dataPoints.length === 0 || typeof Highcharts === 'undefined') return '';
+            
+            const container = document.createElement('div');
+            container.style.width = '700px';
+            container.style.height = '450px';
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            document.body.appendChild(container);
+
+            const chart = Highcharts.chart(container, {
+                chart: { 
+                    type: 'cylinder', 
+                    options3d: { 
+                        enabled: true, 
+                        alpha: 5, 
+                        beta: 15, 
+                        depth: 60, 
+                        viewDistance: 25,
+                        frame: {
+                            bottom: { size: 10, color: '#e0e0e0' }
+                        }
+                    }, 
+                    animation: false, 
+                    backgroundColor: '#ffffff',
+                    borderWidth: 2,
+                    borderColor: '#1e3a8a',
+                    marginTop: 80,
+                    marginBottom: 50
+                },
+                title: { 
+                    text: title, 
+                    style: { fontSize: '15pt', fontWeight: 'bold', color: '#1e3a8a', fontFamily: 'Arial, sans-serif' },
+                    y: 25
+                },
+                xAxis: { 
+                    categories: dataPoints.map(d => d.name), 
+                    labels: { style: { fontSize: '12pt', fontWeight: 'bold', color: '#1e3a8a' }, y: 25 },
+                    lineWidth: 0,
+                    tickWidth: 0,
+                    gridLineWidth: 0
+                },
+                yAxis: { 
+                    title: { text: '' }, 
+                    labels: { enabled: false }, 
+                    gridLineWidth: 0,
+                    max: Math.max(...dataPoints.map(d => d.y), 5) * 1.3 // Extra room for data labels
+                },
+                plotOptions: {
+                    cylinder: {
+                        depth: 45,
+                        color: '#4cb7e3', // The light cyan base color from the image
+                        dataLabels: { 
+                            enabled: true, 
+                            format: '{y:.2f}%', 
+                            style: { color: '#dc2626', fontSize: '12pt', textOutline: 'none', fontWeight: 'bold' },
+                            verticalAlign: 'bottom',
+                            y: -20,
+                            crop: false,
+                            overflow: 'none'
+                        }
+                    }
+                },
+                series: [{ name: 'Exceedance %', data: dataPoints.map(d => d.y), showInLegend: false }],
+                credits: { enabled: false }
+            });
+
+            const svg = chart.getSVG();
+            chart.destroy();
+            document.body.removeChild(container);
+            return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+        }
+
+        function getBulletinStats(paramKey, dataset) {
+            let total = 0;
+            let exceed = 0;
+            const config = PARAM_CONFIG[paramKey];
+            if (!config) return { total: 0, exceed: 0, pct: '0.00' };
+
+            // Find the actual mapped header name
+            const mappedHeader = Object.keys(headerMap).find(k => headerMap[k] === paramKey);
+            if (!mappedHeader) return { total: 0, exceed: 0, pct: '0.00' };
+
+            dataset.forEach(d => {
+                const val = parseFloat(d[mappedHeader]);
+                if (!isNaN(val)) {
+                    total++;
+                    // Exceedance threshold: Permissible Limit is generally b2 (or b1 if single limit)
+                    const limit = config.b1 === config.b2 ? config.b1 : config.b2;
+                    if (val > limit) {
+                        exceed++;
+                    }
+                }
+            });
+
+            const pct = total > 0 ? ((exceed / total) * 100).toFixed(2) : '0.00';
+            return { total, exceed, pct };
+        }
+
+        function generateBulletinTableHTML(paramKey, dataset, scopeName, breakdownLevel) {
+            const config = PARAM_CONFIG[paramKey];
+            const mappedHeader = Object.keys(headerMap).find(k => headerMap[k] === paramKey);
+            if (!mappedHeader || !config) return { html: `<p><em>Data for ${paramKey} is not mapped in the current dataset.</em></p>`, groupedData: {} };
+
+            const limit = config.b1 === config.b2 ? config.b1 : config.b2;
+            const limitUnit = `${limit} ${config.unit}`.trim();
+            const groupKey = breakdownLevel === 'State' ? dataHeaders.state : dataHeaders.district;
+
+            if (!groupKey) return { html: `<p><em>Geographical identifier (${breakdownLevel}) is not mapped. Cannot generate table.</em></p>`, groupedData: {} };
+
+            const groupedData = {};
+            dataset.forEach(d => {
+                const locName = String(d[groupKey] || 'Unknown').trim();
+                if (!groupedData[locName]) {
+                    groupedData[locName] = { total: 0, exceed: 0 };
+                }
+                const val = parseFloat(d[mappedHeader]);
+                if (!isNaN(val)) {
+                    groupedData[locName].total++;
+                    if (val > limit) groupedData[locName].exceed++;
+                }
+            });
+
+            // Convert to array and sort
+            const sortedGroups = Object.keys(groupedData).sort();
+            
+            let tableHTML = `
+                <table border="1" cellpadding="5" cellspacing="0" style="width: 100%; border-collapse: collapse; font-family: 'Times New Roman', Times, serif; font-size: 11pt; text-align: center; margin-bottom: 20px;">
+                    <thead style="background-color: #f1f5f9;">
+                        <tr>
+                            <th style="padding: 8px;">Sl. No.</th>
+                            <th style="padding: 8px; text-align: left;">${breakdownLevel}</th>
+                            <th style="padding: 8px;">No. of Samples Analysed</th>
+                            <th style="padding: 8px;">Samples Exceeding Limit (> ${limitUnit})</th>
+                            <th style="padding: 8px;">Exceedance %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            let globalTotal = 0;
+            let globalExceed = 0;
+            let index = 1;
+
+            sortedGroups.forEach(locName => {
+                if(locName === 'Unknown') return;
+                const stats = groupedData[locName];
+                if (stats.total === 0) return;
+
+                globalTotal += stats.total;
+                globalExceed += stats.exceed;
+                const pct = ((stats.exceed / stats.total) * 100).toFixed(2);
+
+                tableHTML += `
+                    <tr>
+                        <td style="padding: 6px;">${index++}</td>
+                        <td style="padding: 6px; text-align: left;">${locName}</td>
+                        <td style="padding: 6px;">${stats.total}</td>
+                        <td style="padding: 6px;">${stats.exceed}</td>
+                        <td style="padding: 6px;">${pct}</td>
+                    </tr>
+                `;
+            });
+
+            // Add Total Row
+            const globalPct = globalTotal > 0 ? ((globalExceed / globalTotal) * 100).toFixed(2) : '0.00';
+            tableHTML += `
+                    <tr style="font-weight: bold; background-color: #f8fafc;">
+                        <td colspan="2" style="padding: 6px; text-align: right;">Total</td>
+                        <td style="padding: 6px;">${globalTotal}</td>
+                        <td style="padding: 6px;">${globalExceed}</td>
+                        <td style="padding: 6px;">${globalPct}</td>
+                    </tr>
+                </tbody>
+            </table>
+            `;
+
+            return { html: tableHTML, groupedData: groupedData };
+        }
+
+        // Generates the 5-10 line categorization text dynamically based on table data
+        function getCategorizationText(groupedData, paramName, breakdownLevel) {
+            let buckets = {
+                '0%': [], '>0-5%': [], '>5-10%': [], '>10-15%': [], '>15-20%': [], '>20-30%': [], '>30-50%': [], '>50%': []
+            };
+            
+            let totalRegions = 0;
+            for (const loc in groupedData) {
+                if (loc === 'Unknown') continue;
+                const stats = groupedData[loc];
+                if (stats.total === 0) continue;
+                
+                totalRegions++;
+                const pct = (stats.exceed / stats.total) * 100;
+                
+                if (pct === 0) buckets['0%'].push(loc);
+                else if (pct <= 5) buckets['>0-5%'].push(loc);
+                else if (pct <= 10) buckets['>5-10%'].push(loc);
+                else if (pct <= 15) buckets['>10-15%'].push(loc);
+                else if (pct <= 20) buckets['>15-20%'].push(loc);
+                else if (pct <= 30) buckets['>20-30%'].push(loc);
+                else if (pct <= 50) buckets['>30-50%'].push(loc);
+                else buckets['>50%'].push(loc);
+            }
+
+            if(totalRegions === 0) return "";
+            
+            let lines = [];
+            lines.push(`An analysis of the ${breakdownLevel.toLowerCase()}-wise data for ${paramName} reveals distinct regional variations in exceedance levels across the ${totalRegions} monitored regions.`);
+            
+            if (buckets['0%'].length > 0) {
+                lines.push(`${buckets['0%'].length} regions reported highly compliant groundwater with exactly 0% exceedance; this includes ${buckets['0%'].join(', ')}.`);
+            }
+            if (buckets['>0-5%'].length > 0) {
+                lines.push(`Marginal exceedances (>0% to 5%) were observed in ${buckets['>0-5%'].length} regions: ${buckets['>0-5%'].join(', ')}.`);
+            }
+            if (buckets['>5-10%'].length > 0) {
+                lines.push(`Moderate exceedances (>5% to 10%) were observed in ${buckets['>5-10%'].join(', ')}.`);
+            }
+            if (buckets['>10-15%'].length > 0) {
+                lines.push(`Regions falling into the elevated >10-15% bracket include ${buckets['>10-15%'].join(', ')}.`);
+            }
+            if (buckets['>15-20%'].length > 0) {
+                lines.push(`Higher exceedance levels ranging from >15% to 20% were documented in ${buckets['>15-20%'].join(', ')}.`);
+            }
+            if (buckets['>20-30%'].length > 0) {
+                lines.push(`Notable concerns are present in regions with >20-30% exceedance, specifically ${buckets['>20-30%'].join(', ')}.`);
+            }
+            if (buckets['>30-50%'].length > 0) {
+                lines.push(`Severe contamination levels where >30% to 50% of the samples exceeded safe limits were found in ${buckets['>30-50%'].join(', ')}.`);
+            }
+            if (buckets['>50%'].length > 0) {
+                lines.push(`Critically high exceedances (>50%) were recorded in ${buckets['>50%'].join(', ')}, requiring immediate attention, targeted interventions, and long-term mitigation strategies.`);
+            }
+
+            return `<p style="text-align: justify; line-height: 1.6; margin-top: 15px; margin-bottom: 25px;">${lines.join(' ')}</p>`;
+        }
+
+        function renderBulletinPreview() {
+            if (!rawData || rawData.length === 0) return;
+
+            const scope = document.getElementById('bulletinScope').value;
+            const seasonYear = document.getElementById('bulletinSeason').value;
+            const container = document.getElementById('bulletin-preview-content');
+
+            const selectedBulletinParams = Array.from(document.querySelectorAll('.bulletin-param-cb:checked')).map(cb => cb.value);
+
+            if (selectedBulletinParams.length === 0) {
+                container.innerHTML = `<div class="flex flex-col items-center justify-center py-20 gap-4 opacity-60">
+                    <i data-lucide="alert-triangle" class="w-16 h-16 text-amber-400"></i>
+                    <p class="font-bold text-slate-500 uppercase tracking-widest text-center" style="font-family: 'Plus Jakarta Sans', sans-serif;">Please select at least one parameter for the bulletin.</p>
+                </div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            let filteredData = rawData;
+            let titleRegion = "INDIA";
+            let breakdownLevel = "State"; // For the tables
+
+            if (scope !== "National") {
+                // A specific state is selected
+                titleRegion = scope.toUpperCase();
+                breakdownLevel = "District";
+                filteredData = filteredData.filter(d => String(d[dataHeaders.state] || '').trim() === scope);
+            }
+
+            // Calculate overall stats
+            const totalSamples = filteredData.length;
+            
+            // Param Classifications for automated Charting
+            const basicParamsList = ['pH', 'TDS', 'Turbidity', 'Alkalinity', 'TH', 'EC', 'Cl', 'NO3', 'F', 'Ca', 'Mg', 'SO4'];
+            const heavyMetalsList = ['Fe', 'As', 'U', 'Zn', 'Cu', 'Pb', 'Cd', 'Cr', 'Hg', 'Ni', 'Se', 'Mn', 'Al', 'Ba', 'B', 'Mo'];
+
+            // Build Dynamic Summary List and Detailed Sections
+            let summaryListHTML = "";
+            let detailedSectionsHTML = "";
+            
+            let basicChartData = [];
+            let heavyChartData = [];
+
+            selectedBulletinParams.forEach((paramName, index) => {
+                const configKey = headerMap[paramName];
+                const config = PARAM_CONFIG[configKey];
+                if (!config) return;
+
+                const stats = getBulletinStats(configKey, filteredData);
+                
+                // Add to 3.0 Summary list
+                summaryListHTML += `<li style="margin-bottom: 8px;"><strong>${config.name} (${configKey})</strong> was found above the permissible limit in <strong>${stats.pct}%</strong> of samples.</li>`;
+
+                // Add to Chart Data Array based on param class
+                const chartDataPoint = { name: configKey, y: parseFloat(stats.pct) };
+                if (heavyMetalsList.includes(configKey)) {
+                    heavyChartData.push(chartDataPoint);
+                } else if (basicParamsList.includes(configKey)) {
+                    basicChartData.push(chartDataPoint);
+                }
+
+                // Build limits text for description
+                let limitText = "";
+                if (configKey === 'pH') {
+                    limitText = `${config.b1} to ${config.b2}`;
+                } else if (config.b1 === config.b2) {
+                    limitText = `≤ ${config.b1} ${config.unit}`;
+                } else {
+                    limitText = `≤ ${config.b2} ${config.unit}`;
+                }
+
+                // Default description
+                let paramDescription = `The ${breakdownLevel.toLowerCase()}-wise distribution of samples exceeding the permissible limit (${limitText}) for ${config.name} is presented below.`;
+                
+                // Standard descriptions derived from template
+                if (configKey === 'EC') paramDescription = `Electrical Conductivity (EC) refers to the ability of water to conduct electricity, which is influenced by the presence of dissolved substances. It serves as an indicator of the mineral content and salinity. The ${breakdownLevel.toLowerCase()}-wise distribution of samples exceeding the EC limit (>3000 µS/cm) is presented below.`;
+                if (configKey === 'F') paramDescription = `The primary contributors to fluoride contamination are geogenic sources, such as fluoride-rich soils and rocks. The ${breakdownLevel.toLowerCase()}-wise distribution of the samples exceeding the fluoride limit (> 1.5 mg/L) is presented below.`;
+                if (configKey === 'NO3') paramDescription = `Nitrate contamination in groundwater is a commonly observed water quality concern, particularly in areas influenced by agricultural activities and sanitation practices. The ${breakdownLevel.toLowerCase()}-wise distribution of samples exceeding the Nitrate limit (>45 mg/L) is presented below.`;
+                if (configKey === 'As') paramDescription = `Excessive and prolonged consumption of inorganic arsenic through drinking water is a major health concern. The ${breakdownLevel.toLowerCase()}-wise distribution of samples exceeding the Arsenic limit (>10 ppb) is presented below.`;
+                if (configKey === 'Fe') paramDescription = `Iron is a naturally occurring element commonly found in groundwater. While not harmful to health at low levels, high concentrations can cause aesthetic issues. The ${breakdownLevel.toLowerCase()}-wise distribution of samples exceeding the Fe limit (>1.0 mg/L) is presented below.`;
+                if (configKey === 'U') paramDescription = `Uranium is a naturally occurring element that can be found in trace amounts in rocks, soil, and groundwater. Elevated concentrations in drinking water sources may pose potential health concerns. The ${breakdownLevel.toLowerCase()}-wise distribution of samples exceeding the Uranium limit is presented below.`;
+
+                // Get table and grouped data
+                const tableInfo = generateBulletinTableHTML(configKey, filteredData, scope, breakdownLevel);
+                
+                // Generate automated categorization text
+                const categorizationText = getCategorizationText(tableInfo.groupedData, config.name, breakdownLevel);
+
+                // Include uploaded map if available
+                let mapHTML = "";
+                if (bulletinMaps[configKey]) {
+                    mapHTML = `
+                        <div style="text-align: center; margin-top: 25px; margin-bottom: 25px; break-inside: avoid;">
+                            <img src="${bulletinMaps[configKey]}" style="width: 100%; max-width: 600px; height: auto; border: 1px solid #ccc; border-radius: 4px;" alt="Map for ${config.name}" />
+                            <p style="text-align: center; font-style: italic; font-size: 10pt; margin-top: 8px; font-family: 'Times New Roman', Times, serif;">Figure: Spatial Distribution of ${config.name} in ${titleRegion}</p>
+                        </div>
+                    `;
+                }
+
+                // Add to 4.0 Detailed Sections
+                detailedSectionsHTML += `
+                    <div style="break-inside: auto;">
+                        <h4 style="font-size: 12pt; font-weight: bold; margin-top: 25px;">4.${index + 1} ${config.name} (${configKey})</h4>
+                        <p style="text-align: justify; line-height: 1.6; margin-bottom: 15px;">
+                            ${paramDescription}
+                        </p>
+                        ${tableInfo.html}
+                        ${categorizationText}
+                        ${mapHTML}
+                    </div>
+                `;
+            });
+
+            // Generate SVGs for 3.0 section
+            const chartTitleBase = `Beyond Permissible Limit(BIS,10500)<br>${seasonYear}(n=${totalSamples})`;
+            const basicChartSVG = generateHighchartsSVG(chartTitleBase, basicChartData);
+            const heavyChartSVG = generateHighchartsSVG(chartTitleBase, heavyChartData);
+
+            let chartsHTML = "";
+            if (basicChartSVG) {
+                chartsHTML += `<div style="text-align: center; margin-top: 25px; margin-bottom: 25px; break-inside: avoid;">
+                    <img src="${basicChartSVG}" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; padding: 10px;" alt="Basic Parameters Chart" />
+                    <p style="text-align: center; font-style: italic; font-size: 10pt; margin-top: 8px;">Figure: Percentage of Groundwater samples beyond permissible limit (Basic Parameters)</p>
+                </div>`;
+            }
+            if (heavyChartSVG) {
+                chartsHTML += `<div style="text-align: center; margin-top: 25px; margin-bottom: 25px; break-inside: avoid;">
+                    <img src="${heavyChartSVG}" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; padding: 10px;" alt="Heavy Metals Chart" />
+                    <p style="text-align: center; font-style: italic; font-size: 10pt; margin-top: 8px;">Figure: Percentage of Groundwater samples beyond permissible limit (Trace & Heavy Metals)</p>
+                </div>`;
+            }
+
+            let contentHTML = `
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="font-size: 24pt; font-weight: bold; color: #1e3a8a; margin-bottom: 5px;">GROUNDWATER QUALITY BULLETIN OF ${titleRegion}</h1>
+                    <h2 style="font-size: 18pt; font-weight: normal; color: #0284c7;">${seasonYear}</h2>
+                </div>
+
+                <h3 style="font-size: 14pt; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 4px;">1.0 Introduction</h3>
+                <p style="text-align: justify; line-height: 1.6; margin-bottom: 15px;">
+                    All water contains some dissolved substances, regardless of its source. Even rainwater, which is often thought to be pure, contains small amounts of dissolved gases and minerals. As water moves through the natural water cycle, it comes into contact with air, soil, and rocks, picking up various substances from both natural processes and human activities.
+                </p>
+                <p style="text-align: justify; line-height: 1.6; margin-bottom: 15px;">
+                    Evaluation of water quality involves assessing the presence and concentration of various physical and chemical constituents in groundwater to determine its suitability for intended uses such as drinking, agriculture, and industrial applications. 
+                </p>
+                <p style="text-align: justify; line-height: 1.6; margin-bottom: 15px;">
+                    The present bulletin utilizes a dataset comprising <strong>around ${totalSamples} water samples</strong>. This sample size enhances spatial coverage and improves the statistical robustness of the assessment, thereby providing a reliable and representative evaluation of groundwater quality across the region.
+                </p>
+
+                <h3 style="font-size: 14pt; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 25px;">2.0 Objectives of the ${seasonYear} Groundwater Quality Monitoring</h3>
+                <p style="text-align: justify; line-height: 1.6; margin-bottom: 15px;">
+                    The primary objective of this groundwater quality monitoring is to assess the status of groundwater quality across ${titleRegion === 'INDIA' ? 'India' : titleRegion} during the ${seasonYear} period, providing a comprehensive baseline for understanding spatial variability and supporting long-term monitoring of groundwater resources.
+                </p>
+
+                <h3 style="font-size: 14pt; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 25px;">3.0 Groundwater Quality Scenario in ${titleRegion === 'INDIA' ? 'India' : titleRegion} – ${seasonYear}</h3>
+                <p style="text-align: justify; line-height: 1.6; margin-bottom: 15px;">
+                    The groundwater quality assessment carried out for the ${seasonYear} period, based on the data analysis of <strong>${totalSamples} samples</strong>, indicates that most groundwater sources are within the permissible limits prescribed by BIS (IS 10500:2012). However, certain parameters were observed to exceed the permissible limits.
+                </p>
+                <ul style="line-height: 1.6; margin-bottom: 20px;">
+                    ${summaryListHTML}
+                </ul>
+                
+                ${chartsHTML}
+
+                <h3 style="font-size: 14pt; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 25px;">4.0 Selected Water Quality Parameters</h3>
+                ${detailedSectionsHTML}
+
+                <h3 style="font-size: 14pt; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 30px;">5.0 Summary</h3>
+                <p style="text-align: justify; line-height: 1.6; margin-bottom: 15px;">
+                    The assessment of groundwater quality indicates that most parameters are within permissible limits, with exceedances observed only in a proportion of samples and varying across regions.
+                    Continued monitoring, identification of vulnerable areas, and adoption of appropriate management and mitigation measures are important to ensure sustainable and safe use of groundwater resources.
+                </p>
+            `;
+
+            container.innerHTML = contentHTML;
+        }
+
+        function downloadBulletinDocx() {
+            const seasonYear = document.getElementById('bulletinSeason').value.replace(/\s+/g, '_');
+            const scope = document.getElementById('bulletinScope').value.replace(/\s+/g, '_');
+            const previewContent = document.getElementById('bulletin-preview-content').innerHTML;
+            
+            if (!previewContent || previewContent.includes('Please upload and map data')) {
+                showToast("Generate the bulletin preview first before downloading.", "error");
+                return;
+            }
+
+            // Word-compatible HTML Document Wrapper
+            const header = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='[http://www.w3.org/TR/REC-html40](http://www.w3.org/TR/REC-html40)'>
+                <head>
+                    <meta charset='utf-8'>
+                    <title>Groundwater Quality Bulletin</title>
+                    <style>
+                        body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; }
+                        h1, h2, h3, h4 { color: #1e3a8a; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
+                        th, td { border: 1pt solid #000000; padding: 5px; text-align: center; }
+                        th { background-color: #f2f2f2; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+            `;
+            const footer = "</body></html>";
+            
+            const html = header + previewContent + footer;
+            
+            // Create Blob and Download
+            const blob = new Blob(['\ufeff', html], { type: 'application/msword' }); // \ufeff is the BOM for UTF-8
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `GW_Quality_Bulletin_${scope}_${seasonYear}.doc`; // Use .doc to ensure legacy MS word compat with pure HTML
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast("DOCX Report downloaded successfully!", "success");
         }
     </script>
 </body>
