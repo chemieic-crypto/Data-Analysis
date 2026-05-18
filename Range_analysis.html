@@ -2810,80 +2810,101 @@ IMPORTANT FORMATTING RULES:
         }
 
         // ==========================================
-        // NEW OFFICIAL BULLETIN GENERATOR LOGIC
+        // OFFICIAL BULLETIN GENERATOR LOGIC
         // ==========================================
 
-        function generateHighchartsSVG(title, dataPoints) {
+        // Reliable method to convert Highcharts SVG to PNG Base64 for MS Word compatibility
+        async function generateHighchartsImage(title, dataPoints) {
             if (!dataPoints || dataPoints.length === 0 || typeof Highcharts === 'undefined') return '';
             
-            const container = document.createElement('div');
-            container.style.width = '700px';
-            container.style.height = '450px';
-            container.style.position = 'absolute';
-            container.style.left = '-9999px';
-            document.body.appendChild(container);
+            return new Promise((resolve) => {
+                const container = document.createElement('div');
+                container.style.width = '700px';
+                container.style.height = '450px';
+                container.style.position = 'absolute';
+                container.style.left = '-9999px';
+                document.body.appendChild(container);
 
-            const chart = Highcharts.chart(container, {
-                chart: { 
-                    type: 'cylinder', 
-                    options3d: { 
-                        enabled: true, 
-                        alpha: 5, 
-                        beta: 15, 
-                        depth: 60, 
-                        viewDistance: 25,
-                        frame: {
-                            bottom: { size: 10, color: '#e0e0e0' }
-                        }
-                    }, 
-                    animation: false, 
-                    backgroundColor: '#ffffff',
-                    borderWidth: 2,
-                    borderColor: '#1e3a8a',
-                    marginTop: 80,
-                    marginBottom: 50
-                },
-                title: { 
-                    text: title, 
-                    style: { fontSize: '15pt', fontWeight: 'bold', color: '#1e3a8a', fontFamily: 'Arial, sans-serif' },
-                    y: 25
-                },
-                xAxis: { 
-                    categories: dataPoints.map(d => d.name), 
-                    labels: { style: { fontSize: '12pt', fontWeight: 'bold', color: '#1e3a8a' }, y: 25 },
-                    lineWidth: 0,
-                    tickWidth: 0,
-                    gridLineWidth: 0
-                },
-                yAxis: { 
-                    title: { text: '' }, 
-                    labels: { enabled: false }, 
-                    gridLineWidth: 0,
-                    max: Math.max(...dataPoints.map(d => d.y), 5) * 1.3 // Extra room for data labels
-                },
-                plotOptions: {
-                    cylinder: {
-                        depth: 45,
-                        color: '#4cb7e3', // The light cyan base color from the image
-                        dataLabels: { 
+                const chart = Highcharts.chart(container, {
+                    chart: { 
+                        type: 'cylinder', 
+                        options3d: { 
                             enabled: true, 
-                            format: '{y:.2f}%', 
-                            style: { color: '#dc2626', fontSize: '12pt', textOutline: 'none', fontWeight: 'bold' },
-                            verticalAlign: 'bottom',
-                            y: -20,
-                            crop: false,
-                            overflow: 'none'
+                            alpha: 5, 
+                            beta: 15, 
+                            depth: 60, 
+                            viewDistance: 25,
+                            frame: {
+                                bottom: { size: 10, color: '#e0e0e0' }
+                            }
+                        }, 
+                        animation: false, 
+                        backgroundColor: '#ffffff',
+                        borderWidth: 2,
+                        borderColor: '#1e3a8a',
+                        marginTop: 80,
+                        marginBottom: 50
+                    },
+                    title: { 
+                        text: title, 
+                        style: { fontSize: '15pt', fontWeight: 'bold', color: '#1e3a8a', fontFamily: 'Arial, sans-serif' },
+                        y: 25
+                    },
+                    xAxis: { 
+                        categories: dataPoints.map(d => d.name), 
+                        labels: { style: { fontSize: '12pt', fontWeight: 'bold', color: '#1e3a8a' }, y: 25 },
+                        lineWidth: 0,
+                        tickWidth: 0,
+                        gridLineWidth: 0
+                    },
+                    yAxis: { 
+                        title: { text: '' }, 
+                        labels: { enabled: false }, 
+                        gridLineWidth: 0,
+                        max: Math.max(...dataPoints.map(d => d.y), 5) * 1.3 // Extra room for data labels
+                    },
+                    plotOptions: {
+                        cylinder: {
+                            depth: 45,
+                            color: '#4cb7e3', // The light cyan base color from the image
+                            dataLabels: { 
+                                enabled: true, 
+                                format: '{y:.2f}%', 
+                                style: { color: '#dc2626', fontSize: '12pt', textOutline: 'none', fontWeight: 'bold' },
+                                verticalAlign: 'bottom',
+                                y: -20,
+                                crop: false,
+                                overflow: 'none'
+                            }
                         }
-                    }
-                },
-                series: [{ name: 'Exceedance %', data: dataPoints.map(d => d.y), showInLegend: false }],
-                credits: { enabled: false }
-            });
+                    },
+                    series: [{ name: 'Exceedance %', data: dataPoints.map(d => d.y), showInLegend: false }],
+                    credits: { enabled: false }
+                });
 
-            const svg = chart.getSVG();
-            chart.destroy();
-            document.body.removeChild(container);
-            return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+                const svg = chart.getSVG();
+                chart.destroy();
+                document.body.removeChild(container);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = 700;
+                canvas.height = 450;
+                const ctx = canvas.getContext('2d');
+                
+                const img = new Image();
+                img.onload = function() {
+                    ctx.fillStyle = '#ffffff'; // Ensure white background
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.onerror = function() {
+                    console.error("PNG conversion failed, falling back to SVG");
+                    resolve('data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))));
+                };
+                // Highcharts getSVG provides valid XML
+                img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+            });
         }
 
         function getBulletinStats(paramKey, dataset) {
@@ -2943,11 +2964,11 @@ IMPORTANT FORMATTING RULES:
                 <table border="1" cellpadding="5" cellspacing="0" style="width: 100%; border-collapse: collapse; font-family: 'Times New Roman', Times, serif; font-size: 11pt; text-align: center; margin-bottom: 20px;">
                     <thead style="background-color: #f1f5f9;">
                         <tr>
-                            <th style="padding: 8px;">Sl. No.</th>
-                            <th style="padding: 8px; text-align: left;">${breakdownLevel}</th>
-                            <th style="padding: 8px;">No. of Samples Analysed</th>
-                            <th style="padding: 8px;">Samples Exceeding Limit (> ${limitUnit})</th>
-                            <th style="padding: 8px;">Exceedance %</th>
+                            <th style="padding: 8px; border: 1px solid #000;">Sl. No.</th>
+                            <th style="padding: 8px; border: 1px solid #000; text-align: left;">${breakdownLevel}</th>
+                            <th style="padding: 8px; border: 1px solid #000;">No. of Samples Analysed</th>
+                            <th style="padding: 8px; border: 1px solid #000;">Samples Exceeding Limit (> ${limitUnit})</th>
+                            <th style="padding: 8px; border: 1px solid #000;">Exceedance %</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2968,11 +2989,11 @@ IMPORTANT FORMATTING RULES:
 
                 tableHTML += `
                     <tr>
-                        <td style="padding: 6px;">${index++}</td>
-                        <td style="padding: 6px; text-align: left;">${locName}</td>
-                        <td style="padding: 6px;">${stats.total}</td>
-                        <td style="padding: 6px;">${stats.exceed}</td>
-                        <td style="padding: 6px;">${pct}</td>
+                        <td style="padding: 6px; border: 1px solid #000;">${index++}</td>
+                        <td style="padding: 6px; border: 1px solid #000; text-align: left;">${locName}</td>
+                        <td style="padding: 6px; border: 1px solid #000;">${stats.total}</td>
+                        <td style="padding: 6px; border: 1px solid #000;">${stats.exceed}</td>
+                        <td style="padding: 6px; border: 1px solid #000;">${pct}</td>
                     </tr>
                 `;
             });
@@ -2981,10 +3002,10 @@ IMPORTANT FORMATTING RULES:
             const globalPct = globalTotal > 0 ? ((globalExceed / globalTotal) * 100).toFixed(2) : '0.00';
             tableHTML += `
                     <tr style="font-weight: bold; background-color: #f8fafc;">
-                        <td colspan="2" style="padding: 6px; text-align: right;">Total</td>
-                        <td style="padding: 6px;">${globalTotal}</td>
-                        <td style="padding: 6px;">${globalExceed}</td>
-                        <td style="padding: 6px;">${globalPct}</td>
+                        <td colspan="2" style="padding: 6px; border: 1px solid #000; text-align: right;">Total</td>
+                        <td style="padding: 6px; border: 1px solid #000;">${globalTotal}</td>
+                        <td style="padding: 6px; border: 1px solid #000;">${globalExceed}</td>
+                        <td style="padding: 6px; border: 1px solid #000;">${globalPct}</td>
                     </tr>
                 </tbody>
             </table>
@@ -3051,7 +3072,7 @@ IMPORTANT FORMATTING RULES:
             return `<p style="text-align: justify; line-height: 1.6; margin-top: 15px; margin-bottom: 25px;">${lines.join(' ')}</p>`;
         }
 
-        function renderBulletinPreview() {
+        async function renderBulletinPreview() {
             if (!rawData || rawData.length === 0) return;
 
             const scope = document.getElementById('bulletinScope').value;
@@ -3144,7 +3165,7 @@ IMPORTANT FORMATTING RULES:
                 if (bulletinMaps[configKey]) {
                     mapHTML = `
                         <div style="text-align: center; margin-top: 25px; margin-bottom: 25px; break-inside: avoid;">
-                            <img src="${bulletinMaps[configKey]}" style="width: 100%; max-width: 600px; height: auto; border: 1px solid #ccc; border-radius: 4px;" alt="Map for ${config.name}" />
+                            <img src="${bulletinMaps[configKey]}" width="600" style="max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 4px;" alt="Map for ${config.name}" />
                             <p style="text-align: center; font-style: italic; font-size: 10pt; margin-top: 8px; font-family: 'Times New Roman', Times, serif;">Figure: Spatial Distribution of ${config.name} in ${titleRegion}</p>
                         </div>
                     `;
@@ -3164,21 +3185,21 @@ IMPORTANT FORMATTING RULES:
                 `;
             });
 
-            // Generate SVGs for 3.0 section
+            // Generate PNG images for 3.0 section so they export to MS Word seamlessly
             const chartTitleBase = `Beyond Permissible Limit(BIS,10500)<br>${seasonYear}(n=${totalSamples})`;
-            const basicChartSVG = generateHighchartsSVG(chartTitleBase, basicChartData);
-            const heavyChartSVG = generateHighchartsSVG(chartTitleBase, heavyChartData);
+            const basicChartImage = await generateHighchartsImage(chartTitleBase, basicChartData);
+            const heavyChartImage = await generateHighchartsImage(chartTitleBase, heavyChartData);
 
             let chartsHTML = "";
-            if (basicChartSVG) {
+            if (basicChartImage) {
                 chartsHTML += `<div style="text-align: center; margin-top: 25px; margin-bottom: 25px; break-inside: avoid;">
-                    <img src="${basicChartSVG}" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; padding: 10px;" alt="Basic Parameters Chart" />
+                    <img src="${basicChartImage}" width="600" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; padding: 10px;" alt="Basic Parameters Chart" />
                     <p style="text-align: center; font-style: italic; font-size: 10pt; margin-top: 8px;">Figure: Percentage of Groundwater samples beyond permissible limit (Basic Parameters)</p>
                 </div>`;
             }
-            if (heavyChartSVG) {
+            if (heavyChartImage) {
                 chartsHTML += `<div style="text-align: center; margin-top: 25px; margin-bottom: 25px; break-inside: avoid;">
-                    <img src="${heavyChartSVG}" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; padding: 10px;" alt="Heavy Metals Chart" />
+                    <img src="${heavyChartImage}" width="600" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; padding: 10px;" alt="Heavy Metals Chart" />
                     <p style="text-align: center; font-style: italic; font-size: 10pt; margin-top: 8px;">Figure: Percentage of Groundwater samples beyond permissible limit (Trace & Heavy Metals)</p>
                 </div>`;
             }
@@ -3231,39 +3252,84 @@ IMPORTANT FORMATTING RULES:
         function downloadBulletinDocx() {
             const seasonYear = document.getElementById('bulletinSeason').value.replace(/\s+/g, '_');
             const scope = document.getElementById('bulletinScope').value.replace(/\s+/g, '_');
-            const previewContent = document.getElementById('bulletin-preview-content').innerHTML;
+            const previewContainer = document.getElementById('bulletin-preview-content');
             
-            if (!previewContent || previewContent.includes('Please upload and map data')) {
+            if (!previewContainer || previewContainer.innerHTML.includes('Please upload and map data')) {
                 showToast("Generate the bulletin preview first before downloading.", "error");
                 return;
             }
 
-            // Word-compatible HTML Document Wrapper
-            const header = `
-                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='[http://www.w3.org/TR/REC-html40](http://www.w3.org/TR/REC-html40)'>
-                <head>
-                    <meta charset='utf-8'>
-                    <title>Groundwater Quality Bulletin</title>
-                    <style>
-                        body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; }
-                        h1, h2, h3, h4 { color: #1e3a8a; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
-                        th, td { border: 1pt solid #000000; padding: 5px; text-align: center; }
-                        th { background-color: #f2f2f2; font-weight: bold; }
-                    </style>
-                </head>
-                <body>
-            `;
-            const footer = "</body></html>";
+            // Clone the preview content so we don't modify the actual UI
+            const clonedContent = previewContainer.cloneNode(true);
+            const images = clonedContent.getElementsByTagName('img');
             
-            const html = header + previewContent + footer;
+            let imageParts = '';
             
-            // Create Blob and Download
-            const blob = new Blob(['\ufeff', html], { type: 'application/msword' }); // \ufeff is the BOM for UTF-8
+            for (let i = 0; i < images.length; i++) {
+                const img = images[i];
+                const src = img.src;
+                
+                if (src.startsWith('data:image')) {
+                    // Match mime type and base64 payload robustly
+                    const match = src.match(/^data:(image\/[^;]+);base64,(.*)$/);
+                    if (match) {
+                        const mimeType = match[1];
+                        const base64Data = match[2];
+                        const extension = mimeType.split('/')[1].replace('+xml', '') || 'png';
+                        const imageName = `image_${i}.${extension}`;
+                        
+                        // Replace src in cloned HTML to point to Content-Location
+                        img.src = imageName;
+                        
+                        // Add to MIME parts
+                        imageParts += `
+------=_NextPart_dummy
+Content-Type: ${mimeType}
+Content-Transfer-Encoding: base64
+Content-Location: ${imageName}
+
+${base64Data}
+`;
+                    }
+                }
+            }
+
+            const finalHtml = clonedContent.innerHTML;
+
+            // Word-compatible MHTML Document Wrapper
+            const mhtml = `MIME-Version: 1.0
+Content-Type: multipart/related; boundary="----=_NextPart_dummy"
+
+------=_NextPart_dummy
+Content-Type: text/html; charset="utf-8"
+Content-Location: document.html
+
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='[http://www.w3.org/TR/REC-html40](http://www.w3.org/TR/REC-html40)'>
+<head>
+<meta charset='utf-8'>
+<title>Groundwater Quality Bulletin</title>
+<style>
+body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; }
+h1, h2, h3, h4 { color: #1e3a8a; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
+th, td { border: 1pt solid #000000; padding: 5px; text-align: center; }
+th { background-color: #f2f2f2; font-weight: bold; }
+</style>
+</head>
+<body>
+${finalHtml}
+</body>
+</html>
+${imageParts}
+------=_NextPart_dummy--
+`;
+            
+            // Create Blob and Download as .doc
+            const blob = new Blob([mhtml], { type: 'application/msword' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `GW_Quality_Bulletin_${scope}_${seasonYear}.doc`; // Use .doc to ensure legacy MS word compat with pure HTML
+            link.download = `GW_Quality_Bulletin_${scope}_${seasonYear}.doc`;
             
             document.body.appendChild(link);
             link.click();
