@@ -122,7 +122,7 @@
             width: 100%;
         }
 
-        /* Background Themes */
+        /* Background Themes Overhauled for Glossy Look */
         .theme-white { background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240,245,250,0.8)) !important; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.6) !important; box-shadow: -5px -5px 15px rgba(255,255,255,0.8), 5px 5px 20px rgba(148, 163, 184, 0.2), inset 1px 1px 2px rgba(255,255,255,1) !important; }
         .theme-slate { background: linear-gradient(135deg, rgba(248,250,252,0.9) 0%, rgba(203,213,225,0.8) 100%) !important; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.4) !important; box-shadow: inset 1px 1px 3px rgba(255,255,255,0.8), 5px 5px 15px rgba(0,0,0,0.1) !important; }
         .theme-dark { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: inset 1px 1px 2px rgba(255,255,255,0.1), 5px 5px 20px rgba(0,0,0,0.5) !important; }
@@ -238,7 +238,7 @@
             <button id="tab-btn-master" onclick="switchTab('master')" class="whitespace-nowrap px-6 py-3 font-black text-white bg-gradient-to-r from-amber-500 to-orange-500 rounded-t-xl shadow-[0_-2px_10px_rgba(245,158,11,0.3)] transition-all hover:brightness-110 flex items-center gap-2"><i data-lucide="table-2" class="w-4 h-4 text-white"></i> Master Summary</button>
             <button id="tab-btn-multi" onclick="switchTab('multi')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-slate-700 transition-all">All Parameters Dashboard</button>
             <button id="tab-btn-bar" onclick="switchTab('bar')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-slate-700 transition-all">Comparative Exceedance (Bar)</button>
-            <button id="tab-btn-aisummary" onclick="switchTab('aisummary')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-indigo-600 transition-all flex items-center gap-1"><i data-lucide="sparkles" class="w-4 h-4"></i> Summary</button>
+            <button id="tab-btn-aisummary" onclick="switchTab('aisummary')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-indigo-600 transition-all flex items-center gap-1"><i data-lucide="layout-template" class="w-4 h-4"></i> District Pamphlet</button>
             <button id="tab-btn-bulletin" onclick="switchTab('bulletin')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-indigo-600 transition-all flex items-center gap-1"><i data-lucide="file-text" class="w-4 h-4"></i> Bulletin Generator</button>
             <button id="tab-btn-about" onclick="switchTab('about')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-slate-700 transition-all">About Tool</button>
             <button id="tab-btn-guidelines" onclick="switchTab('guidelines')" class="whitespace-nowrap px-6 py-3 font-black text-slate-400 border-b-4 border-transparent hover:text-rose-600 transition-all flex items-center gap-1"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Data Guidelines</button>
@@ -524,37 +524,61 @@
             </div>
         </div>
 
-        <!-- Tab Content: Automated Summary -->
+        <!-- Tab Content: District Assessment Pamphlet -->
         <div id="view-aisummary" class="hidden">
             <div class="glossy-panel p-8 rounded-3xl mb-6 space-y-6">
                 <div class="border-b border-white/50 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h3 class="text-2xl font-black text-indigo-900 flex items-center gap-3 drop-shadow-md">
-                            <i data-lucide="clipboard-list" class="w-6 h-6 text-indigo-600"></i>
-                            Comprehensive Local Summary
+                            <i data-lucide="layout-template" class="w-6 h-6 text-indigo-600"></i>
+                            District GWQ Assessment Report
                         </h3>
-                        <p class="text-slate-600 font-medium mt-2">Generate an automated, location-aware statistical report for the active parameter and filter level.</p>
+                        <p class="text-slate-600 font-medium mt-2">Generate a comprehensive, colorful official pamphlet summarizing water quality based on current filters.</p>
                     </div>
-                    <button id="btn-generate-ai" onclick="generateDetailedAISummary()" class="glossy-btn-indigo px-8 py-3 rounded-2xl font-black text-sm flex items-center gap-2 whitespace-nowrap">
-                        <i data-lucide="bar-chart" class="w-4 h-4"></i> Generate Detailed Summary
-                    </button>
-                </div>
-
-                <!-- Glossy HD 3D Charts Wrapper for Summary -->
-                <div id="aiSummaryChartsWrapper" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="bg-white/40 p-5 rounded-2xl shadow-inner border border-white/60">
-                        <div id="aiSummaryPieChart" class="w-full h-[350px]"></div>
-                    </div>
-                    <div class="bg-white/40 p-5 rounded-2xl shadow-inner border border-white/60">
-                        <div id="aiSummaryBarChart" class="w-full h-[350px]"></div>
+                    <div class="flex gap-3">
+                        <button id="btn-generate-pamphlet" onclick="generatePamphletReport()" class="glossy-btn-indigo px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 whitespace-nowrap">
+                            <i data-lucide="file-check-2" class="w-4 h-4"></i> Generate Pamphlet
+                        </button>
+                        <button id="btn-export-pamphlet" onclick="downloadPamphletDocx()" class="hidden glossy-btn-emerald px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 whitespace-nowrap">
+                            <i data-lucide="file-down" class="w-4 h-4"></i> Export to Word (DOCX)
+                        </button>
                     </div>
                 </div>
 
-                <div class="bg-white/40 p-6 rounded-2xl shadow-inner border border-white/60 min-h-[300px]">
-                    <div id="aiSummaryContent" class="prose prose-slate max-w-none text-slate-700">
-                        <div class="flex flex-col items-center justify-center py-20 gap-4 opacity-60">
-                            <i data-lucide="file-text" class="w-16 h-16 text-slate-400"></i>
-                            <p class="font-bold text-slate-500 uppercase tracking-widest text-center">Click the button above to analyze data<br>and generate a deep spatial insight report.</p>
+                <!-- Parameters Selection specifically for Pamphlet -->
+                <div class="bg-white/40 shadow-inner p-6 rounded-2xl border border-white/60 relative" style="z-index: 55;">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 drop-shadow-sm">Select Parameters to Analyze in Pamphlet</label>
+                    <div class="relative" id="pamphletParamContainer">
+                        <button onclick="document.getElementById('pamphletParamDropdown').classList.toggle('hidden')" class="w-full glossy-input rounded-xl p-3 font-bold text-slate-700 flex justify-between items-center text-left">
+                            <span id="pamphletParamDropdownText" class="truncate">All Parameters Selected</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 ml-2 shrink-0"></i>
+                        </button>
+                        <div id="pamphletParamDropdown" class="hidden absolute top-full mt-2 w-full bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.2)] rounded-xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                            <!-- Dynamic Checkboxes -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pamphlet Map Upload Controls -->
+                <div class="bg-white/40 shadow-inner p-6 rounded-2xl border border-white/60">
+                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-3 drop-shadow-sm">Additional Map Uploads (Optional)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                            <label class="text-xs font-bold text-slate-700 block mb-2 flex items-center gap-2"><i data-lucide="map" class="w-4 h-4 text-indigo-500"></i> 1. Upload EC IDW Map (Displayed in EC Section)</label>
+                            <input type="file" accept="image/*" onchange="handlePamphletMapUpload(event, 'ec')" class="text-xs w-full cursor-pointer file:mr-2 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                            <label class="text-xs font-bold text-slate-700 block mb-2 flex items-center gap-2"><i data-lucide="map-pin" class="w-4 h-4 text-emerald-500"></i> 2. Upload Overall Contamination Map (Displayed in Summary)</label>
+                            <input type="file" accept="image/*" onchange="handlePamphletMapUpload(event, 'summary')" class="text-xs w-full cursor-pointer file:mr-2 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white/40 p-2 md:p-8 rounded-2xl shadow-inner border border-white/60 min-h-[400px]">
+                    <div id="pamphlet-content" class="w-full h-full">
+                        <div class="flex flex-col items-center justify-center py-20 gap-4 opacity-60 h-full">
+                            <i data-lucide="layout-template" class="w-16 h-16 text-slate-400"></i>
+                            <p class="font-bold text-slate-500 uppercase tracking-widest text-center">Click "Generate Pamphlet" to process data<br>and render the official assessment report.</p>
                         </div>
                     </div>
                 </div>
@@ -575,14 +599,14 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
                         <div class="flex flex-col gap-2">
                             <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block drop-shadow-sm">1. Select Region</label>
-                            <select id="bulletinScope" class="w-full glossy-input rounded-xl p-3 font-bold text-slate-700">
+                            <select id="bulletinScope" onchange="renderBulletinPreview()" class="w-full glossy-input rounded-xl p-3 font-bold text-slate-700">
                                 <option value="National">National (All India)</option>
                                 <!-- Populated dynamically -->
                             </select>
                         </div>
                         <div class="flex flex-col gap-2">
                             <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block drop-shadow-sm">2. Season & Year Title</label>
-                            <input type="text" id="bulletinSeason" value="Pre-Monsoon 2025" class="w-full glossy-input rounded-xl p-3 font-bold text-slate-700">
+                            <input type="text" id="bulletinSeason" value="Pre-Monsoon 2025" oninput="renderBulletinPreview()" class="w-full glossy-input rounded-xl p-3 font-bold text-slate-700">
                         </div>
                         <div class="flex flex-col gap-2">
                             <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block drop-shadow-sm">3. Select Parameters</label>
@@ -597,10 +621,7 @@
                             </div>
                         </div>
                         <div class="flex flex-col gap-2 justify-end">
-                            <button onclick="renderBulletinPreview()" class="glossy-btn-emerald px-6 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 w-full">
-                                <i data-lucide="play" class="w-4 h-4"></i> Generate Preview
-                            </button>
-                            <button onclick="downloadBulletinDocx()" class="glossy-btn-indigo px-6 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 w-full">
+                            <button onclick="downloadBulletinDocx()" class="glossy-btn-indigo px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 w-full">
                                 <i data-lucide="download-cloud" class="w-4 h-4"></i> Download DOCX
                             </button>
                         </div>
@@ -608,7 +629,7 @@
                     
                     <!-- Maps Upload Area (Dynamic based on selected parameters) -->
                     <div id="bulletinMapUploadsContainer" style="display: none;" class="pt-4 border-t border-slate-200/50">
-                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-3 drop-shadow-sm">Upload Spatial Distribution Maps (Optional)</label>
+                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-3 drop-shadow-sm">4. Upload Maps for Selected Parameters (Optional)</label>
                         <div id="bulletinMapUploadsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <!-- dynamic inputs populated in JS -->
                         </div>
@@ -620,7 +641,7 @@
                     <div id="bulletin-preview-content" class="max-w-4xl mx-auto space-y-6">
                         <div class="flex flex-col items-center justify-center py-20 gap-4 opacity-60">
                             <i data-lucide="file-text" class="w-16 h-16 text-slate-400"></i>
-                            <p class="font-bold text-slate-500 uppercase tracking-widest text-center" style="font-family: 'Plus Jakarta Sans', sans-serif;">Select parameters and click "Generate Preview" to build the bulletin.</p>
+                            <p class="font-bold text-slate-500 uppercase tracking-widest text-center" style="font-family: 'Plus Jakarta Sans', sans-serif;">Please upload and map data to generate the bulletin preview.</p>
                         </div>
                     </div>
                 </div>
@@ -922,6 +943,12 @@
             if (bulletinDropContainer && bulletinDropdown && !bulletinDropContainer.contains(event.target)) {
                 bulletinDropdown.classList.add('hidden');
             }
+            
+            const pamphletDropContainer = document.getElementById('pamphletParamContainer');
+            const pamphletDropdown = document.getElementById('pamphletParamDropdown');
+            if (pamphletDropContainer && pamphletDropdown && !pamphletDropContainer.contains(event.target)) {
+                pamphletDropdown.classList.add('hidden');
+            }
         });
 
         // Custom Toast Notification Function
@@ -945,358 +972,710 @@
             }, 3500);
         }
 
-        async function generateDetailedAISummary() {
+        // ==========================================
+        // DISTRICT GWQ ASSESSMENT PAMPHLET LOGIC
+        // ==========================================
+        
+        let pamphletMaps = { ec: null, summary: null };
+
+        function handlePamphletMapUpload(event, type) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    pamphletMaps[type] = e.target.result;
+                    showToast(`${type === 'ec' ? 'EC IDW' : 'Overall Contamination'} Map loaded successfully! Generate pamphlet to view.`, "success");
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function generatePamphletReport() {
             if (!rawData.length) {
                 showToast("Please upload and map data first.", "error");
                 return;
             }
 
-            const contentDiv = document.getElementById('aiSummaryContent');
-            const chartsWrapper = document.getElementById('aiSummaryChartsWrapper');
-            const generateBtn = document.getElementById('btn-generate-ai');
-            const param = document.getElementById('activeParam').value;
-            
-            if (!param) {
-                showToast("Please ensure a parameter is selected.", "error");
+            const selectedPamphletParams = Array.from(document.querySelectorAll('.pamphlet-param-cb:checked')).map(cb => cb.value);
+            if (selectedPamphletParams.length === 0) {
+                showToast("Please select at least one parameter for the Pamphlet analysis.", "error");
                 return;
             }
 
+            const contentDiv = document.getElementById('pamphlet-content');
+            const generateBtn = document.getElementById('btn-generate-pamphlet');
+            const exportBtn = document.getElementById('btn-export-pamphlet');
+            
             // UI Loading state
             generateBtn.disabled = true;
             generateBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Generating...`;
-            chartsWrapper.classList.add('hidden'); // Hide charts while calculating
+            exportBtn.classList.add('hidden');
             contentDiv.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-20 gap-4">
+                <div class="flex flex-col items-center justify-center py-20 gap-4 h-full">
                     <div class="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                    <p class="font-bold text-indigo-600 animate-pulse drop-shadow-sm text-center">Analyzing spatial distribution, percentiles, and compliance...<br><span class="text-xs text-slate-400 mt-2 block">Extracting min/max locations & rendering 3D graphics...</span></p>
+                    <p class="font-bold text-indigo-600 animate-pulse drop-shadow-sm text-center">Analyzing comprehensive hydrochemical parameters...<br><span class="text-xs text-slate-400 mt-2 block">Building official pamphlet...</span></p>
                 </div>
             `;
 
-            // Data Collection
-            const level = document.getElementById('geoLevel').value;
+            // Data Collection & Filtering
             const stateVal = document.getElementById('stateFilter').value;
             const distVal = document.getElementById('distFilter').value;
             
-            const configKey = headerMap[param];
-            const config = PARAM_CONFIG[configKey];
+            let filtered = rawData;
+            let regionName = "India";
+            let stateNameStr = "National Summary";
 
-            if (!config) {
-                contentDiv.innerHTML = `<p class="text-rose-500 font-bold">Invalid parameter configuration.</p>`;
+            if (stateVal) {
+                filtered = filtered.filter(d => String(d[dataHeaders.state] || '').trim() === stateVal);
+                regionName = stateVal;
+                stateNameStr = "State Analysis";
+            }
+            if (distVal) {
+                filtered = filtered.filter(d => String(d[dataHeaders.district] || '').trim() === distVal);
+                regionName = distVal;
+                stateNameStr = stateVal;
+            }
+
+            const totalSamples = filtered.length;
+            if (totalSamples === 0) {
+                contentDiv.innerHTML = `<div class="p-8 bg-rose-50 rounded-2xl border border-rose-100 text-rose-700 font-bold flex flex-col items-center justify-center text-center gap-2"><i data-lucide="alert-circle" class="w-8 h-8"></i> No data found for the selected region.</div>`;
                 generateBtn.disabled = false;
-                generateBtn.innerHTML = `<i data-lucide="bar-chart" class="w-4 h-4"></i> Generate Detailed Summary`;
+                generateBtn.innerHTML = `<i data-lucide="file-check-2" class="w-4 h-4"></i> Generate Pamphlet`;
                 lucide.createIcons();
                 return;
             }
 
-            // Let UI render loading spinner for smooth experience
-            await new Promise(r => setTimeout(r, 400));
+            // Grouping Parameters
+            const basicParamsList = ['pH', 'EC', 'Cl', 'F', 'SO4', 'NO3', 'TH', 'Ca', 'Mg', 'TDS', 'Alkalinity', 'Turbidity'];
+            const heavyMetalsList = ['Fe', 'Mn', 'As', 'U', 'Zn', 'Cu', 'Pb', 'Cd', 'Cr', 'Hg', 'Ni', 'Se', 'Ba', 'Al', 'B', 'Mo'];
 
-            // Apply existing global filters
-            let filtered = rawData;
-            let locationContext = "Overall Dataset (All Data)";
-            let regionNameForTitle = "India";
-            
-            if (stateVal) {
-                filtered = filtered.filter(d => String(d[dataHeaders.state] || '').trim() === stateVal);
-                locationContext = `State Level: ${stateVal}`;
-                regionNameForTitle = stateVal;
-            }
-            if (distVal) {
-                filtered = filtered.filter(d => String(d[dataHeaders.district] || '').trim() === distVal);
-                locationContext = `District Level: ${distVal} (State: ${stateVal})`;
-                regionNameForTitle = distVal;
-            }
+            // --- Calculate compliance distribution and dynamic text stats ---
+            let safeSamplesCount = 0;
+            let singleExceedanceCount = 0;
+            let multiExceedanceCount = 0;
+            let globalParamStats = [];
 
-            let validData = [];
-            filtered.forEach(d => {
-                const val = parseFloat(d[param]);
-                if (!isNaN(val)) {
-                    // Extract full location array for tracing
-                    let locStr = [];
-                    if (dataHeaders.state && d[dataHeaders.state]) locStr.push(d[dataHeaders.state]);
-                    if (dataHeaders.district && d[dataHeaders.district]) locStr.push(d[dataHeaders.district]);
-                    if (dataHeaders.block && d[dataHeaders.block]) locStr.push(d[dataHeaders.block]);
-                    if (dataHeaders.location && d[dataHeaders.location]) locStr.push(d[dataHeaders.location]);
+            // Only track parameters that were selected
+            selectedPamphletParams.forEach(paramCol => {
+                const configKey = headerMap[paramCol];
+                if(!PARAM_CONFIG[configKey]) return;
+                globalParamStats.push({ key: configKey, name: PARAM_CONFIG[configKey].name, count: 0, total: 0 });
+            });
+
+            filtered.forEach(row => {
+                let exceedancesForThisSample = 0;
+
+                globalParamStats.forEach(pStat => {
+                    const originalHeader = Object.keys(headerMap).find(k => headerMap[k] === pStat.key && dataHeaders.params.includes(k));
+                    if (!originalHeader) return;
                     
-                    validData.push({
-                        val: val,
-                        state: d[dataHeaders.state] ? String(d[dataHeaders.state]).trim() : 'Unknown',
-                        district: d[dataHeaders.district] ? String(d[dataHeaders.district]).trim() : 'Unknown',
-                        block: d[dataHeaders.block] ? String(d[dataHeaders.block]).trim() : 'Unknown',
-                        loc: locStr.length > 0 ? locStr.join(" -> ") : "Location Data Missing"
+                    const val = parseFloat(row[originalHeader]);
+                    if (!isNaN(val)) {
+                        pStat.total++;
+                        const config = PARAM_CONFIG[pStat.key];
+                        const isSingleLimit = config.b1 === config.b2 && pStat.key !== 'pH';
+                        const limit = pStat.key === 'pH' ? null : (isSingleLimit ? config.b1 : config.b2);
+
+                        if (pStat.key === 'pH') {
+                            if (val < config.b1 || val > config.b2) { exceedancesForThisSample++; pStat.count++; }
+                        } else {
+                            if (val > limit) { exceedancesForThisSample++; pStat.count++; }
+                        }
+                    }
+                });
+
+                if (exceedancesForThisSample === 0) safeSamplesCount++;
+                else if (exceedancesForThisSample === 1) singleExceedanceCount++;
+                else multiExceedanceCount++;
+            });
+
+            const summaryChartData = [];
+            if(safeSamplesCount > 0) summaryChartData.push({ name: 'All Parameters Within Safe Limits', y: safeSamplesCount, color: '#10b981' });
+            if(singleExceedanceCount > 0) summaryChartData.push({ name: 'Exactly One Parameter Exceeds Limit', y: singleExceedanceCount, color: '#f59e0b' });
+            if(multiExceedanceCount > 0) summaryChartData.push({ name: 'More Than One Parameter Exceeds Limit', y: multiExceedanceCount, color: '#f43f5e' });
+
+            // Using increased dimensions and margin space to prevent clipping in exported doc
+            const summaryChartImage = await generateParamDonutChart('Overall Sample Compliance Distribution', summaryChartData, 1400, 800, [100, 200, 100, 200], '55%');
+
+            globalParamStats.forEach(p => {
+                p.pct = p.total > 0 ? (p.count / p.total) * 100 : 0;
+                p.isHeavyMetal = heavyMetalsList.includes(p.key);
+            });
+
+            globalParamStats.sort((a, b) => b.pct - a.pct);
+            const exceedingParamsInfo = globalParamStats.filter(p => p.count > 0);
+            const topExceeding = exceedingParamsInfo.slice(0, 6);
+
+            const topParamNamesStr = topExceeding.map(p => `${p.name} (${p.key})`).join(', ');
+
+            let textPara1 = `A comprehensive groundwater quality assessment was carried out for <strong>${regionName}</strong> based on the analysis of <strong>${totalSamples}</strong> groundwater samples collected from various blocks and habitations. The study evaluated major physicochemical parameters and heavy metals to assess the suitability of groundwater for drinking purposes as per BIS IS 10500 standards. The results indicate that groundwater quality in the region is influenced by both natural geological conditions and anthropogenic activities such as intensive agriculture, excessive groundwater extraction, and improper waste disposal.`;
+
+            // New structured text block analyzing the parameter exceedance pie chart logic directly.
+            const safePct = totalSamples > 0 ? ((safeSamplesCount / totalSamples) * 100).toFixed(1) : 0;
+            const singlePct = totalSamples > 0 ? ((singleExceedanceCount / totalSamples) * 100).toFixed(1) : 0;
+            const multiPct = totalSamples > 0 ? ((multiExceedanceCount / totalSamples) * 100).toFixed(1) : 0;
+
+            let textParaCompliance = `Evaluating overall sample integrity against the selected parameters, <strong>${safeSamplesCount} out of ${totalSamples} samples (${safePct}%)</strong> were found to be completely safe, with all parameters remaining strictly within permissible limits. `;
+            
+            if (singleExceedanceCount > 0 || multiExceedanceCount > 0) {
+                textParaCompliance += `Conversely, <strong>${singleExceedanceCount} samples (${singlePct}%)</strong> exceeded the limit for exactly one parameter, highlighting localized or parameter-specific issues. More critically, <strong>${multiExceedanceCount} samples (${multiPct}%)</strong> exhibited simultaneous exceedances in more than one parameter, indicating complex contamination profiles that require robust, holistic water treatment interventions.`;
+            }
+
+            let textPara2 = `A detailed evaluation of specific parameters reveals varying degrees of hydrochemical compliance. `;
+            if (exceedingParamsInfo.length > 0) {
+                textPara2 += `Specifically, <strong>${topParamNamesStr}</strong> exceeded permissible limits in multiple locations. `;
+                
+                let explanations = [];
+                topExceeding.forEach(p => {
+                    let reason = p.key === 'NO3' ? "excessive fertilizer use, septic tank leakage, and organic waste infiltration" :
+                                 (p.key === 'F' || p.key === 'U' || p.key === 'As' ? "natural geogenic sources and water-rock interactions" :
+                                 (['EC', 'TDS', 'Cl', 'TH', 'Ca', 'Mg', 'Na'].includes(p.key) ? "salinity intrusion, mineral dissolution, and agricultural runoff" :
+                                 "various geogenic and anthropogenic factors"));
+                    explanations.push(`<strong>${p.name}</strong> was elevated in <strong>${p.pct.toFixed(1)}%</strong> of the samples (primarily linked to ${reason})`);
+                });
+
+                textPara2 += explanations.join('; ') + `. `;
+            } else {
+                textPara2 += `All analyzed physical and chemical parameters remained strictly within the safe permissible limits prescribed by BIS standards, indicating no specific single-parameter anomalies. `;
+            }
+            
+            // --- NEW: Heavy Metal Specific Paragraph ---
+            let heavyMetalsAnalyzed = globalParamStats.filter(p => p.isHeavyMetal);
+            let exceedingHeavyMetals = heavyMetalsAnalyzed.filter(p => p.count > 0);
+            let safeHeavyMetals = heavyMetalsAnalyzed.filter(p => p.count === 0);
+
+            let textParaHeavy = "";
+            if (heavyMetalsAnalyzed.length > 0) {
+                if (exceedingHeavyMetals.length > 0) {
+                    const exMetalsStr = exceedingHeavyMetals.map(p => `${p.name} (${p.pct.toFixed(1)}%)`).join(', ');
+                    textParaHeavy = `Regarding trace and heavy metal contamination, the analysis indicates significant concerns in specific areas. Toxic metals such as <strong>${exceedingHeavyMetals.map(p=>p.name).join(', ')}</strong> exceeded permissible limits. Specifically, exceedances were observed in ${exMetalsStr} of the analyzed samples. The presence of these heavy metals in groundwater is primarily attributed to geogenic processes, water-rock interactions, and potentially localized anthropogenic discharges. Prolonged consumption of such contaminated water poses severe public health risks, necessitating immediate intervention and the provision of alternate safe drinking water sources. `;
+                    if(safeHeavyMetals.length > 0) {
+                        textParaHeavy += `Conversely, other heavy metals including ${safeHeavyMetals.slice(0, 5).map(p=>p.name).join(', ')} were found to be safely within the acceptable limits.`;
+                    }
+                } else {
+                    textParaHeavy = `Regarding trace and heavy metal contamination, a comprehensive evaluation of toxic metals (including ${heavyMetalsAnalyzed.slice(0, 6).map(p=>p.name).join(', ')}) revealed that all analyzed samples remained well within the safe limits prescribed by the BIS standards. This indicates the absence of significant heavy metal pollution in the monitored locations, ensuring that the water is free from these specific toxicological health risks.`;
+                }
+            }
+
+            // Analysis structures
+            let basicCardsHTML = "";
+            let heavyCardsHTML = "";
+            let allExceedancesByLocation = [];
+            
+            // Loop through selected mapped parameters
+            selectedPamphletParams.forEach(paramCol => {
+                const configKey = headerMap[paramCol];
+                const config = PARAM_CONFIG[configKey];
+                if (!config) return;
+
+                const isSingleLimit = config.b1 === config.b2 && configKey !== 'pH';
+                const limitStr = configKey === 'pH' ? `${config.b1}-${config.b2}` : `${isSingleLimit ? config.b1 : config.b2} ${config.unit}`;
+                const checkLimit = configKey === 'pH' ? null : (isSingleLimit ? config.b1 : config.b2);
+
+                let vals = [];
+                let exceedCount = 0;
+                let exceedingLocationsMap = new Set();
+
+                filtered.forEach(row => {
+                    const v = parseFloat(row[paramCol]);
+                    if (!isNaN(v)) {
+                        vals.push(v);
+                        let isExceeding = false;
+                        if (configKey === 'pH') {
+                            if (v < config.b1 || v > config.b2) isExceeding = true;
+                        } else {
+                            if (v > checkLimit) isExceeding = true;
+                        }
+
+                        if (isExceeding) {
+                            exceedCount++;
+                            // Add location and block to set for better geographical context
+                            const block = String(row[dataHeaders.block] || '').trim();
+                            const loc = String(row[dataHeaders.location] || '').trim();
+                            
+                            let locStr = "";
+                            if (loc && loc !== 'Unknown' && block && block !== 'Unknown') {
+                                locStr = `${loc} (${block})`;
+                            } else if (loc && loc !== 'Unknown') {
+                                locStr = loc;
+                            } else if (block && block !== 'Unknown') {
+                                locStr = `${block} (Block)`;
+                            }
+
+                            if (locStr) exceedingLocationsMap.add(locStr);
+                        }
+                    }
+                });
+
+                if (vals.length === 0) return;
+
+                const stats = getStats(vals);
+                const exceedPct = ((exceedCount / vals.length) * 100).toFixed(1);
+                const isSafe = exceedCount === 0;
+
+                let specificInsight = "";
+                if (configKey === 'pH') specificInsight = "suggesting potential acidic or alkaline concerns affecting water taste and pipe corrosion.";
+                if (configKey === 'EC' || configKey === 'TDS') specificInsight = "indicating salinity buildup due to mineral dissolution, groundwater stagnation, saline water intrusion, agricultural return flow, and intensive groundwater exploitation.";
+                if (configKey === 'Cl') specificInsight = "Elevated chloride imparts a salty taste and indicates groundwater salinization.";
+                if (configKey === 'F') specificInsight = "Long-term consumption of excess fluoride may lead to dental and skeletal fluorosis.";
+                if (configKey === 'SO4') specificInsight = "High sulphate may cause laxative effects and impart a bitter taste to the water.";
+                if (configKey === 'NO3') specificInsight = "Elevated nitrate concentration mainly reflects agricultural contamination caused by excessive fertilizer use, leaching of nitrogenous wastes, septic tank seepage, and organic waste infiltration.";
+                if (configKey === 'TH') specificInsight = "Very hard groundwater is mainly caused by elevated calcium and magnesium concentrations resulting from dissolution of carbonate and silicate minerals.";
+                if (configKey === 'Ca' || configKey === 'Mg') specificInsight = `Elevated ${config.name.toLowerCase()} contributes significantly to groundwater hardness in the district.`;
+                if (configKey === 'Mn') specificInsight = "Long-term manganese exposure may affect neurological health and water aesthetics.";
+                if (configKey === 'U') specificInsight = "Elevated uranium concentration is generally associated with granitic formations, alkaline groundwater conditions, oxidation-reduction processes, and prolonged groundwater-rock interaction.";
+                if (configKey === 'As') specificInsight = "Arsenic is highly toxic and its presence is mainly geogenic, requiring immediate remediation.";
+
+                let exceedingList = Array.from(exceedingLocationsMap);
+                let exceedingStr = exceedingList.slice(0, 15).join(', ');
+                if (exceedingList.length > 15) exceedingStr += `, and ${exceedingList.length - 15} more locations`;
+
+                let mapHtml = "";
+                if (configKey === 'EC' && pamphletMaps.ec) {
+                    mapHtml = `
+                        <div class="mt-5 text-center p-4 bg-slate-50 rounded-xl border border-slate-200 shadow-inner">
+                            <img src="${pamphletMaps.ec}" alt="EC IDW Map" style="max-height: 450px; display: block; margin: 0 auto; max-width: 100%; border-radius: 8px;" />
+                            <p class="text-sm font-bold text-slate-600 mt-3 italic">Spatial Distribution (IDW) Map of Electrical Conductivity</p>
+                        </div>
+                    `;
+                }
+
+                let cardHTML = `
+                        <div class="mb-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 border-l-4 ${isSafe ? 'border-l-emerald-400' : 'border-l-rose-400'} print-break-inside-avoid">
+                            <h4 class="font-black text-slate-800 text-lg mb-2">${config.name} (${configKey})</h4>
+                            <p class="text-slate-600 leading-relaxed text-sm">
+                                Concentration ranges from <strong>${stats.min.toFixed(2)} ${config.unit}</strong> to <strong>${stats.max.toFixed(2)} ${config.unit}</strong> with an average value of nearly <strong>${stats.avg.toFixed(2)} ${config.unit}</strong>. 
+                                ${isSafe 
+                                    ? `<span class="text-emerald-600 font-bold">All samples remain within safe limits.</span>` 
+                                    : `<span class="text-rose-600 font-bold">About ${exceedPct}% of the analyzed samples exceed the BIS ${configKey==='pH'?'acceptable range':'permissible limit'} of ${limitStr}.</span> Elevated ${configKey} is particularly observed in: <span class="font-bold text-slate-800">${exceedingStr}</span>. ${specificInsight}`
+                                }
+                            </p>
+                            ${mapHtml}
+                        </div>
+                    `;
+
+                if (heavyMetalsList.includes(configKey)) heavyCardsHTML += cardHTML;
+                else basicCardsHTML += cardHTML;
+            });
+
+            // Calculate Multiple Parameter Exceedances Location Table
+            let exceedingLocationsList = [];
+            filtered.forEach(row => {
+                let exceededParams = [];
+                let exceededDetails = [];
+                let hasHeavyMetal = false;
+
+                selectedPamphletParams.forEach(paramCol => {
+                    const configKey = headerMap[paramCol];
+                    const config = PARAM_CONFIG[configKey];
+                    if (!config) return;
+
+                    const val = parseFloat(row[paramCol]);
+                    if (isNaN(val)) return;
+
+                    const isSingleLimit = config.b1 === config.b2 && configKey !== 'pH';
+                    const checkLimit = configKey === 'pH' ? null : (isSingleLimit ? config.b1 : config.b2);
+
+                    let isExceeding = false;
+                    if (configKey === 'pH') {
+                        if (val < config.b1 || val > config.b2) isExceeding = true;
+                    } else {
+                        if (val > checkLimit) isExceeding = true;
+                    }
+
+                    if (isExceeding) {
+                        exceededParams.push(configKey);
+                        let decimalPlaces = (['EC', 'NO3', 'TH', 'Ca', 'SO4', 'Mg', 'Cl'].includes(configKey)) ? 0 : 4;
+                        exceededDetails.push(`${configKey} (${val.toFixed(decimalPlaces)} ${config.unit ? config.unit : ''})`.trim());
+                        if (heavyMetalsList.includes(configKey)) hasHeavyMetal = true;
+                    }
+                });
+
+                if (exceededParams.length > 1) { // Multiple exceedances
+                    let contaminationType = "Multi Parameter Contamination";
+                    if (hasHeavyMetal && exceededParams.includes('EC')) contaminationType = "Severe salinity & trace metal contamination";
+                    else if (hasHeavyMetal) contaminationType = "Heavy/Trace metal contamination";
+                    else if (exceededParams.includes('NO3') && exceededParams.includes('TH')) contaminationType = "Nutrient & hardness contamination";
+                    else if (exceededParams.includes('EC') || exceededParams.includes('Cl')) contaminationType = "Severe Salinity / Brackishness";
+
+                    exceedingLocationsList.push({
+                        block: String(row[dataHeaders.block] || '-').trim(),
+                        location: String(row[dataHeaders.location] || '-').trim(),
+                        lat: String(row[dataHeaders.latitude] || '-').trim(),
+                        lon: String(row[dataHeaders.longitude] || '-').trim(),
+                        count: exceededParams.length,
+                        names: exceededParams.join(', '),
+                        details: exceededDetails.join(', '),
+                        type: contaminationType,
+                        rawParams: exceededParams
                     });
                 }
             });
 
-            const total = validData.length;
-            if (total === 0) {
-                contentDiv.innerHTML = `<div class="p-8 bg-rose-50 rounded-2xl border border-rose-100 text-rose-700 font-bold flex flex-col items-center justify-center text-center gap-2"><i data-lucide="alert-circle" class="w-8 h-8"></i> No numerical data found for "${param}" in the selected region.</div>`;
-                generateBtn.disabled = false;
-                generateBtn.innerHTML = `<i data-lucide="bar-chart" class="w-4 h-4"></i> Generate Detailed Summary`;
-                lucide.createIcons();
-                return;
-            }
+            // Sort by count descending
+            exceedingLocationsList.sort((a, b) => b.count - a.count);
 
-            // Statistical Calculations
-            validData.sort((a, b) => a.val - b.val);
-            const minObj = validData[0];
-            const maxObj = validData[total - 1];
+            let locationTableHTML = exceedingLocationsList.map(item => `
+                    <tr class="hover:bg-slate-50 border-b border-slate-100 text-sm print-break-inside-avoid">
+                        <td class="p-3 text-slate-700 font-medium">${item.block}</td>
+                        <td class="p-3 text-slate-700 font-bold">${item.location}</td>
+                        <td class="p-3 text-slate-500 text-xs">${item.lat}</td>
+                        <td class="p-3 text-slate-500 text-xs">${item.lon}</td>
+                        <td class="p-3 text-center text-rose-600 font-black">${item.count}</td>
+                        <td class="p-3 text-slate-600 font-medium">${item.names}</td>
+                        <td class="p-3 text-slate-500 text-xs">${item.details}</td>
+                        <td class="p-3 text-indigo-700 font-semibold text-xs">${item.type}</td>
+                    </tr>
+                    `).join('');
             
-            // Average Calculation
-            const sum = validData.reduce((acc, curr) => acc + curr.val, 0);
-            const avgVal = sum / total;
+            // Remedial Measures Table
+            let remedialTableHTML = exceedingLocationsList.map(item => {
+                let remedies = new Set();
+                item.rawParams.forEach(pKey => {
+                    const targetArr = ALL_REMEDIAL_MEASURES[pKey] || ALL_REMEDIAL_MEASURES['default'];
+                    targetArr.forEach(t => remedies.add(t.method));
+                });
+                
+                // Add some generic ones
+                if(item.rawParams.includes('NO3')) remedies.add('Controlled fertilizer application');
+                if(item.rawParams.includes('NO3') || item.rawParams.includes('Cl')) remedies.add('Sanitation improvement');
+                if(item.count > 3) remedies.add('Alternate drinking water supply');
+                remedies.add('Periodic water quality monitoring');
+                
+                // Generic structural
+                if(item.rawParams.includes('EC') || item.rawParams.includes('TH')) {
+                    remedies.add('Artificial recharge structures');
+                    remedies.add('Domestic softening systems');
+                }
+                if(item.type.includes('metal')) {
+                    remedies.add('Specific media filtration');
+                }
+                
+                // Prioritize RO for severe
+                if(item.count > 2 || item.type.includes('salinity')) {
+                    remedies.add('RO treatment systems');
+                }
 
-            // Percentile Calculations
-            const p95Index = (95 / 100) * (total - 1);
-            const lower95 = Math.floor(p95Index);
-            const upper95 = Math.ceil(p95Index);
-            const weight95 = p95Index % 1;
-            const p95Val = validData[lower95].val * (1 - weight95) + validData[upper95].val * weight95;
+                // convert set to array and clean up
+                let remedyArr = Array.from(remedies).filter(r => r !== 'Reverse Osmosis (RO)'); 
+                if(Array.from(remedies).includes('Reverse Osmosis (RO)')) remedyArr.unshift('RO treatment systems'); // Normalize name
 
-            const p75Index = (75 / 100) * (total - 1);
-            const lower75 = Math.floor(p75Index);
-            const upper75 = Math.ceil(p75Index);
-            const weight75 = p75Index % 1;
-            const p75Val = validData[lower75].val * (1 - weight75) + validData[upper75].val * weight75;
+                return `
+                    <tr class="hover:bg-slate-50 border-b border-slate-100 text-sm print-break-inside-avoid">
+                        <td class="p-3 text-slate-800 font-bold">${item.block}</td>
+                        <td class="p-3 text-slate-700 font-bold">${item.location}</td>
+                        <td class="p-3 text-slate-500 text-xs">${item.lat}</td>
+                        <td class="p-3 text-slate-500 text-xs">${item.lon}</td>
+                        <td class="p-3 text-rose-600 font-semibold">${item.names}</td>
+                        <td class="p-3 text-slate-600">${item.type.replace('Severe ', '').replace(' contamination', ' contamination').replace(' &', ',').replace('Trace', 'Trace/Heavy Metal')}</td>
+                        <td class="p-3 text-emerald-700 font-medium">${remedyArr.join(', ')}</td>
+                    </tr>
+                    `;
+            }).join('');
 
-            // Compliance Calculations
-            let nAcc = 0, nPerm = 0, nFail = 0;
-            const isSingleLimit = config.b1 === config.b2 && configKey !== 'pH';
-            
-            validData.forEach(d => {
-                const v = d.val;
-                if (configKey === 'pH') {
-                    if (v >= config.b1 && v <= config.b2) nAcc++; else nFail++;
-                } else if (isSingleLimit) {
-                    if (v <= config.b1) nAcc++; else nFail++;
-                } else {
-                    if (v <= config.b1) nAcc++;
-                    else if (v <= config.b2) nPerm++;
-                    else nFail++;
+            // Get top blocks for the summary
+            let blockCounts = {};
+            exceedingLocationsList.forEach(item => {
+                if(item.block && item.block !== '-') {
+                    blockCounts[item.block] = (blockCounts[item.block] || 0) + 1;
                 }
             });
+            let topBlocksStr = Object.entries(blockCounts).sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>e[0]).join(', ');
 
-            // --- Render Glossy 3D HD Charts ---
-            chartsWrapper.classList.remove('hidden');
-            
-            // Create glossy gradients for Highcharts
-            const glossyAcc = { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, '#34d399'], [1, '#059669']] };
-            const glossyPerm = { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, '#fbbf24'], [1, '#b45309']] };
-            const glossyFail = { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, '#fb7185'], [1, '#be123c']] };
-            const glossyInfo = { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, '#818cf8'], [1, '#4338ca']] };
-            const glossyP75 = { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, '#60a5fa'], [1, '#2563eb']] };
-            const glossyAvg = { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, '#c084fc'], [1, '#7c3aed']] }; // Purple for Average
-
-            let pieData = [];
-            if (configKey === 'pH') {
-                pieData = [
-                    { name: `Acceptable (${config.b1}-${config.b2})`, y: nAcc, color: glossyAcc },
-                    { name: 'Out of Range', y: nFail, color: glossyFail }
-                ].filter(d => d.y > 0);
+            let textPara3 = ``;
+            if (exceedingLocationsList.length > 0) {
+                const topLocs = exceedingLocationsList.slice(0, 5).map(l => l.location).join(', ');
+                textPara3 += `Among the highly affected areas, <strong>${topBlocksStr || 'several blocks'}</strong> were identified as priority zones requiring urgent remedial measures. Severe contamination was observed in locations such as <strong>${topLocs}</strong>. `;
             } else {
-                pieData = [
-                    { name: 'Acceptable', y: nAcc, color: glossyAcc },
-                    ...(isSingleLimit ? [] : [{ name: 'Permissible', y: nPerm, color: glossyPerm }]),
-                    { name: 'Above Limit', y: nFail, color: glossyFail }
-                ].filter(d => d.y > 0);
+                textPara3 += `Overall, the region demonstrates excellent compliance with drinking water standards across all monitored locations, without significant multi-parameter exceedances. `;
             }
 
-            if (typeof Highcharts !== 'undefined') {
-                // Donut Chart (Pie with innerSize)
-                Highcharts.chart('aiSummaryPieChart', {
-                    chart: { type: 'pie', options3d: { enabled: true, alpha: 55, beta: 0 }, backgroundColor: 'transparent' },
-                    title: { text: 'Compliance Distribution', style: { fontWeight: '800', color: '#1e293b', fontFamily: "'Plus Jakarta Sans', sans-serif" } },
-                    plotOptions: { 
-                        pie: { 
-                            innerSize: '50%', 
-                            depth: 45, 
-                            dataLabels: { 
-                                enabled: true, 
-                                format: '<b>{point.name}</b><br>{point.percentage:.1f}% ({point.y})', 
-                                style: { color: '#0f172a', textOutline: 'none', fontWeight: 'bold' } 
-                            } 
-                        } 
-                    },
-                    series: [{ name: 'Samples', data: pieData }],
-                    credits: { enabled: false }
-                });
+            let textPara4 = `The study recommends continuous groundwater quality monitoring, artificial recharge and rainwater harvesting, controlled fertilizer application, sanitation improvement, and installation of suitable treatment systems such as RO and softening units. Public awareness and sustainable groundwater management practices are essential to ensure long-term drinking water security in the district.`;
 
-                // Prepare Bar Chart Reference Lines dynamically based on parameter type
-                let plotLines = [];
-                if (configKey === 'pH') {
-                    // pH has a lower and upper Acceptable Limit (Range)
-                    plotLines.push({ color: '#10b981', width: 2, value: config.b1, dashStyle: 'shortdash', zIndex: 5, label: { text: `Lower Limit (${config.b1})`, style: { color: '#059669', fontWeight: 'bold' } } });
-                    plotLines.push({ color: '#f59e0b', width: 2, value: config.b2, dashStyle: 'shortdash', zIndex: 5, label: { text: `Upper Limit (${config.b2})`, style: { color: '#b45309', fontWeight: 'bold' } } });
-                } else if (isSingleLimit) {
-                    // Parameters with only one limit (e.g. Fe, As, F)
-                    plotLines.push({ color: '#f43f5e', width: 2, value: config.b1, dashStyle: 'shortdash', zIndex: 5, label: { text: `Limit (${config.b1})`, style: { color: '#be123c', fontWeight: 'bold' } } });
-                } else {
-                    // Parameters with Acceptable and Permissible limits (e.g. TDS, Alkalinity)
-                    plotLines.push({ color: '#10b981', width: 2, value: config.b1, dashStyle: 'shortdash', zIndex: 5, label: { text: `Acc. Limit (${config.b1})`, style: { color: '#059669', fontWeight: 'bold' } } });
-                    plotLines.push({ color: '#f59e0b', width: 2, value: config.b2, dashStyle: 'shortdash', zIndex: 5, label: { text: `Perm. Limit (${config.b2})`, style: { color: '#b45309', fontWeight: 'bold' } } });
-                }
-
-                // Column/Bar Chart
-                Highcharts.chart('aiSummaryBarChart', {
-                    chart: { type: 'column', options3d: { enabled: true, alpha: 10, beta: 15, depth: 50, viewDistance: 25 }, backgroundColor: 'transparent' },
-                    title: { text: 'Statistical Spread vs Limits', style: { fontWeight: '800', color: '#1e293b', fontFamily: "'Plus Jakarta Sans', sans-serif" } },
-                    xAxis: { categories: ['Minimum', 'Average', '75th Percentile', '95th Percentile', 'Maximum'], labels: { style: { fontWeight: 'bold', color: '#475569' } } },
-                    yAxis: { 
-                        title: { text: config.unit ? `Concentration (${config.unit})` : 'Value', style: { fontWeight: '800', color: '#1e293b' } },
-                        plotLines: plotLines
-                    },
-                    plotOptions: { 
-                        column: { 
-                            depth: 40, 
-                            borderRadius: 3,
-                            colorByPoint: true,
-                            dataLabels: { 
-                                enabled: true, 
-                                format: '{y:.2f}', 
-                                style: { fontSize: '11px', textOutline: 'none', color: '#ffffff', textShadow: '0 1px 2px rgba(0,0,0,0.8)' },
-                                allowOverlap: true,
-                                crop: false,
-                                overflow: 'allow'
-                            } 
-                        } 
-                    },
-                    series: [{ 
-                        name: param, 
-                        data: [
-                            { y: minObj.val, color: glossyInfo },
-                            { y: avgVal, color: glossyAvg },
-                            { y: p75Val, color: glossyP75 },
-                            { y: p95Val, color: glossyPerm },
-                            { y: maxObj.val, color: glossyFail }
-                        ],
-                        showInLegend: false
-                    }],
-                    credits: { enabled: false }
-                });
+            // Prepare Summary Contamination Map
+            let summaryMapHtml = "";
+            if (pamphletMaps.summary) {
+                summaryMapHtml = `
+                    <div class="mt-6 mb-8 text-center bg-white/10 p-5 rounded-2xl backdrop-blur-md border border-white/20">
+                        <h4 class="text-indigo-100 font-bold mb-4 text-lg">Overall Groundwater Contamination Map</h4>
+                        <img src="${pamphletMaps.summary}" alt="Overall Contamination Map" style="max-height: 550px; display: block; margin: 0 auto; max-width: 100%; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />
+                    </div>
+                `;
             }
-            // --- End Charts ---
 
-            const pctAcc = ((nAcc/total)*100).toFixed(1);
-            const pctPerm = ((nPerm/total)*100).toFixed(1);
-            const pctFail = ((nFail/total)*100).toFixed(1);
+            // Assemble HTML
+            const finalPamphletHTML = `
+                <div class="max-w-5xl mx-auto font-sans animate-fade-in">
+                    <!-- Pamphlet Header -->
+                    <div class="bg-gradient-to-br from-indigo-50 to-emerald-50 p-8 rounded-3xl border border-indigo-100 shadow-sm mb-10 text-center relative overflow-hidden">
+                        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay pointer-events-none"></div>
+                        <span class="inline-block px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-800 font-bold text-xs uppercase tracking-widest mb-4">Official Assessment Pamphlet</span>
+                        <h1 class="text-3xl md:text-4xl font-black text-slate-900 mb-4 drop-shadow-sm">Comprehensive Groundwater Quality Assessment of <span class="text-indigo-700">${regionName}</span>, ${stateNameStr}</h1>
+                        <p class="text-slate-600 text-base max-w-3xl mx-auto leading-relaxed">
+                            A comprehensive groundwater quality assessment was carried out for ${regionName} based on the analysis of <strong>${totalSamples}</strong> groundwater samples collected from various blocks and habitations. The assessment evaluated major physicochemical parameters and heavy/trace metals to determine groundwater suitability for drinking purposes as per Bureau of Indian Standards (BIS IS 10500).
+                        </p>
+                    </div>
 
-            // Generate Remedial Measure HTML locally
-            const treatments = ALL_REMEDIAL_MEASURES[configKey] || ALL_REMEDIAL_MEASURES['default'];
-            const treatmentRows = treatments.map(t => `
-                <tr class="hover:bg-slate-50 transition-colors text-slate-700">
-                    <td class="p-3 border-r border-slate-100 font-bold">${t.method}</td>
-                    <td class="p-3 border-r border-slate-100">${t.principle}</td>
-                    <td class="p-3 border-r border-slate-100">${t.suitability}</td>
-                    <td class="p-3">${t.adv}</td>
-                </tr>
-            `).join('');
+                    ${basicCardsHTML ? `
+                        <div class="mb-10">
+                            <h3 class="text-2xl font-black text-indigo-900 mb-6 flex items-center gap-3 border-b-2 border-indigo-100 pb-2">
+                                <i data-lucide="test-tube" class="text-indigo-500"></i> Hydrochemical Characteristics of Groundwater
+                            </h3>
+                            <div class="grid grid-cols-1 gap-4">
+                                ${basicCardsHTML}
+                            </div>
+                        </div>
+                    ` : ''}
 
-            // Calculate Regional Contamination Brackets based on Selected Level
-            let regionalContaminationText = "";
-            let breakdownKey, breakdownName;
-            if (!stateVal) {
-                breakdownKey = 'state'; breakdownName = 'State';
-            } else if (!distVal) {
-                breakdownKey = 'district'; breakdownName = 'District';
-            } else {
-                breakdownKey = 'block'; breakdownName = 'Block';
-            }
+                    ${heavyCardsHTML ? `
+                        <div class="mb-10">
+                            <h3 class="text-2xl font-black text-indigo-900 mb-6 flex items-center gap-3 border-b-2 border-indigo-100 pb-2">
+                                <i data-lucide="microscope" class="text-amber-500"></i> Heavy Metals and Trace Elements
+                            </h3>
+                            <p class="text-slate-600 mb-6 leading-relaxed">
+                                The analysis of heavy metals and trace elements indicates that while many toxic metals are generally within permissible limits, localized enrichment has been identified in several groundwater samples across the region.
+                            </p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                ${heavyCardsHTML}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${locationTableHTML ? `
+                    <div class="mt-8 mb-8 print-break-inside-avoid">
+                        <h3 class="text-xl font-black text-indigo-900 mb-4 flex items-center gap-2 border-b-2 border-indigo-100 pb-2">
+                            <i data-lucide="alert-octagon" class="text-rose-500"></i> Locations Showing Multiple Parameter Exceedances
+                        </h3>
+                        <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                            <table class="w-full text-left bg-white">
+                                <thead class="bg-indigo-50 text-indigo-900 font-bold text-xs uppercase tracking-wider">
+                                    <tr>
+                                        <th class="p-4">Block/Taluk</th>
+                                        <th class="p-4">Location</th>
+                                        <th class="p-4">Latitude</th>
+                                        <th class="p-4">Longitude</th>
+                                        <th class="p-4 text-center">Exceeding Params</th>
+                                        <th class="p-4">Names</th>
+                                        <th class="p-4">Values & Units</th>
+                                        <th class="p-4">Contamination Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${locationTableHTML}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ` : ''}
+                    
+                    ${remedialTableHTML ? `
+                    <div class="mt-8 mb-8 print-break-inside-avoid">
+                        <h3 class="text-xl font-black text-indigo-900 mb-4 flex items-center gap-2 border-b-2 border-indigo-100 pb-2">
+                            <i data-lucide="shield-check" class="text-emerald-500"></i> Location-Specific Remedial Measures
+                        </h3>
+                        <p class="text-slate-600 text-sm mb-4">Based on the specific contamination pattern observed at highly affected locations, the following management measures are recommended:</p>
+                        <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                            <table class="w-full text-left bg-white">
+                                <thead class="bg-emerald-50 text-emerald-900 font-bold text-xs uppercase tracking-wider">
+                                    <tr>
+                                        <th class="p-4">Block/Taluk</th>
+                                        <th class="p-4">Location</th>
+                                        <th class="p-4">Latitude</th>
+                                        <th class="p-4">Longitude</th>
+                                        <th class="p-4">Major Contaminants</th>
+                                        <th class="p-4">Quality Problem</th>
+                                        <th class="p-4">Recommended Remedial Measures</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${remedialTableHTML}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ` : ''}
+                    
+                <div class="mt-12 bg-indigo-900 text-white rounded-3xl p-8 shadow-2xl relative overflow-hidden print-break-inside-avoid">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-50 translate-x-1/2 -translate-y-1/2"></div>
+                    <div class="relative z-10">
+                        <h3 class="text-2xl font-black mb-6 text-indigo-100 border-b border-indigo-700 pb-4">Executive Summary, Overall Interpretation and Recommendations</h3>
+                        
+                        <div class="text-indigo-50 leading-relaxed mb-8 space-y-4 text-justify font-medium">
+                            <p>${textPara1}</p>
+                            <p>${textParaCompliance}</p>
+                            <p>${textPara2}</p>
+                            ${textParaHeavy ? `<p>${textParaHeavy}</p>` : ''}
+                            <p>${textPara3}</p>
+                            <p>${textPara4}</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-2xl p-6 mb-8 shadow-inner text-center">
+                            <img src="${summaryChartImage}" alt="Overall Compliance Distribution" style="max-height: 500px; width: auto; display: block; margin: 0 auto; object-fit: contain;" />
+                        </div>
+
+                        ${summaryMapHtml}
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                            <div class="bg-indigo-800/50 p-5 rounded-2xl backdrop-blur-sm border border-indigo-700/50">
+                                <h4 class="font-bold text-emerald-400 mb-3 flex items-center gap-2"><i data-lucide="droplets" class="w-4 h-4"></i> Resource Management</h4>
+                                <ul class="list-disc list-inside space-y-2 text-indigo-100">
+                                    <li>Continuous seasonal groundwater quality monitoring.</li>
+                                    <li>Artificial groundwater recharge & rainwater harvesting.</li>
+                                    <li>Regulation of excessive groundwater extraction in vulnerable areas.</li>
+                                    <li>Conjunctive use of groundwater and surface water.</li>
+                                </ul>
+                            </div>
+                            <div class="bg-indigo-800/50 p-5 rounded-2xl backdrop-blur-sm border border-indigo-700/50">
+                                <h4 class="font-bold text-amber-400 mb-3 flex items-center gap-2"><i data-lucide="sprout" class="w-4 h-4"></i> Pollution Control & Treatment</h4>
+                                <ul class="list-disc list-inside space-y-2 text-indigo-100">
+                                    <li>Installation of suitable treatment systems (RO, Defluoridation).</li>
+                                    <li>Controlled fertilizer and pesticide application.</li>
+                                    <li>Scientific solid and liquid waste management practices.</li>
+                                    <li>Public awareness regarding safe drinking water practices.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <p class="text-indigo-200 mt-6 text-sm text-center italic">
+                            While several parts of ${regionName} possess usable groundwater resources, areas showing significant hydrochemical deterioration require urgent remediation measures to ensure long-term drinking water security.
+                        </p>
+                    </div>
+                </div>
             
-            let bucketsHtml = '';
-            if (dataHeaders[breakdownKey]) {
-                let regionStats = {};
-                validData.forEach(d => {
-                    const rName = d[breakdownKey];
-                    if (!regionStats[rName]) regionStats[rName] = { total: 0, fail: 0 };
-                    regionStats[rName].total++;
                     
-                    let isFail = false;
-                    if (configKey === 'pH') {
-                        if (d.val < config.b1 || d.val > config.b2) isFail = true;
-                    } else if (isSingleLimit) {
-                        if (d.val > config.b1) isFail = true;
-                    } else {
-                        if (d.val > config.b2) isFail = true;
-                    }
-                    if (isFail) regionStats[rName].fail++;
-                });
-
-                let buckets = { noContam: [], lessThan1: [], oneToFive: [], fiveToTen: [], tenToFifteen: [], moreThan15: [] };
-
-                for (const [rName, stats] of Object.entries(regionStats)) {
-                    if (stats.total === 0 || rName === 'Unknown') continue;
-                    let pct = (stats.fail / stats.total) * 100;
                     
-                    if (pct === 0) buckets.noContam.push(rName);
-                    else if (pct <= 5.0) buckets.lessThan1.push(`${rName} (${pct.toFixed(2)}%)`);
-                    else if (pct <= 10.0) buckets.oneToFive.push(`${rName} (${pct.toFixed(1)}%)`);
-                    else if (pct <= 15.0) buckets.fiveToTen.push(`${rName} (${pct.toFixed(1)}%)`);
-                    else if (pct <= 20.0) buckets.tenToFifteen.push(`${rName} (${pct.toFixed(1)}%)`);
-                    else buckets.moreThan15.push(`${rName} (${pct.toFixed(1)}%)`);
-                }
-
-                bucketsHtml = `
-                    <h3 class="text-xl font-black text-indigo-900 mb-4 mt-8 border-b pb-2">4. ${breakdownName}-wise Contamination Breakdown</h3>
-                    <p class="mb-4">Regions are categorized based on the percentage of samples exceeding the permissible limits:</p>
-                    <ul class="list-disc list-inside space-y-2 mb-4 ml-4 text-slate-600">
-                        <li><strong>0% Contamination:</strong> ${buckets.noContam.join(', ') || 'None'}</li>
-                        <li><strong>>0% to 5% Contamination:</strong> ${buckets.lessThan1.join(', ') || 'None'}</li>
-                        <li><strong>>5% to 10% Contamination:</strong> ${buckets.oneToFive.join(', ') || 'None'}</li>
-                        <li><strong>>10% to 15% Contamination:</strong> ${buckets.fiveToTen.join(', ') || 'None'}</li>
-                        <li><strong>>15% to 20% Contamination:</strong> ${buckets.tenToFifteen.join(', ') || 'None'}</li>
-                        <li><strong>>20% Contamination:</strong> <span class="text-rose-600 font-bold">${buckets.moreThan15.join(', ') || 'None'}</span></li>
-                    </ul>`;
-            }
-
-            // Synthesize Local HTML Output
-            let finalHtml = `
-                <h2 class="text-3xl font-black text-indigo-900 mb-8 text-center border-b-2 border-indigo-100 pb-4 drop-shadow-sm">Hydrogeological Assessment of Ground Water of ${regionNameForTitle}</h2>
-                
-                <h3 class="text-xl font-black text-indigo-900 mb-4 mt-8 border-b pb-2">1. Overall Compliance & Safety</h3>
-                <p class="mb-4">Out of the <strong>${total}</strong> samples analyzed for <strong>${param} (${configKey})</strong> in ${locationContext}, <strong>${nAcc} (${pctAcc}%)</strong> were found to be within the strictly acceptable safety limits. Meanwhile, <strong>${nFail} (${pctFail}%)</strong> samples exceeded the safe thresholds${!isSingleLimit && configKey !== 'pH' ? `, and <strong>${nPerm} (${pctPerm}%)</strong> fell into the permissible range in the absence of an alternate source` : ''}.</p>
-                
-                <h3 class="text-xl font-black text-indigo-900 mb-4 mt-8 border-b pb-2">2. Statistical Significance & Distribution</h3>
-                <p class="mb-4">The statistical distribution provides a deeper insight into the regional groundwater profile:</p>
-                <ul class="list-disc list-inside space-y-2 mb-4 ml-4 text-slate-600">
-                    <li><strong>Average Concentration:</strong> ${avgVal.toFixed(2)} ${config.unit}, representing the general baseline for the region.</li>
-                    <li><strong>75th Percentile:</strong> ${p75Val.toFixed(2)} ${config.unit} indicates that 75% of the monitored locations fall below this concentration.</li>
-                    <li><strong>95th Percentile:</strong> ${p95Val.toFixed(2)} ${config.unit} highlights the upper extreme of the dataset, effectively isolating the top 5% most contaminated outliers.</li>
-                </ul>
-
-                <h3 class="text-xl font-black text-indigo-900 mb-4 mt-8 border-b pb-2">3. Extreme Value Locations</h3>
-                <p class="mb-4">Identifying extreme values is critical for targeted intervention:</p>
-                <ul class="list-disc list-inside space-y-2 mb-4 ml-4 text-slate-600">
-                    <li><strong>Maximum Recorded Value:</strong> <span class="text-rose-600 font-bold">${maxObj.val.toFixed(2)} ${config.unit}</span> found at <strong>${maxObj.loc}</strong>. This location requires immediate verification and potential mitigation.</li>
-                    <li><strong>Minimum Recorded Value:</strong> <span class="text-emerald-600 font-bold">${minObj.val.toFixed(2)} ${config.unit}</span> found at <strong>${minObj.loc}</strong>.</li>
-                </ul>
-                
-                ${bucketsHtml}
-
-                <h3 class="text-xl font-black text-indigo-900 mb-4 mt-8 border-b pb-2">${bucketsHtml ? '5' : '4'}. Remedial & Preventive Measures</h3>
-                <p class="mb-4 text-slate-600">Based on standard hydrogeological principles, the following major remedial measures are recommended for treating elevated <strong>${config.name}</strong> levels:</p>
-                <div class="overflow-x-auto mt-6">
-                    <table class="w-full text-left text-sm border border-slate-200 rounded-xl overflow-hidden mb-6">
-                        <thead class="bg-indigo-50 text-indigo-900 font-black">
-                            <tr>
-                                <th class="p-3">Method</th>
-                                <th class="p-3">Scientific Principle</th>
-                                <th class="p-3">Suitability</th>
-                                <th class="p-3">Major Advantage</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 bg-white">
-                            ${treatmentRows}
-                        </tbody>
-                    </table>
                 </div>
             `;
 
-            contentDiv.innerHTML = `<div class="text-sm leading-relaxed text-slate-700 space-y-4 animate-fade-in">${finalHtml}</div>`;
+            contentDiv.innerHTML = finalPamphletHTML;
             
+            // Re-render lucide icons inside dynamically added HTML
+            setTimeout(() => { lucide.createIcons(); }, 100);
+
             generateBtn.disabled = false;
-            generateBtn.innerHTML = `<i data-lucide="bar-chart" class="w-4 h-4"></i> Generate Detailed Summary`;
-            lucide.createIcons();
+            generateBtn.innerHTML = `<i data-lucide="file-check-2" class="w-4 h-4"></i> Re-generate Pamphlet`;
+            exportBtn.classList.remove('hidden');
         }
+
+        function downloadPamphletDocx() {
+            const previewContainer = document.getElementById('pamphlet-content');
+            
+            if (!previewContainer || previewContainer.innerHTML.includes('Click "Generate Pamphlet"')) {
+                showToast("Generate the Pamphlet preview first before downloading.", "error");
+                return;
+            }
+
+            const stateVal = document.getElementById('stateFilter').value || 'State';
+            const distVal = document.getElementById('distFilter').value || 'All';
+            const scope = distVal !== 'All' ? distVal : stateVal;
+            const safeScope = scope.replace(/\s+/g, '_');
+
+            // Clone to not affect live DOM
+            const clonedContent = previewContainer.cloneNode(true);
+            const images = clonedContent.getElementsByTagName('img');
+            
+            let imageParts = '';
+            
+            // Extract images and convert Base64 into MIME parts for MS Word Compatibility
+            for (let i = 0; i < images.length; i++) {
+                const img = images[i];
+                const src = img.src;
+                
+                if (src.startsWith('data:image')) {
+                    const match = src.match(/^data:(image\/[^;]+);base64,(.*)$/);
+                    if (match) {
+                        const mimeType = match[1];
+                        const base64Data = match[2];
+                        const extension = mimeType.split('/')[1].replace('+xml', '') || 'png';
+                        const imageName = `image_pamphlet_${i}.${extension}`;
+                        
+                        img.src = imageName;
+                        
+                        imageParts += `
+------=_NextPart_dummy
+Content-Type: ${mimeType}
+Content-Transfer-Encoding: base64
+Content-Location: ${imageName}
+
+${base64Data}
+`;
+                    }
+                }
+            }
+
+            const finalHtml = clonedContent.innerHTML;
+
+            // Word-compatible MHTML Document Wrapper
+            const mhtml = `MIME-Version: 1.0
+Content-Type: multipart/related; boundary="----=_NextPart_dummy"
+
+------=_NextPart_dummy
+Content-Type: text/html; charset="utf-8"
+Content-Location: document.html
+
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset='utf-8'>
+<title>District Groundwater Quality Assessment Pamphlet</title>
+<style>
+body { font-family: 'Arial', sans-serif; font-size: 11pt; color: #000; line-height: 1.5; }
+h1, h2, h3, h4 { color: #1e3a8a; font-family: 'Arial', sans-serif; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
+th, td { border: 1pt solid #000000; padding: 5px; text-align: left; vertical-align: top; }
+th { background-color: #f1f5f9; font-weight: bold; color: #1e3a8a; }
+.text-center { text-align: center; }
+.font-bold, .font-black { font-weight: bold; }
+.text-rose-600 { color: #e11d48; }
+.text-emerald-600, .text-emerald-700 { color: #059669; }
+.text-indigo-900 { color: #312e81; }
+.mb-4 { margin-bottom: 16px; }
+.mt-8 { margin-top: 32px; }
+.mb-10 { margin-bottom: 40px; }
+ul { margin-top: 8px; margin-bottom: 16px; }
+li { margin-bottom: 4px; }
+/* Adding some structural support for Word that simulates the Tailwind cards */
+.bg-white { background-color: #ffffff; }
+.p-5 { padding: 20px; }
+.rounded-2xl { border-radius: 12px; }
+.border { border: 1px solid #e2e8f0; }
+.border-l-4 { border-left-width: 4px; border-left-style: solid; }
+.border-l-rose-400 { border-left-color: #fb7185; }
+.border-l-emerald-400 { border-left-color: #34d399; }
+.shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+.text-slate-800 { color: #1e293b; }
+.text-slate-600 { color: #475569; }
+.bg-gradient-to-br { background-color: #f0f9ff; } /* Fallback background for pamphlet header */
+.bg-indigo-900 { background-color: #312e81; color: white; }
+.text-indigo-100 { color: #e0e7ff; }
+.text-indigo-50 { color: #eef2ff; }
+.text-emerald-400 { color: #34d399; }
+.text-amber-400 { color: #fbbf24; }
+.bg-indigo-800 { background-color: #3730a3; }
+</style>
+</head>
+<body>
+${finalHtml}
+</body>
+</html>
+${imageParts}
+------=_NextPart_dummy--
+`;
+            
+            const blob = new Blob([mhtml], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `GWQ_Pamphlet_${safeScope}.doc`;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast("DOCX Pamphlet downloaded successfully!", "success");
+        }
+
+        // ==========================================
+        // END DISTRICT GWQ ASSESSMENT PAMPHLET LOGIC
+        // ==========================================
 
         document.getElementById('fileInput').onchange = (e) => {
             const file = e.target.files[0];
@@ -1421,6 +1800,7 @@
             updateReport();
             renderMultiDashboard();
             renderBarChart();
+            renderBulletinPreview(); 
             renderMasterSummary();
             showToast("Data mapped & loaded successfully!", "success");
         }
@@ -1459,6 +1839,7 @@
 
             if (activeTab === 'multi') renderMultiDashboard();
             if (activeTab === 'bar') renderBarChart();
+            if (activeTab === 'bulletin') renderBulletinPreview(); 
             if (activeTab === 'master') renderMasterSummary();
             
             // Render icons for newly un-hidden tabs
@@ -1590,16 +1971,33 @@
             if (bulletinDrop) {
                 bulletinDrop.innerHTML = `
                     <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer border-b border-slate-100 mb-1">
-                        <input type="checkbox" id="selectAllBulletinParams" checked onchange="toggleAllBulletinParams(this);" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                        <input type="checkbox" id="selectAllBulletinParams" checked onchange="toggleAllBulletinParams(this); renderBulletinPreview();" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
                         <span class="text-xs font-black text-slate-700">Select All</span>
                     </label>
                 ` + dataHeaders.params.map(p => `
                     <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
-                        <input type="checkbox" value="${p}" checked onchange="updateBulletinParamText();" class="bulletin-param-cb rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                        <input type="checkbox" value="${p}" checked onchange="updateBulletinParamText(); renderBulletinPreview();" class="bulletin-param-cb rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
                         <span class="text-xs font-bold text-slate-600">${p}</span>
                     </label>
                 `).join('');
                 updateBulletinParamText();
+            }
+
+            // Pamphlet Params
+            const pamphletDrop = document.getElementById('pamphletParamDropdown');
+            if (pamphletDrop) {
+                pamphletDrop.innerHTML = `
+                    <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer border-b border-slate-100 mb-1">
+                        <input type="checkbox" id="selectAllPamphletParams" checked onchange="toggleAllPamphletParams(this)" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                        <span class="text-xs font-black text-slate-700">Select All</span>
+                    </label>
+                ` + dataHeaders.params.map(p => `
+                    <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
+                        <input type="checkbox" value="${p}" checked onchange="updatePamphletParamText()" class="pamphlet-param-cb rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                        <span class="text-xs font-bold text-slate-600">${p}</span>
+                    </label>
+                `).join('');
+                updatePamphletParamText();
             }
         }
 
@@ -1691,6 +2089,35 @@
             }
         }
 
+        function toggleAllPamphletParams(source) {
+            const cbs = document.querySelectorAll('.pamphlet-param-cb');
+            cbs.forEach(cb => cb.checked = source.checked);
+            updatePamphletParamText();
+        }
+
+        function updatePamphletParamText() {
+            const cbs = document.querySelectorAll('.pamphlet-param-cb');
+            const checked = Array.from(cbs).filter(cb => cb.checked);
+            const textEl = document.getElementById('pamphletParamDropdownText');
+            const selectAll = document.getElementById('selectAllPamphletParams');
+            
+            if (!textEl) return;
+
+            if (checked.length === cbs.length && cbs.length > 0) {
+                textEl.innerText = "All Parameters Selected";
+                if(selectAll) selectAll.checked = true;
+            } else if (checked.length === 0) {
+                textEl.innerText = "No Parameters Selected";
+                if(selectAll) selectAll.checked = false;
+            } else if (checked.length <= 2) {
+                textEl.innerText = checked.map(c => c.value).join(', ');
+                if(selectAll) selectAll.checked = false;
+            } else {
+                textEl.innerText = `${checked.length} Parameters Selected`;
+                if(selectAll) selectAll.checked = false;
+            }
+        }
+
         function toggleAllBulletinParams(source) {
             const cbs = document.querySelectorAll('.bulletin-param-cb');
             cbs.forEach(cb => cb.checked = source.checked);
@@ -1750,9 +2177,9 @@
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     bulletinMaps[paramKey] = e.target.result;
-                    // Do not auto-render to save performance
-                    updateBulletinParamText(); 
-                    showToast(`Map for ${paramKey} loaded successfully! Click Generate Preview to update.`, "success");
+                    renderBulletinPreview();
+                    updateBulletinParamText(); // Refresh the upload UI to show success checkmark
+                    showToast(`Map for ${paramKey} loaded successfully!`, "success");
                 };
                 reader.readAsDataURL(file);
             }
@@ -1892,10 +2319,7 @@
                             enabled: true,
                             format: '<b>{point.name}</b><br>{point.percentage:.1f}% ({point.y})',
                             style: fontStyle,
-                            connectorColor: theme === 'theme-dark' ? '#64748b' : '#cbd5e1',
-                            allowOverlap: true,
-                            crop: false,
-                            overflow: 'allow'
+                            connectorColor: theme === 'theme-dark' ? '#64748b' : '#cbd5e1'
                         }
                     }
                 },
@@ -2013,7 +2437,7 @@
                             pie: {
                                 innerSize: '40%',
                                 depth: 30,
-                                dataLabels: { enabled: true, format: '{point.percentage:.1f}%', style: { fontSize: '10px', color: '#475569' }, distance: 10, allowOverlap: true, crop: false, overflow: 'allow' }
+                                dataLabels: { enabled: true, format: '{point.percentage:.1f}%', style: { fontSize: '10px', color: '#475569' }, distance: 10 }
                             }
                         },
                         series: [{ name: 'Samples', data: chartData }],
@@ -2886,14 +3310,14 @@
         }
 
         // Generates 3D Donut Chart for individual parameters in Bulletin
-        async function generateParamDonutChart(title, dataPoints) {
+        async function generateParamDonutChart(title, dataPoints, width = 1200, height = 700, margins = [80, 150, 80, 150], size = '70%') {
             if (!dataPoints || dataPoints.length === 0 || typeof Highcharts === 'undefined') return '';
             
             return new Promise((resolve) => {
                 const container = document.createElement('div');
-                // Increased resolution to 1200x700 for HD Quality
-                container.style.width = '1200px';
-                container.style.height = '700px';
+                // Use dynamic resolution and margins to prevent any clipping on large labels
+                container.style.width = `${width}px`;
+                container.style.height = `${height}px`;
                 container.style.position = 'absolute';
                 container.style.left = '-9999px';
                 document.body.appendChild(container);
@@ -2904,7 +3328,7 @@
                         options3d: { enabled: true, alpha: 45, beta: 0 }, 
                         backgroundColor: '#ffffff',
                         animation: false,
-                        margin: [80, 150, 80, 150] // Large side margins to prevent letters from cutting off
+                        margin: margins 
                     },
                     title: { 
                         text: title, 
@@ -2915,12 +3339,12 @@
                         pie: {
                             innerSize: '50%',
                             depth: 45,
-                            size: '70%', // Reduced pie radius slightly to give ample room for labels
+                            size: size, 
                             dataLabels: { 
                                 enabled: true, 
                                 format: '<b>{point.name}</b><br>{point.percentage:.1f}% ({point.y})', 
                                 style: { color: '#0f172a', fontSize: '14pt', textOutline: 'none', fontWeight: 'normal' },
-                                distance: 40,
+                                distance: 30,
                                 allowOverlap: true,
                                 crop: false,
                                 overflow: 'allow'
@@ -2936,8 +3360,8 @@
                 document.body.removeChild(container);
 
                 const canvas = document.createElement('canvas');
-                canvas.width = 1200;
-                canvas.height = 700;
+                canvas.width = width;
+                canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 
                 const img = new Image();
@@ -2946,87 +3370,6 @@
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     ctx.drawImage(img, 0, 0);
                     resolve(canvas.toDataURL('image/png', 1.0)); // Maximum quality
-                };
-                img.onerror = function() {
-                    resolve('data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))));
-                };
-                img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
-            });
-        }
-
-        // Generates 3D Column Chart for Statistical Spread in Bulletin
-        async function generateParamBarChart(title, dataPoints, plotLines, yAxisTitle) {
-            if (!dataPoints || dataPoints.length === 0 || typeof Highcharts === 'undefined') return '';
-            
-            return new Promise((resolve) => {
-                const container = document.createElement('div');
-                // HD Quality
-                container.style.width = '1200px';
-                container.style.height = '700px';
-                container.style.position = 'absolute';
-                container.style.left = '-9999px';
-                document.body.appendChild(container);
-
-                const chart = Highcharts.chart(container, {
-                    chart: { 
-                        type: 'column', 
-                        options3d: { enabled: true, alpha: 10, beta: 15, depth: 50, viewDistance: 25 }, 
-                        backgroundColor: '#ffffff',
-                        animation: false,
-                        margin: [80, 50, 100, 100] // Margins for HD scale
-                    },
-                    title: { 
-                        text: title, 
-                        style: { fontSize: '20pt', fontWeight: 'bold', color: '#1e293b', fontFamily: 'Arial, sans-serif' },
-                        y: 30
-                    },
-                    xAxis: { 
-                        categories: ['Minimum', 'Average', '75th Percentile', '95th Percentile', 'Maximum'], 
-                        labels: { style: { fontSize: '14pt', fontWeight: 'bold', color: '#475569' } } 
-                    },
-                    yAxis: { 
-                        title: { text: yAxisTitle, style: { fontSize: '16pt', fontWeight: 'bold', color: '#1e293b' } },
-                        labels: { style: { fontSize: '14pt' } },
-                        plotLines: plotLines
-                    },
-                    plotOptions: { 
-                        column: { 
-                            depth: 40, 
-                            borderRadius: 3,
-                            colorByPoint: true,
-                            dataLabels: { 
-                                enabled: true, 
-                                format: '{y:.2f}', 
-                                style: { fontSize: '14pt', textOutline: 'none', color: '#ffffff', textShadow: '0 1px 2px rgba(0,0,0,0.8)' },
-                                allowOverlap: true,
-                                crop: false,
-                                overflow: 'allow'
-                            } 
-                        } 
-                    },
-                    series: [{ 
-                        name: 'Value', 
-                        data: dataPoints,
-                        showInLegend: false
-                    }],
-                    credits: { enabled: false }
-                });
-
-                const svg = chart.getSVG();
-                chart.destroy();
-                document.body.removeChild(container);
-
-                const canvas = document.createElement('canvas');
-                canvas.width = 1200;
-                canvas.height = 700;
-                const ctx = canvas.getContext('2d');
-                
-                const img = new Image();
-                img.onload = function() {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0);
-                    resolve(canvas.toDataURL('image/png', 1.0));
                 };
                 img.onerror = function() {
                     resolve('data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))));
@@ -3142,7 +3485,7 @@
             return { html: tableHTML, groupedData: groupedData };
         }
 
-        // Generates the categorization text dynamically based on table data
+        // Generates the 5-10 line categorization text dynamically based on table data
         function getCategorizationText(groupedData, paramName, breakdownLevel) {
             let buckets = {
                 '0%': [], '>0-5%': [], '>5-10%': [], '>10-15%': [], '>15-20%': [], '>20-30%': [], '>30-50%': [], '>50%': []
@@ -3218,33 +3561,29 @@
                 return;
             }
 
-            // Show Loading State while generating charts
+            // Show Loading State
             container.innerHTML = `<div class="flex flex-col items-center justify-center py-20 gap-4 opacity-80">
                 <div class="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
                 <p class="font-bold text-slate-600 uppercase tracking-widest text-center" style="font-family: 'Plus Jakarta Sans', sans-serif;">Compiling Report & Generating Charts...</p>
             </div>`;
             lucide.createIcons();
-            await new Promise(resolve => setTimeout(resolve, 50)); // Yield to UI so loader displays
+            await new Promise(resolve => setTimeout(resolve, 50)); 
 
             let filteredData = rawData;
             let titleRegion = "INDIA";
-            let breakdownLevel = "State"; // For the tables
+            let breakdownLevel = "State";
 
             if (scope !== "National") {
-                // A specific state is selected
                 titleRegion = scope.toUpperCase();
                 breakdownLevel = "District";
                 filteredData = filteredData.filter(d => String(d[dataHeaders.state] || '').trim() === scope);
             }
 
-            // Calculate overall stats
             const totalSamples = filteredData.length;
             
-            // Param Classifications for automated Charting
             const basicParamsList = ['pH', 'TDS', 'Turbidity', 'Alkalinity', 'TH', 'EC', 'Cl', 'NO3', 'F', 'Ca', 'Mg', 'SO4'];
             const heavyMetalsList = ['Fe', 'As', 'U', 'Zn', 'Cu', 'Pb', 'Cd', 'Cr', 'Hg', 'Ni', 'Se', 'Mn', 'Al', 'Ba', 'B', 'Mo'];
 
-            // Setup Data Arrays for Section 3
             let basicSummaryListHTML = "";
             let heavySummaryListHTML = "";
             let basicChartData = [];
@@ -3252,7 +3591,6 @@
             let selectedBasicNames = [];
             let selectedHeavyNames = [];
 
-            // Step 1: Pre-process parameters for 3.0 Summary
             selectedBulletinParams.forEach(paramName => {
                 const configKey = headerMap[paramName];
                 const config = PARAM_CONFIG[configKey];
@@ -3273,16 +3611,13 @@
                 }
             });
 
-            // Generate overall PNG images for 3.0 section
             const chartTitleBase = `Beyond Permissible Limit(BIS,10500)<br>${seasonYear}(n=${totalSamples})`;
             const basicChartImage = await generateHighchartsImage(chartTitleBase, basicChartData);
             const heavyChartImage = await generateHighchartsImage(chartTitleBase, heavyChartData);
 
-            // Global counters for Figures and Tables
             let figCount = 1;
             let tableCount = 1;
 
-            // Step 2: Build Section 3 HTML dynamically
             let chartsHTML = "";
             if (basicChartData.length > 0) {
                 chartsHTML += `<h4 style="font-size: 13pt; font-weight: bold; margin-top: 20px; color: #1e3a8a;">3.1 Basic Parameters</h4>`;
@@ -3312,7 +3647,6 @@
                 }
             }
 
-            // Step 3: Detailed Sections loop
             let detailedSectionsHTML = "";
             for (let index = 0; index < selectedBulletinParams.length; index++) {
                 const paramName = selectedBulletinParams[index];
@@ -3320,7 +3654,6 @@
                 const config = PARAM_CONFIG[configKey];
                 if (!config) continue;
 
-                // Build limits text for description
                 let limitText = "";
                 if (configKey === 'pH') {
                     limitText = `${config.b1} to ${config.b2}`;
@@ -3330,10 +3663,8 @@
                     limitText = `≤ ${config.b2} ${config.unit}`;
                 }
 
-                // Default description
                 let paramDescription = `The ${breakdownLevel.toLowerCase()}-wise distribution of samples exceeding the permissible limit (${limitText}) for ${config.name} is presented below.`;
                 
-                // Standard descriptions derived from template
                 if (configKey === 'EC') paramDescription = `Electrical Conductivity (EC) refers to the ability of water to conduct electricity, which is influenced by the presence of dissolved substances. It serves as an indicator of the mineral content and salinity. The ${breakdownLevel.toLowerCase()}-wise distribution of samples exceeding the EC limit (>3000 µS/cm) is presented below.`;
                 if (configKey === 'F') paramDescription = `The primary contributors to fluoride contamination are geogenic sources, such as fluoride-rich soils and rocks. The ${breakdownLevel.toLowerCase()}-wise distribution of the samples exceeding the fluoride limit (> 1.5 mg/L) is presented below.`;
                 if (configKey === 'NO3') paramDescription = `Nitrate contamination in groundwater is a commonly observed water quality concern, particularly in areas influenced by agricultural activities and sanitation practices. The ${breakdownLevel.toLowerCase()}-wise distribution of samples exceeding the Nitrate limit (>45 mg/L) is presented below.`;
@@ -3341,16 +3672,12 @@
                 if (configKey === 'Fe') paramDescription = `Iron is a naturally occurring element commonly found in groundwater. While not harmful to health at low levels, high concentrations can cause aesthetic issues. The ${breakdownLevel.toLowerCase()}-wise distribution of samples exceeding the Fe limit (>1.0 mg/L) is presented below.`;
                 if (configKey === 'U') paramDescription = `Uranium is a naturally occurring element that can be found in trace amounts in rocks, soil, and groundwater. Elevated concentrations in drinking water sources may pose potential health concerns. The ${breakdownLevel.toLowerCase()}-wise distribution of samples exceeding the Uranium limit is presented below.`;
 
-                // Calculate exact parameter stats for chart and text
                 let nAcc = 0, nPerm = 0, nFail = 0;
                 let validSamplesCount = 0;
-                let vals = []; // Store raw values for statistical spread calculation
-
                 filteredData.forEach(d => {
                     const v = parseFloat(d[paramName]);
                     if (!isNaN(v)) {
                         validSamplesCount++;
-                        vals.push(v);
                         if (configKey === 'pH') {
                             if (v >= config.b1 && v <= config.b2) nAcc++; else nFail++;
                         } else if (config.b1 === config.b2) {
@@ -3363,7 +3690,6 @@
                     }
                 });
 
-                // Generate Donut Chart Data
                 const isSingleLimit = config.b1 === config.b2 && configKey !== 'pH';
                 const pieData = [];
                 if (configKey === 'pH') {
@@ -3378,7 +3704,6 @@
                 const paramChartTitle = `Distribution of ${config.name} in Different Ranges`;
                 const paramChartBase64 = await generateParamDonutChart(paramChartTitle, pieData);
 
-                // Build text description
                 const pctAcc = validSamplesCount > 0 ? ((nAcc/validSamplesCount)*100).toFixed(1) : 0;
                 const pctFail = validSamplesCount > 0 ? ((nFail/validSamplesCount)*100).toFixed(1) : 0;
                 const pctPerm = validSamplesCount > 0 ? ((nPerm/validSamplesCount)*100).toFixed(1) : 0;
@@ -3403,70 +3728,11 @@
                     `;
                 }
 
-                // Generate Statistical Spread Bar Chart
-                let barChartHTML = "";
-                let statText = "";
-                if (vals.length > 0) {
-                    vals.sort((a, b) => a - b);
-                    const tLen = vals.length;
-                    const minVal = vals[0];
-                    const maxVal = vals[tLen - 1];
-                    const avgVal = vals.reduce((a, b) => a + b, 0) / tLen;
-
-                    const p75Index = (75 / 100) * (tLen - 1);
-                    const p75Val = vals[Math.floor(p75Index)] * (1 - (p75Index % 1)) + vals[Math.ceil(p75Index)] * (p75Index % 1);
-
-                    const p95Index = (95 / 100) * (tLen - 1);
-                    const p95Val = vals[Math.floor(p95Index)] * (1 - (p95Index % 1)) + vals[Math.ceil(p95Index)] * (p95Index % 1);
-
-                    let plotLines = [];
-                    if (configKey === 'pH') {
-                        plotLines.push({ color: '#10b981', width: 3, value: config.b1, dashStyle: 'shortdash', zIndex: 5, label: { text: `Lower Limit (${config.b1})`, style: { color: '#059669', fontWeight: 'bold', fontSize: '14pt' } } });
-                        plotLines.push({ color: '#f59e0b', width: 3, value: config.b2, dashStyle: 'shortdash', zIndex: 5, label: { text: `Upper Limit (${config.b2})`, style: { color: '#b45309', fontWeight: 'bold', fontSize: '14pt' } } });
-                    } else if (isSingleLimit) {
-                        plotLines.push({ color: '#f43f5e', width: 3, value: config.b1, dashStyle: 'shortdash', zIndex: 5, label: { text: `Limit (${config.b1})`, style: { color: '#be123c', fontWeight: 'bold', fontSize: '14pt' } } });
-                    } else {
-                        plotLines.push({ color: '#10b981', width: 3, value: config.b1, dashStyle: 'shortdash', zIndex: 5, label: { text: `Acc. Limit (${config.b1})`, style: { color: '#059669', fontWeight: 'bold', fontSize: '14pt' } } });
-                        plotLines.push({ color: '#f59e0b', width: 3, value: config.b2, dashStyle: 'shortdash', zIndex: 5, label: { text: `Perm. Limit (${config.b2})`, style: { color: '#b45309', fontWeight: 'bold', fontSize: '14pt' } } });
-                    }
-
-                    const barData = [
-                        { y: minVal, color: '#818cf8' },
-                        { y: avgVal, color: '#c084fc' },
-                        { y: p75Val, color: '#60a5fa' },
-                        { y: p95Val, color: '#fbbf24' },
-                        { y: maxVal, color: '#f43f5e' }
-                    ];
-
-                    const barChartTitle = `Statistical Spread vs Limits (${config.name})`;
-                    const barChartBase64 = await generateParamBarChart(barChartTitle, barData, plotLines, config.unit ? `Concentration (${config.unit})` : 'Value');
-                    
-                    statText = `
-                        <p style="text-align: justify; line-height: 1.6; margin-bottom: 15px;">
-                            To further understand the concentration distribution of ${config.name}, a <strong>Statistical Spread versus Limits</strong> chart is presented below. This chart illustrates the Minimum, Average, 75<sup>th</sup> Percentile, 95<sup>th</sup> Percentile, and Maximum recorded values, plotted against the standard BIS limit lines (shown as dashed lines). 
-                        </p>
-                        <p style="text-align: justify; line-height: 1.6; margin-bottom: 15px;">
-                            For the current dataset, the average concentration stands at <strong>${avgVal.toFixed(2)} ${config.unit}</strong>. Analysis of the percentiles reveals that 75% of the samples fall below <strong>${p75Val.toFixed(2)} ${config.unit}</strong>, and 95% of the samples are below <strong>${p95Val.toFixed(2)} ${config.unit}</strong>. The maximum outlier recorded was <strong>${maxVal.toFixed(2)} ${config.unit}</strong>. Comparing these statistical percentiles against the permissible limits provides a clear picture of the severity and widespread nature of the parameter's presence in the region.
-                        </p>
-                    `;
-
-                    if (barChartBase64) {
-                        barChartHTML = `
-                            <div style="text-align: center; margin-top: 25px; margin-bottom: 25px; break-inside: avoid; border: none;">
-                                <img src="${barChartBase64}" width="700" style="max-width: 100%; height: auto; border: none; display: block; margin: 0 auto; background: white;" alt="Statistical Spread vs Limits" />
-                                <p style="text-align: center; font-weight: bold; font-size: 11pt; margin-top: 8px;">Figure ${figCount++}: ${barChartTitle}</p>
-                            </div>
-                        `;
-                    }
-                }
-
                 const tableInfo = generateBulletinTableHTML(configKey, filteredData, scope, breakdownLevel);
                 const tableCaptionHTML = `<p style="text-align: center; font-weight: bold; font-size: 11pt; margin-bottom: 5px;">Table ${tableCount++}: Distribution of ${config.name} (${configKey})</p>`;
                 
-                // Generate automated categorization text
                 const categorizationText = getCategorizationText(tableInfo.groupedData, config.name, breakdownLevel);
 
-                // Include uploaded map if available
                 let mapHTML = "";
                 if (bulletinMaps[configKey]) {
                     mapHTML = `
@@ -3477,7 +3743,6 @@
                     `;
                 }
 
-                // Add to 4.0 Detailed Sections
                 detailedSectionsHTML += `
                     <div style="break-inside: auto; margin-bottom: 30px;">
                         <h4 style="font-size: 13pt; font-weight: bold; margin-top: 25px; color: #1e3a8a; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;">4.${index + 1} ${config.name} (${configKey})</h4>
@@ -3486,8 +3751,6 @@
                         </p>
                         ${distText}
                         ${paramChartHTML}
-                        ${statText}
-                        ${barChartHTML}
                         ${tableCaptionHTML}
                         ${tableInfo.html}
                         ${categorizationText}
@@ -3495,8 +3758,6 @@
                     </div>
                 `;
             }
-
-            let allSelectedNamesList = [...selectedBasicNames, ...selectedHeavyNames].join(', ');
 
             let contentHTML = `
                 <div style="text-align: center; margin-bottom: 30px;">
@@ -3512,7 +3773,7 @@
                     Evaluation of water quality involves assessing the presence and concentration of various physical and chemical constituents in groundwater to determine its suitability for intended uses such as drinking, agriculture, and industrial applications. 
                 </p>
                 <p style="text-align: justify; line-height: 1.6; margin-bottom: 15px;">
-                    The present bulletin utilizes a dataset comprising <strong>around ${totalSamples} water samples</strong>. This report is specifically prepared to analyze, visualize, and summarize the compliance of the following selected parameters: <strong>${allSelectedNamesList}</strong>. This focused sample size enhances spatial coverage and improves the statistical robustness of the assessment for these specific hydrochemical markers.
+                    The present bulletin utilizes a dataset comprising <strong>around ${totalSamples} water samples</strong>. This sample size enhances spatial coverage and improves the statistical robustness of the assessment, thereby providing a reliable and representative evaluation of groundwater quality across the region.
                 </p>
 
                 <h3 style="font-size: 14pt; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 25px;">2.0 Objectives of the ${seasonYear} Groundwater Quality Monitoring</h3>
@@ -3832,7 +4093,7 @@ ${imageParts}
                 
                 row.forEach((cell, idx) => {
                     let cellVal = typeof cell === 'object' && cell !== null ? cell.v.toFixed(2) : cell;
-                    let align = (idx < (level==='District'?3:2) || idx % 5 === 4 + (level==='District'?3:2)) ? 'text-left' : 'text-center';
+                    let align = (idx < (level === 'District' ? 3 : 2) || idx % 5 === 4 + (level === 'District' ? 3 : 2)) ? 'text-left' : 'text-center';
                     if (idx === 0) align = 'text-center'; // S.No
                     
                     // Highlight % above limit if > 0
