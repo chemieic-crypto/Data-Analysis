@@ -1091,7 +1091,7 @@
 
             const summaryChartData = [];
             if(safeSamplesCount > 0) summaryChartData.push({ name: 'All Parameters Within Safe Limits', y: safeSamplesCount, color: '#10b981' });
-            if(singleExceedanceCount > 0) summaryChartData.push({ name: 'Exactly One Parameter Exceeds Limit', y: singleExceedanceCount, color: '#f59e0b' });
+            if(singleExceedanceCount > 0) summaryChartData.push({ name: ' One Parameter Exceeds Limit', y: singleExceedanceCount, color: '#f59e0b' });
             if(multiExceedanceCount > 0) summaryChartData.push({ name: 'More Than One Parameter Exceeds Limit', y: multiExceedanceCount, color: '#f43f5e' });
 
             // Using increased dimensions and margin space to prevent clipping in exported doc
@@ -1118,7 +1118,7 @@
             let textParaCompliance = `Evaluating overall sample integrity against the selected parameters, <strong>${safeSamplesCount} out of ${totalSamples} samples (${safePct}%)</strong> were found to be completely safe, with all parameters remaining strictly within permissible limits. `;
             
             if (singleExceedanceCount > 0 || multiExceedanceCount > 0) {
-                textParaCompliance += `Conversely, <strong>${singleExceedanceCount} samples (${singlePct}%)</strong> exceeded the limit for exactly one parameter, highlighting localized or parameter-specific issues. More critically, <strong>${multiExceedanceCount} samples (${multiPct}%)</strong> exhibited simultaneous exceedances in more than one parameter, indicating complex contamination profiles that require robust, holistic water treatment interventions.`;
+                textParaCompliance += `Conversely, <strong>${singleExceedanceCount} samples (${singlePct}%)</strong> exceeded the limit for  one parameter, highlighting localized or parameter-specific issues. More critically, <strong>${multiExceedanceCount} samples (${multiPct}%)</strong> exhibited simultaneous exceedances in more than one parameter, indicating complex contamination profiles that require robust, holistic water treatment interventions.`;
             }
 
             let textPara2 = `A detailed evaluation of specific parameters reveals varying degrees of hydrochemical compliance. `;
