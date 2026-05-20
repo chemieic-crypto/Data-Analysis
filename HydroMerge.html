@@ -361,8 +361,14 @@
                     </div>
                     
                     <div id="shapeColContainer" class="hidden flex items-center space-x-2 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-200 shadow-inner">
+                        <button onclick="toggleShapefileVisibility()" class="p-1 hover:bg-slate-200 rounded transition-colors" title="Toggle Shapefile View">
+                            <i id="toggleShapeIcon" data-lucide="eye" class="w-4 h-4 text-slate-600"></i>
+                        </button>
+                        <select id="shapeColMode" class="bg-transparent border-none text-slate-700 text-[10px] font-black uppercase tracking-wider outline-none cursor-pointer pr-1" onchange="updateShapefileColor()">
+                            <option value="single">Single Color</option>
+                            <option value="attribute">By Attribute</option>
+                        </select>
                         <input type="color" id="colorShape" value="#cbd5e1" class="cursor-pointer w-6 h-6 border border-slate-300 rounded" onchange="updateShapefileColor()">
-                        <label class="text-[10px] font-black text-slate-700 uppercase tracking-wider">Shape</label>
                     </div>
 
                     <div class="flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-inner">
@@ -442,10 +448,15 @@
 
     <!-- Area Stats Modal -->
     <div id="areaStatsModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden animate-fade-in border-4 border-white">
+        <div class="glass-card w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-fade-in border-4 border-white">
             <div class="p-5 border-b-2 border-slate-100 flex justify-between items-center bg-white/50">
                 <h3 class="font-black text-slate-800 flex items-center text-lg uppercase tracking-wider"><span class="glossy-circle glossy-orange w-8 h-8 mr-3"><i data-lucide="pie-chart" class="w-4 h-4 text-white"></i></span> Regional Sample Stats</h3>
-                <button onclick="document.getElementById('areaStatsModal').classList.add('hidden')" class="btn-glossy-3d btn-white-3d p-2"><i data-lucide="x" class="w-4 h-4 text-slate-500"></i></button>
+                <div class="flex space-x-3 items-center">
+                    <button onclick="exportDetailedAreaStats()" class="btn-glossy-3d btn-green-3d px-4 py-2 text-[10px] flex items-center space-x-1">
+                        <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> <span>Export Detailed Report (.xlsx)</span>
+                    </button>
+                    <button onclick="document.getElementById('areaStatsModal').classList.add('hidden')" class="btn-glossy-3d btn-white-3d p-2"><i data-lucide="x" class="w-4 h-4 text-slate-500"></i></button>
+                </div>
             </div>
             <div class="p-0 overflow-y-auto custom-scrollbar flex-1 relative bg-white/80">
                 <div id="areaStatsLoading" class="hidden absolute inset-0 bg-white/90 z-10 flex flex-col items-center justify-center">
@@ -455,7 +466,7 @@
                 <table class="w-full text-left text-sm text-slate-600">
                     <thead class="bg-slate-100 text-[10px] uppercase font-black text-slate-500 sticky top-0 shadow-sm z-0 tracking-wider">
                         <tr>
-                            <th class="px-5 py-4 border-b-2 border-slate-200">Region / Feature Name</th>
+                            <th class="px-5 py-4 border-b-2 border-slate-200">Principal Aquifer / Feature Name</th>
                             <th class="px-5 py-4 text-center border-b-2 border-slate-200 text-emerald-600">Matched</th>
                             <th class="px-5 py-4 text-center border-b-2 border-slate-200 text-rose-500">Unmatched</th>
                             <th class="px-5 py-4 text-center border-b-2 border-slate-200 text-indigo-600 bg-indigo-50/50">Total</th>
@@ -483,7 +494,21 @@
         let headers2 = [];
         let totalRows1 = 0;
         let totalRows2 = 0;
+        let currentDetailedAreaStats = []; // Holds the state-wise breakdown for Excel export
         
+        // Dynamic Attribute Styling Palette
+        const attributeColors = {};
+        const palette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#0ea5e9', '#ef4444'];
+        let colorIdx = 0;
+        
+        function getAttributeColor(name) {
+            if (!attributeColors[name]) {
+                attributeColors[name] = palette[colorIdx % palette.length];
+                colorIdx++;
+            }
+            return attributeColors[name];
+        }
+
         // Performance Helper: Yield thread to prevent "Page Unresponsive" freezing
         const yieldToMain = () => new Promise(r => setTimeout(r, 0));
         
@@ -500,6 +525,7 @@
         let geoJsonData = null; // Active geoJson data
         let selectedFeature = null;
         let gridLayer = null;
+        let isShapeVisible = true;
 
         let basemaps = {};
         let currentBasemapLayer = null;
@@ -776,7 +802,7 @@
             document.getElementById('statusAlert').classList.add('hidden');
 
             matchedData = []; unmatchedData1 = []; unmatchedData2 = [];
-            missingData1 = []; missingData2 = [];
+            missingData1 = []; missingData2 = []; currentDetailedAreaStats = [];
             headers1 = []; headers2 = []; totalRows1 = 0; totalRows2 = 0;
 
             if (mapInstance) {
@@ -799,6 +825,7 @@
                 selectedFeature = null;
                 shapefileLayers = {};
                 currentLayerId = null;
+                isShapeVisible = true;
                 clearGrid();
                 
                 const layerSel = document.getElementById('layerSelector');
@@ -1025,6 +1052,19 @@
             }
         }
 
+        function toggleShapefileVisibility() {
+            if (!customGeoLayer) return;
+            isShapeVisible = !isShapeVisible;
+            if (isShapeVisible) {
+                mapInstance.addLayer(customGeoLayer);
+                document.getElementById('toggleShapeIcon').setAttribute('data-lucide', 'eye');
+            } else {
+                mapInstance.removeLayer(customGeoLayer);
+                document.getElementById('toggleShapeIcon').setAttribute('data-lucide', 'eye-off');
+            }
+            lucide.createIcons();
+        }
+
         function handleMapClick(e) {
             if (!isMeasureMode) return;
             if (measurePoints.length >= 2) { measureLayerGroup.clearLayers(); measurePoints = []; }
@@ -1085,10 +1125,71 @@
 
         function getFeatureName(properties) {
             if (!properties) return "Unknown Area";
-            const targetKeys = ['aquifer', 'aq_name', 'aq_type', 'type', 'state', 'states', 'name_1', 'name_0', 'name', 'district', 'basin'];
-            for (let target of targetKeys) { for (let key in properties) { if (key.toLowerCase() === target) return properties[key]; } }
-            for (let key in properties) { if (typeof properties[key] === 'string' && properties[key].trim() !== '') return properties[key]; }
-            return "Unknown Area";
+            
+            const keys = Object.keys(properties);
+            const lowerKeys = keys.map(k => k.toLowerCase());
+            let finalName = "Unknown Area";
+            
+            // 1. Highest Priority: Look specifically for Aquifer / Lithology related names
+            const aqKeywords = ['aquifer', 'aq_name', 'aq_type', 'prncpl_aq', 'principal', 'aqf', 'aq', 'litho', 'desc', 'rock', 'forma', 'geology', 'system', 'type'];
+            for (let keyword of aqKeywords) {
+                let foundIndex = lowerKeys.findIndex(k => k.includes(keyword));
+                if (foundIndex !== -1) {
+                    let val = properties[keys[foundIndex]];
+                    if (val && String(val).trim() !== '' && isNaN(val)) {
+                        finalName = String(val).trim();
+                        break;
+                    }
+                }
+            }
+
+            // 2. Secondary Priority: Standard region names
+            if (finalName === "Unknown Area") {
+                const standardKeywords = ['name', 'state', 'district', 'basin', 'region'];
+                for (let keyword of standardKeywords) {
+                    let foundIndex = lowerKeys.findIndex(k => k.includes(keyword));
+                    if (foundIndex !== -1) {
+                        let val = properties[keys[foundIndex]];
+                        if (val && String(val).trim() !== '' && isNaN(val)) {
+                            finalName = String(val).trim();
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 3. Fallback: Find the FIRST string property that isn't a number or ID
+            if (finalName === "Unknown Area") {
+                for (let key of keys) {
+                    let val = properties[key];
+                    if (typeof val === 'string' && val.trim() !== '' && isNaN(val)) {
+                        if (!key.toLowerCase().includes('shape') && !key.toLowerCase().includes('id') && !key.toLowerCase().includes('code')) {
+                            finalName = val.trim();
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 4. Absolute fallback
+            if (finalName === "Unknown Area") {
+                for (let key of keys) {
+                    if (properties[key] && String(properties[key]).trim() !== '') {
+                        finalName = String(properties[key]).trim();
+                        break;
+                    }
+                }
+            }
+            
+            // Normalize casing (Title Case) to prevent duplicate groups like "Alluvium", "Alluvium  ", and "ALLUVIUM"
+            if (finalName !== "Unknown Area") {
+                return finalName.split(' ')
+                    .filter(word => word.trim().length > 0)
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                    .join(' ');
+            }
+            
+            return finalName;
         }
 
         async function handleShapefileUpload(event) {
@@ -1124,6 +1225,11 @@
                 layerSel.appendChild(opt); layerSel.classList.remove('hidden'); layerSel.value = layerId;
                 document.getElementById('shapeColContainer').classList.remove('hidden');
                 document.getElementById('areaStatsBtn').classList.remove('hidden');
+                
+                isShapeVisible = true;
+                document.getElementById('toggleShapeIcon').setAttribute('data-lucide', 'eye');
+                lucide.createIcons();
+                
                 switchShapefileLayer(layerId);
                 showStatus(`Shapefile '${shpName}' loaded.`, "success");
                 event.target.value = '';
@@ -1134,7 +1240,7 @@
             if (!shapefileLayers[layerId]) return;
             if (customGeoLayer) mapInstance.removeLayer(customGeoLayer);
             currentLayerId = layerId; geoJsonData = shapefileLayers[layerId].geoJson; customGeoLayer = shapefileLayers[layerId].leafletLayer;
-            customGeoLayer.addTo(mapInstance).bringToBack();
+            if (isShapeVisible) customGeoLayer.addTo(mapInstance).bringToBack();
             if(currentBasemapLayer) currentBasemapLayer.bringToBack();
             mapInstance.fitBounds(customGeoLayer.getBounds(), { padding: [20, 20] });
             populateFeatureDropdown(geoJsonData);
@@ -1154,19 +1260,26 @@
             if (!customGeoLayer) return;
             selectedFeature = null;
             if (targetFeatName === "ALL_MAP") {
-                 customGeoLayer.eachLayer(layer => layer.setStyle(highlightStateStyle()));
+                 customGeoLayer.eachLayer(layer => layer.setStyle(highlightStateStyle(layer.feature)));
                  selectedFeature = geoJsonData; 
             } else {
                 customGeoLayer.eachLayer(layer => {
                     const name = getFeatureName(layer.feature.properties);
-                    if (targetFeatName && name === targetFeatName) { layer.setStyle(highlightStateStyle()); layer.bringToFront(); selectedFeature = layer.feature; }
-                    else { layer.setStyle(defaultStateStyle()); }
+                    if (targetFeatName && name === targetFeatName) { 
+                        layer.setStyle(highlightStateStyle(layer.feature)); 
+                        layer.bringToFront(); 
+                        selectedFeature = layer.feature; 
+                    } else { 
+                        layer.setStyle(defaultStateStyle(layer.feature)); 
+                    }
                 });
             }
             const bar = document.getElementById('spatialAnalysisBar');
             if (selectedFeature) {
                 bar.classList.remove('hidden'); bar.classList.add('flex', 'flex-col', 'md:flex-row');
-                mapInstance.fitBounds(targetFeatName === "ALL_MAP" ? customGeoLayer.getBounds() : L.geoJSON(selectedFeature).getBounds(), { padding: [20, 20] });
+                if (isShapeVisible) {
+                    mapInstance.fitBounds(targetFeatName === "ALL_MAP" ? customGeoLayer.getBounds() : L.geoJSON(selectedFeature).getBounds(), { padding: [20, 20] });
+                }
             } else {
                 bar.classList.add('hidden'); bar.classList.remove('flex', 'flex-col', 'md:flex-row');
                 clearGrid();
@@ -1175,9 +1288,90 @@
             if (markerLayerGroup) markerLayerGroup.bringToFront();
         }
 
-        function defaultStateStyle() { return { fillColor: document.getElementById('colorShape').value, weight: 1.5, opacity: 1, color: '#64748b', fillOpacity: 0.30 }; }
-        function highlightStateStyle() { return { fillColor: document.getElementById('colorShape').value, weight: 3, opacity: 1, color: '#4f46e5', fillOpacity: 0.65 }; }
+        function getStyleForFeature(feature, isHighlight) {
+            const mode = document.getElementById('shapeColMode').value;
+            let fillColor = document.getElementById('colorShape').value;
+            
+            // Override with Dynamic Attribute Coloring if selected
+            if (mode === 'attribute' && feature) {
+                const name = getFeatureName(feature.properties);
+                fillColor = getAttributeColor(name);
+            }
+            
+            if (isHighlight) {
+                return { fillColor: fillColor, weight: 3, opacity: 1, color: '#4f46e5', fillOpacity: 0.65 };
+            } else {
+                return { fillColor: fillColor, weight: 1.5, opacity: 1, color: '#64748b', fillOpacity: 0.30 };
+            }
+        }
+
+        function defaultStateStyle(feature) { return getStyleForFeature(feature, false); }
+        function highlightStateStyle(feature) { return getStyleForFeature(feature, true); }
         function updateShapefileColor() { if (!customGeoLayer) return; highlightFeature(document.getElementById('featureSelector').value); }
+
+        // --- RAW MATH RAY-CASTING ENGINE (Ignores broken shapefile topologies) ---
+        function isPointInGeom(pt, geometry) {
+            if (!geometry || !geometry.coordinates) return false;
+            let type = geometry.type;
+            let coords = geometry.coordinates;
+            
+            function pointInRing(pt, ring) {
+                let isInside = false;
+                for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+                    let xi = ring[i][0], yi = ring[i][1];
+                    let xj = ring[j][0], yj = ring[j][1];
+                    let intersect = ((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi);
+                    if (intersect) isInside = !isInside;
+                }
+                return isInside;
+            }
+
+            if (type === "Polygon") {
+                if (!pointInRing(pt, coords[0])) return false;
+                for (let i = 1; i < coords.length; i++) {
+                    if (pointInRing(pt, coords[i])) return false; // In hole
+                }
+                return true;
+            } else if (type === "MultiPolygon") {
+                for (let p = 0; p < coords.length; p++) {
+                    let polyCoords = coords[p];
+                    if (pointInRing(pt, polyCoords[0])) {
+                        let inHole = false;
+                        for (let i = 1; i < polyCoords.length; i++) {
+                            if (pointInRing(pt, polyCoords[i])) {
+                                inHole = true;
+                                break;
+                            }
+                        }
+                        if (!inHole) return true;
+                    }
+                }
+                return false;
+            }
+            return false;
+        }
+
+        // --- DETAILED EXPORT FUNCTION ---
+        function exportDetailedAreaStats() {
+            if (!currentDetailedAreaStats || currentDetailedAreaStats.length === 0) {
+                return showStatus("No detailed stats to export.", "error");
+            }
+            let name = document.getElementById('exportFileName').value.trim() || "HydroMerge_Output";
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(currentDetailedAreaStats), "State_Aquifer_Breakdown");
+            XLSX.writeFile(wb, name + "_Regional_Stats.xlsx");
+        }
+
+        function getStateValueFromRow(row) {
+            if (!row) return "Unknown State";
+            let keys = Object.keys(row);
+            let stateKey = keys.find(k => {
+                let lower = k.toLowerCase();
+                return lower === 'state' || lower === 'state_name' || lower === 'state name';
+            });
+            if (stateKey && row[stateKey]) return String(row[stateKey]).trim();
+            return "Unknown State";
+        }
 
         function calculateAreaStats() {
             if (!geoJsonData) return showStatus("Load shapefile first.", "error");
@@ -1185,37 +1379,107 @@
             document.getElementById('areaStatsLoading').classList.remove('hidden');
             const tbody = document.getElementById('areaStatsTableBody');
             tbody.innerHTML = ''; 
+            currentDetailedAreaStats = []; // Reset detailed stats global
+            
             setTimeout(async () => {
                 try {
-                    const matchedPts = []; const unmatchedPts = [];
-                    const addPts = (dataset, targetArr) => {
-                        if (!dataset || !dataset.length) return;
-                        const geo = findGeoKeys(dataset);
-                        if (!geo) return;
-                        dataset.forEach(row => {
-                            let lat = parseFloat(row[geo.lat]), lng = parseFloat(row[geo.lng]);
-                            if (!isNaN(lat) && !isNaN(lng)) targetArr.push(turf.point([lng, lat])); 
-                        });
+                    // 1. FAST POINT EXTRACTION WITH ROW DATA
+                    const matchedPts = []; 
+                    const unmatchedPts = [];
+                    
+                    const geoM = findGeoKeys(matchedData);
+                    const geoU = findGeoKeys(unmatchedData2);
+                    
+                    const addFastPts = (dataset, geoKeys, targetArr) => {
+                        if (!dataset || !geoKeys) return;
+                        for(let i=0; i<dataset.length; i++) {
+                            let lat = parseFloat(dataset[i][geoKeys.lat]);
+                            let lng = parseFloat(dataset[i][geoKeys.lng]);
+                            if (!isNaN(lat) && !isNaN(lng)) {
+                                targetArr.push({ coords: [lng, lat], id: i, row: dataset[i] });
+                            }
+                        }
                     };
-                    addPts(matchedData, matchedPts); addPts(unmatchedData2, unmatchedPts);
-                    const collMatched = turf.featureCollection(matchedPts);
-                    const collUnmatched = turf.featureCollection(unmatchedPts);
+                    
+                    addFastPts(matchedData, geoM, matchedPts); 
+                    addFastPts(unmatchedData2, geoU, unmatchedPts);
+
+                    // Group features by regional name (Crucial for fragmented aquifers)
                     let regionPolys = {};
-                    geoJsonData.features.forEach(f => { let name = getFeatureName(f.properties); if (!regionPolys[name]) regionPolys[name] = []; regionPolys[name].push(f); });
+                    geoJsonData.features.forEach(f => { 
+                        if (!f.geometry || !f.geometry.type.includes('Polygon')) return; // Skip lines/points
+                        let name = getFeatureName(f.properties); 
+                        if (!regionPolys[name]) regionPolys[name] = []; 
+                        regionPolys[name].push(f); 
+                    });
+
                     let results = [];
-                    for (let regionName in regionPolys) {
-                        await yieldToMain();
-                        let totalMatched = 0; let totalUnmatched = 0;
-                        regionPolys[regionName].forEach(poly => {
-                            if (matchedPts.length > 0) totalMatched += turf.pointsWithinPolygon(collMatched, poly).features.length;
-                            if (unmatchedPts.length > 0) totalUnmatched += turf.pointsWithinPolygon(collUnmatched, poly).features.length;
-                        });
+                    let regionNames = Object.keys(regionPolys);
+
+                    // 2. HIGH-SPEED RAY-CASTING INTERSECTION & STATE GROUPING
+                    for (let r = 0; r < regionNames.length; r++) {
+                        let regionName = regionNames[r];
+                        if (r % 5 === 0) await yieldToMain(); // Yield frequently
+                        
+                        let polys = regionPolys[regionName];
+                        let stateTracker = {}; // Format: { "Gujarat": { matched: 0, unmatched: 0 } }
+
+                        const countAndGroupPoints = (ptsArray, typeKey) => {
+                            let matchedIndices = new Set();
+                            for (let p = 0; p < polys.length; p++) {
+                                let poly = polys[p];
+                                let bbox;
+                                try { bbox = turf.bbox(poly); } catch(e) { continue; } // Pre-fetch mathematical envelope
+
+                                for (let i = 0; i < ptsArray.length; i++) {
+                                    let pt = ptsArray[i];
+                                    if (matchedIndices.has(pt.id)) continue; 
+
+                                    // Fast AABB Bounding Box Check
+                                    if (pt.coords[0] >= bbox[0] && pt.coords[0] <= bbox[2] && pt.coords[1] >= bbox[1] && pt.coords[1] <= bbox[3]) {
+                                        // Bulletproof ray-casting verification
+                                        if (isPointInGeom(pt.coords, poly.geometry)) {
+                                            matchedIndices.add(pt.id);
+                                            
+                                            // Extract "State" and aggregate
+                                            let stateName = getStateValueFromRow(pt.row);
+                                            if (!stateTracker[stateName]) stateTracker[stateName] = { matched: 0, unmatched: 0 };
+                                            stateTracker[stateName][typeKey]++;
+                                        }
+                                    }
+                                }
+                            }
+                            return matchedIndices.size;
+                        };
+
+                        let totalMatched = countAndGroupPoints(matchedPts, 'matched');
+                        let totalUnmatched = countAndGroupPoints(unmatchedPts, 'unmatched');
+
+                        // Save the detailed breakdown for this aquifer into the global export array
+                        for (let stateName in stateTracker) {
+                            currentDetailedAreaStats.push({
+                                "Principal Aquifer": regionName,
+                                "State": stateName,
+                                "Matched Samples": stateTracker[stateName].matched,
+                                "Unmatched Samples": stateTracker[stateName].unmatched,
+                                "Total Samples": stateTracker[stateName].matched + stateTracker[stateName].unmatched
+                            });
+                        }
+
+                        // Save the high-level summary for the HTML modal
                         results.push({ name: regionName, matched: totalMatched, unmatched: totalUnmatched, total: totalMatched + totalUnmatched });
                     }
+
+                    // Render Table
                     results.sort((a, b) => b.total - a.total);
                     tbody.innerHTML = results.map(res => `<tr><td class="px-5 py-4 font-bold text-slate-800 border-b border-slate-100">${res.name}</td><td class="px-5 py-4 text-center text-emerald-600 font-black border-b border-slate-100">${res.matched}</td><td class="px-5 py-4 text-center text-rose-500 font-black border-b border-slate-100">${res.unmatched}</td><td class="px-5 py-4 text-center text-indigo-700 font-black bg-indigo-50/50 border-b border-slate-100">${res.total}</td></tr>`).join('');
                     document.getElementById('areaStatsLoading').classList.add('hidden');
-                } catch (e) { console.error(e); document.getElementById('areaStatsLoading').classList.add('hidden'); }
+                    
+                } catch (e) { 
+                    console.error("Area Stats Error: ", e); 
+                    document.getElementById('areaStatsLoading').classList.add('hidden'); 
+                    showStatus("Error calculating regional stats.", "error");
+                }
             }, 50);
         }
 
