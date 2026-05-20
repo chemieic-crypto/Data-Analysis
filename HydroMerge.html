@@ -328,6 +328,14 @@
                         <p class="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1">Unmatched S2</p>
                         <h3 id="statUn2" class="text-xl font-black text-rose-700 drop-shadow-sm">0</h3>
                     </div>
+                    <div class="bg-gradient-to-b from-white to-slate-100 p-2 rounded-xl border border-slate-300 shadow-sm flex flex-col items-center justify-center text-center">
+                        <p class="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Missing Keys S1</p>
+                        <h3 id="statMissing1" class="text-lg font-black text-slate-600 drop-shadow-sm">0</h3>
+                    </div>
+                    <div class="bg-gradient-to-b from-white to-slate-100 p-2 rounded-xl border border-slate-300 shadow-sm flex flex-col items-center justify-center text-center">
+                        <p class="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Missing Keys S2</p>
+                        <h3 id="statMissing2" class="text-lg font-black text-slate-600 drop-shadow-sm">0</h3>
+                    </div>
                 </div>
 
                 <div class="w-full relative flex items-center justify-center bg-white p-4 rounded-xl border-2 border-slate-100 shadow-inner h-64">
@@ -409,8 +417,8 @@
                         Grid Analysis
                     </span>
                     <div class="flex items-center space-x-2 bg-indigo-50/50 border-2 border-indigo-100 rounded-xl px-3 py-2 shadow-inner">
-                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Size (km):</label>
-                        <input type="number" id="gridSizeKm" value="25" min="1" max="500" class="w-14 text-sm font-black text-indigo-700 p-0 border-none outline-none bg-transparent text-center focus:ring-0">
+                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Area (km²):</label>
+                        <input type="number" id="gridSizeKm" value="100" min="1" max="10000" class="w-16 text-sm font-black text-indigo-700 p-0 border-none outline-none bg-transparent text-center focus:ring-0">
                     </div>
                     <div class="flex space-x-2">
                         <button onclick="generateGridAnalysis()" class="btn-glossy-3d btn-indigo-3d flex items-center px-5 py-2.5 text-[11px]">
@@ -469,6 +477,8 @@
         let matchedData = [];
         let unmatchedData1 = [];
         let unmatchedData2 = [];
+        let missingData1 = [];
+        let missingData2 = [];
         let headers1 = [];
         let headers2 = [];
         let totalRows1 = 0;
@@ -766,6 +776,7 @@
             document.getElementById('statusAlert').classList.add('hidden');
 
             matchedData = []; unmatchedData1 = []; unmatchedData2 = [];
+            missingData1 = []; missingData2 = [];
             headers1 = []; headers2 = []; totalRows1 = 0; totalRows2 = 0;
 
             if (mapInstance) {
@@ -848,6 +859,7 @@
                 totalRows2 = data2.length;
 
                 matchedData = []; unmatchedData1 = []; unmatchedData2 = [];
+                missingData1 = []; missingData2 = [];
                 let matchedIndicesData2 = new Set();
 
                 const data2Map = new Map();
@@ -855,26 +867,42 @@
                     if (idx % 10000 === 0) await yieldToMain();
                     let row2 = data2[idx];
                     const allKeysEmpty = joinKeys.every(k => String(row2[k.col2] || '').trim() === '');
-                    if (!allKeysEmpty) {
+                    if (allKeysEmpty) {
+                        missingData2.push(row2);
+                    } else {
                         const key = joinKeys.map(k => processMatchText(row2[k.col2], k.len)).join('|||');
                         if (!data2Map.has(key)) {
-                            data2Map.set(key, { row: row2, index: idx });
+                            data2Map.set(key, []);
                         }
+                        data2Map.get(key).push({ row: row2, index: idx });
                     }
                 }
 
+                let s2MatchTracker = new Map();
                 for (let idx = 0; idx < data1.length; idx++) {
                     if (idx % 10000 === 0) await yieldToMain();
                     let row1 = data1[idx];
                     const allKeysEmpty = joinKeys.every(k => String(row1[k.col1] || '').trim() === '');
                     if (allKeysEmpty) {
-                        unmatchedData1.push(row1);
+                        missingData1.push(row1);
                         continue;
                     }
                     const matchKey = joinKeys.map(k => processMatchText(row1[k.col1], k.len)).join('|||');
                     if (data2Map.has(matchKey)) {
-                        let matchObj = data2Map.get(matchKey);
-                        matchedIndicesData2.add(matchObj.index);
+                        let matches = data2Map.get(matchKey);
+                        let useIndex = s2MatchTracker.get(matchKey) || 0;
+                        let matchObj;
+                        
+                        // Handle 1-to-1 matching properly even if there are duplicates
+                        if (useIndex < matches.length) {
+                            matchObj = matches[useIndex];
+                            s2MatchTracker.set(matchKey, useIndex + 1);
+                            matchedIndicesData2.add(matchObj.index);
+                        } else {
+                            // If S1 has more duplicates than S2, fallback to using the last known matched S2 row
+                            matchObj = matches[matches.length - 1];
+                        }
+
                         let combinedRow = {};
                         selCols1.forEach(col => { if (row1[col] !== undefined) combinedRow[col] = row1[col]; });
                         selCols2.forEach(col => {
@@ -897,7 +925,7 @@
                     }
                 }
 
-                showStatus(`Success! ${matchedData.length} wells integrated.`, "success");
+                showStatus(`Success! ${matchedData.length} records integrated.`, "success");
                 
                 document.getElementById('chartView').classList.remove('hidden');
                 document.getElementById('chartView').classList.add('flex');
@@ -922,6 +950,8 @@
             document.getElementById('statMatched').innerText = matchedData.length;
             document.getElementById('statUn1').innerText = unmatchedData1.length;
             document.getElementById('statUn2').innerText = unmatchedData2.length;
+            document.getElementById('statMissing1').innerText = missingData1.length;
+            document.getElementById('statMissing2').innerText = missingData2.length;
 
             const ctx = document.getElementById('matchChart').getContext('2d');
             if (matchChartInstance) matchChartInstance.destroy();
@@ -929,10 +959,10 @@
             matchChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Successfully Matched', 'Unmatched (Sheet 1)', 'Unmatched (Sheet 2)'],
+                    labels: ['Successfully Matched', 'Unmatched (Sheet 1)', 'Unmatched (Sheet 2)', 'Missing Keys (S1)', 'Missing Keys (S2)'],
                     datasets: [{
-                        data: [matchedData.length, unmatchedData1.length, unmatchedData2.length],
-                        backgroundColor: ['#22c55e', '#f97316', '#e11d48'],
+                        data: [matchedData.length, unmatchedData1.length, unmatchedData2.length, missingData1.length, missingData2.length],
+                        backgroundColor: ['#22c55e', '#f97316', '#e11d48', '#94a3b8', '#cbd5e1'],
                         borderWidth: 0,
                         hoverOffset: 4
                     }]
@@ -1191,63 +1221,139 @@
 
         function generateGridAnalysis() {
             if (!selectedFeature) return showStatus("Highlight area first.", "error");
-            const size = parseFloat(document.getElementById('gridSizeKm').value);
-            if (!size || size <= 0) return showStatus("Enter valid grid size.", "error");
-            showStatus("Analyzing...", "loading");
+            const areaSqKm = parseFloat(document.getElementById('gridSizeKm').value);
+            if (!areaSqKm || areaSqKm <= 0) return showStatus("Enter valid grid area.", "error");
+            
+            // Turf.js needs the length of the side of the square. 
+            // Side length = square root of the Area.
+            const size = Math.sqrt(areaSqKm); 
+            
+            showStatus("Analyzing and clipping grids (Optimized)...", "loading");
             setTimeout(async () => {
                 try {
-                    const bbox = turf.bbox(selectedFeature);
-                    const grid = turf.squareGrid(bbox, size, { units: 'kilometers' });
-                    let intersectingGrids = [];
+                    const mapBbox = turf.bbox(selectedFeature);
+                    const grid = turf.squareGrid(mapBbox, size, { units: 'kilometers' });
+                    
                     let featuresToCheck = selectedFeature.type === "FeatureCollection" ? selectedFeature.features : [selectedFeature];
-                    for (let i = 0; i < grid.features.length; i++) {
-                        if (i % 25 === 0) await yieldToMain();
-                        let intersectsAny = false;
-                        for (let j = 0; j < featuresToCheck.length; j++) {
-                            try { if (turf.booleanIntersects(grid.features[i], featuresToCheck[j])) { intersectsAny = true; break; } }
-                            catch(e) { intersectsAny = true; break; }
-                        }
-                        if (intersectsAny) intersectingGrids.push(grid.features[i]);
-                    }
+
+                    // 1. HIGH-SPEED POINT EXTRACTION & PRE-FILTERING
+                    const geoM = findGeoKeys(matchedData);
+                    const geoU = findGeoKeys(unmatchedData2);
                     const points = [];
-                    const addPoints = (dataset) => {
-                        const geo = findGeoKeys(dataset); if (!geo) return;
-                        dataset.forEach(row => { if (!isNaN(row[geo.lat]) && !isNaN(row[geo.lng])) points.push(turf.point([parseFloat(row[geo.lng]), parseFloat(row[geo.lat])])); });
+
+                    const addFastPts = (dataset, geoKeys) => {
+                        if (!dataset || !geoKeys) return;
+                        for(let i=0; i<dataset.length; i++) {
+                            let lat = parseFloat(dataset[i][geoKeys.lat]);
+                            let lng = parseFloat(dataset[i][geoKeys.lng]);
+                            // Pre-filter points that fall within the general map bounding box
+                            if (lng >= mapBbox[0] && lng <= mapBbox[2] && lat >= mapBbox[1] && lat <= mapBbox[3]) {
+                                points.push([lng, lat]);
+                            }
+                        }
                     };
-                    addPoints(matchedData); addPoints(unmatchedData2);
-                    const ptsCollection = turf.featureCollection(points);
+                    addFastPts(matchedData, geoM);
+                    addFastPts(unmatchedData2, geoU);
+
+                    let clippedGrids = [];
                     let emptyCount = 0;
-                    for (let i = 0; i < intersectingGrids.length; i++) {
-                        if (i % 50 === 0) await yieldToMain();
-                        let cell = intersectingGrids[i];
-                        try {
-                            const ptsInPoly = turf.pointsWithinPolygon(ptsCollection, cell);
-                            if (ptsInPoly.features.length === 0) { cell.properties.isEmpty = true; emptyCount++; }
-                            else { cell.properties.isEmpty = false; cell.properties.pointCount = ptsInPoly.features.length; }
-                        } catch(err) { cell.properties.isEmpty = true; emptyCount++; }
+
+                    // 2. PROCESS, COUNT, AND CLIP
+                    for (let i = 0; i < grid.features.length; i++) {
+                        if (i % 200 === 0) await yieldToMain(); // Yield frequently to keep UI buttery smooth
+                        let cell = grid.features[i];
+                        let cellBbox = turf.bbox(cell);
+                        
+                        // --- HIGH PERFORMANCE POINT COUNTING ---
+                        // Math Check: Since grids are perfect squares, point-in-bbox == point-in-polygon
+                        let ptCount = 0;
+                        for (let p = 0; p < points.length; p++) {
+                            let pt = points[p];
+                            if (pt[0] >= cellBbox[0] && pt[0] <= cellBbox[2] && pt[1] >= cellBbox[1] && pt[1] <= cellBbox[3]) {
+                                ptCount++;
+                            }
+                        }
+                        
+                        cell.properties.pointCount = ptCount;
+                        cell.properties.isEmpty = (ptCount === 0);
+
+                        // --- ROBUST & FAST CLIPPING ---
+                        let finalCell = null;
+
+                        for (let j = 0; j < featuresToCheck.length; j++) {
+                            let feat = featuresToCheck[j];
+                            
+                            // Fast AABB pre-check to ignore features entirely outside this grid cell
+                            let featBbox = turf.bbox(feat);
+                            if (cellBbox[0] > featBbox[2] || cellBbox[2] < featBbox[0] || cellBbox[1] > featBbox[3] || cellBbox[3] < featBbox[1]) {
+                                continue; 
+                            }
+
+                            try {
+                                if (turf.booleanWithin(cell, feat)) {
+                                    finalCell = cell; // Fully inside, no need to intersect
+                                    break; 
+                                }
+                            } catch(e) {} // Ignore topology errors
+
+                            try {
+                                if (turf.booleanIntersects(cell, feat)) {
+                                    try {
+                                        let clippedPiece = turf.intersect(cell, feat);
+                                        if (clippedPiece) {
+                                            if (!finalCell) {
+                                                finalCell = clippedPiece;
+                                            } else {
+                                                // Combine pieces if grid cell straddles multiple state borders
+                                                finalCell = turf.union(finalCell, clippedPiece) || finalCell;
+                                            }
+                                        } else {
+                                            finalCell = cell; // Fallback to square if intersection fails
+                                        }
+                                    } catch(e) {
+                                        finalCell = cell; // Fallback for complex topology crashes
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+
+                        if (finalCell) {
+                            finalCell.properties = { ...cell.properties };
+                            if (finalCell.properties.isEmpty) emptyCount++;
+                            clippedGrids.push(finalCell);
+                        }
                     }
+
                     clearGrid();
-                    gridLayer = L.geoJSON(turf.featureCollection(intersectingGrids), {
-                        style: feature => feature.properties.isEmpty ? { color: '#be123c', weight: 2, fillColor: '#f43f5e', fillOpacity: 0.45 } : { color: '#047857', weight: 2, fillColor: '#10b981', fillOpacity: 0.45 },
+                    gridLayer = L.geoJSON(turf.featureCollection(clippedGrids), {
+                        style: feature => feature.properties.isEmpty ? 
+                            { color: '#be123c', weight: 1.5, fillColor: '#f43f5e', fillOpacity: 0.45 } : 
+                            { color: '#047857', weight: 1.5, fillColor: '#10b981', fillOpacity: 0.45 },
                         onEachFeature: (feature, layer) => layer.bindTooltip(feature.properties.isEmpty ? "Empty" : `Samples: ${feature.properties.pointCount}`)
                     }).addTo(mapInstance);
+                    
                     const resText = document.getElementById('gridResultText');
-                    resText.innerHTML = `<span class="text-rose-600 text-lg">${emptyCount}</span> of ${intersectingGrids.length} grids are empty.`;
+                    resText.innerHTML = `<span class="text-rose-600 text-lg">${emptyCount}</span> of ${clippedGrids.length} clipped grids are empty.`;
                     resText.classList.remove('hidden');
-                    showStatus("Analysis complete.", "success");
-                } catch (e) { showStatus("Error.", "error"); }
+                    showStatus("Grid analysis complete.", "success");
+                } catch (e) { 
+                    console.error(e); 
+                    showStatus("Error during grid generation.", "error"); 
+                }
             }, 50);
         }
 
         function clearGrid() { if (gridLayer) mapInstance.removeLayer(gridLayer); gridLayer = null; document.getElementById('gridResultText').classList.add('hidden'); }
 
         function exportData() {
-            if (!matchedData.length && !unmatchedData1.length && !unmatchedData2.length) return;
+            if (!matchedData.length && !unmatchedData1.length && !unmatchedData2.length && !missingData1.length && !missingData2.length) return;
             let name = document.getElementById('exportFileName').value.trim() || "HydroMerge_Output"; 
             const wb = XLSX.utils.book_new();
             if (matchedData.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(matchedData), "Matched");
             if (unmatchedData1.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(unmatchedData1), "Unmatched_Sheet1");
             if (unmatchedData2.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(unmatchedData2), "Unmatched_Sheet2");
+            if (missingData1.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(missingData1), "Missing_Keys_S1");
+            if (missingData2.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(missingData2), "Missing_Keys_S2");
             XLSX.writeFile(wb, name + ".xlsx");
         }
     </script>
