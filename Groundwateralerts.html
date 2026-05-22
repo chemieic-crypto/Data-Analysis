@@ -141,115 +141,128 @@
 
         const REMEDIAL_MEASURES = [
             {
-                id: "pH", title: "Remedial Measures for pH",
+                id: "pH", title: "Risk Perception & Remedial Measures for pH",
                 sections: [{ desc: "Treatment of acidic water: Passing through Neutralizing Filter containing Calcite or Magnesia, or adding Soda Ash. Treatment of basic water: Installation of an acid injector (e.g., white vinegar or citric acid)." }]
             },
             {
-                id: "TDS", title: "Remedial Measures for TDS",
+                id: "TDS", title: "Risk Perception & Remedial Measures for TDS",
                 sections: [{ desc: "Reverse Osmosis (RO), Electrodialysis, and Distillation are the most effective methods for reducing Total Dissolved Solids." }]
             },
             {
-                id: "Turbidity", title: "Remedial Measures for Turbidity",
+                id: "Turbidity", title: "Risk Perception & Remedial Measures for Turbidity",
                 sections: [{ desc: "Coagulation, flocculation, sedimentation, and filtration (sand or multimedia filters) are used to remove suspended particles causing turbidity." }]
             },
             {
-                id: "Alkalinity", title: "Remedial Measures for Alkalinity",
+                id: "Alkalinity", title: "Risk Perception & Remedial Measures for Alkalinity",
                 sections: [{ desc: "Can be reduced by Reverse Osmosis (RO) or by carefully adding a weak acid to lower the pH and neutralize the excess alkalinity." }]
             },
             {
-                id: "EC", title: "Remedial Measures for EC",
+                id: "EC", title: "Risk Perception & Remedial Measures for EC",
                 sections: [{ desc: "Since Electrical Conductivity is directly related to dissolved ions (TDS), methods like Reverse Osmosis (RO) and Deionization (Ion Exchange) effectively lower it." }]
             },
             {
-                id: "Cl-1", title: "Remedial Measures for Chloride",
+                id: "Cl-1", title: "Risk Perception & Remedial Measures for Chloride",
+                riskPerception: "High concentration of chloride concentration in draining water.",
                 sections: [{ desc: "Reverse Osmosis (RO), Distillation, and specific Ion Exchange (anion exchange) resins are effective for chloride removal. Standard boiling does not remove chlorides." }]
             },
             {
-                id: "F", title: "Remedial Measures for Fluoride",
-                sections: [{ desc: "Defluoridation techniques can be adopted: Nalgonda technique, Adsorption technique, Ion-exchange technique, Precipitation technique and other techniques, which include electro chemical defluoridation and Reverse Osmosis." }]
+                id: "F", title: "Risk Perception & Remedial Measures for Fluoride",
+                riskPerception: "Dental and Skeletal Fluorosis: Studies suggest high levels of fluoride may lead to discoloration and damage to teeth and affect bone health.",
+                sections: [{ desc: "Defluoridation techniques can be adopted: Adsorption technique, Ion-exchange technique, Precipitation technique and other techniques, which include electro chemical defluoridation and Reverse Osmosis." }]
             },
             {
-                id: "NO3-1", title: "Remedial Measures for Nitrate",
+                id: "NO3-1", title: "Risk Perception & Remedial Measures for Nitrate",
+                riskPerception: "High nitrate causes cyanosis (methaemoglobinaemia) or Blue baby disease. It effects digestive system. Development of cancer, especially digestive cancers, such as colorectal stomach and esophagus cancer, complications during pregnancy.",
                 sections: [{ desc: "Reverse osmosis systems for drinking water to be used. Biological denitrification and ion-exchange can also be applied." }]
             },
             {
-                id: "SO4-2", title: "Remedial Measures for Sulphate",
+                id: "SO4-2", title: "Risk Perception & Remedial Measures for Sulphate",
+                riskPerception: "High concentration of sulphate concentration in draining water may be more sensitive to the cathartic effects. Children, transients and the elderly are high risk of dehydration from diarrhoea may be caused by high concentration of sulfate in drinking-water.",
                 sections: [{ desc: "The techniques may be adopted: Ion-exchange technique, Nano-filtration technique, Reverse Osmosis and electro-dialysis may be used." }]
             },
             {
-                id: "Ca+2", title: "Remedial Measures for Calcium",
+                id: "Ca+2", title: "Risk Perception & Remedial Measures for Calcium",
                 sections: [{ desc: "Water softening using cation exchange resins, Reverse Osmosis (RO), or chemical lime softening." }]
             },
             {
-                id: "Mg+2", title: "Remedial Measures for Magnesium",
+                id: "Mg+2", title: "Risk Perception & Remedial Measures for Magnesium",
                 sections: [{ desc: "Water softening using cation exchange resins, Reverse Osmosis (RO), or chemical lime softening." }]
             },
             {
-                id: "TH", title: "Remedial Measures for Total Hardness",
+                id: "TH", title: "Risk Perception & Remedial Measures for Total Hardness",
+                riskPerception: "Reduced lathering of soaps, buildup of scale on heating elements and boilers, reduced water flow in distribution pipes due to scale buildup. High levels of sodium in drinking water may harm your health like Cathartic and diuretic effect.",
                 sections: [{ desc: "Hardness minerals can be removed with a water softener and dilution technique and Reverse Osmosis., which replaces the calcium and magnesium (and iron, manganese, radium and other positive ions) with sodium." }]
             },
             {
-                id: "Cr", title: "Remedial Measures for Chromium",
+                id: "Cr", title: "Risk Perception & Remedial Measures for Chromium",
                 sections: [{ desc: "Hexavalent chromium can be removed by Reverse Osmosis (RO), Anion Exchange, or reduction to trivalent chromium followed by coagulation and filtration." }]
             },
             {
-                id: "Cu", title: "Remedial Measures for Copper",
+                id: "Cu", title: "Risk Perception & Remedial Measures for Copper",
                 sections: [{ desc: "Reverse Osmosis (RO), Cation Exchange (water softeners), and raising the pH of the water (to prevent pipe corrosion which is a common source of copper)." }]
             },
             {
-                id: "Zn", title: "Remedial Measures for Zinc",
+                id: "Zn", title: "Risk Perception & Remedial Measures for Zinc",
                 sections: [{ desc: "Ion Exchange (water softeners), Reverse Osmosis (RO), and Distillation are highly effective at removing zinc from drinking water." }]
             },
             {
-                id: "As", title: "Remedial Measures for Arsenic",
+                id: "As", title: "Risk Perception & Remedial Measures for Arsenic",
+                riskPerception: "Long-term exposure of Arsenic is associated with skin, bladder, lung, risk of heart disease and hypertension and other cancers.",
                 sections: [{ desc: "The techniques may be adopted: Adsorption technique, Ion-exchange technique, Reverse Osmosis and using alternative sources such as rainwater harvesting or deep aquifer water." }]
             },
             {
-                id: "Cd", title: "Remedial Measures for Cadmium",
+                id: "Cd", title: "Risk Perception & Remedial Measures for Cadmium",
+                riskPerception: "Cadmium in drinking water is highly toxic and causing significant health risks, primarily it is accumulation in the kidneys. It can lead to kidney damage (tubular dysfunction), bone demineralization (osteoporosis and osteomalacia), and itai-itai disease, while being classified as a carcinogen. Acute symptoms include diarrhea, vomiting, and muscle cramps.",
                 sections: [{ desc: "Effective mitigation of cadmium (Cd) from drinking water primarily reverse osmosis (RO), ion exchange, and coagulation/filtration." }]
             },
             {
-                id: "Fe", title: "Remedial Measures for Iron",
+                id: "Fe", title: "Risk Perception & Remedial Measures for Iron",
+                riskPerception: "An excessive amount of exposure to iron can increase the risk of Parkinson's, cardiovascular disease, diabetes mellitus, pigmentation changes, Alzheimer's, as well as renal, liver, respiratory, and neurological issues.",
                 sections: [{ desc: "Oxygenation of groundwater followed by precipitation and Reverse osmosis systems." }]
             },
             {
-                id: "Pb", title: "Remedial Measures for Lead",
+                id: "Pb", title: "Risk Perception & Remedial Measures for Lead",
+                riskPerception: "Lead Can lead to hypertension, kidney damage, and reproductive issues in adults and Neurological damage; especially harmful to children, lead exposure can cause developmental delays, lower IQ, and behavioural issues.",
                 sections: [{ desc: "Implement water treatment methods that reduce corrosion in pipes, such as adjusting pH, alkalinity, and adding inhibitors like orthophosphate. RO is also highly effective." }]
             },
             {
-                id: "Mn", title: "Remedial Measures for Manganese",
+                id: "Mn", title: "Risk Perception & Remedial Measures for Manganese",
+                riskPerception: "Continue use can damage liver, lungs and kidneys, effects the metabolism of iron for formation of hemoglobin and leads to neurological conditions- impaired memory, impaired motor coordination and delayed reaction time- results in disease called Manganism.",
                 sections: [{ desc: "Treating the water at its source, filtration system and water treatment method." }]
             },
             {
-                id: "Ni", title: "Remedial Measures for Nickel",
+                id: "Ni", title: "Risk Perception & Remedial Measures for Nickel",
+                riskPerception: "Nickel is used in the nickel/chrome plating and so can occasionally leach into water. High concentration of nickel contaminated water is used for domestic/ drinking purposes, it can cause skin irritation (dermatitis), gastrointestinal issues (nausea, vomiting), and long-term risks like kidney/liver damage, reduced body weight and potential carcinogenicity.",
                 sections: [{ desc: "There are several effective methods for removing nickel from water namely: Chemical Precipitation, Ion Exchange, Membrane Filtration, Adsorption on activated carbon, Electrodialysis, UV radiation and Biological treatment." }]
             },
             {
-                id: "Se", title: "Remedial Measures for Selenium",
+                id: "Se", title: "Risk Perception & Remedial Measures for Selenium",
+                riskPerception: "Excessive intake of selenium from drinking water, typically more than permissible limit may causes selenosis, characterized by brittle hair, hair loss, and deformed, discolored nails. Other side effects include gastrointestinal distress (nausea, diarrhea), neurological issues (fatigue, irritability, tremor), and extreme cases can lead to organ failure.",
                 sections: [{ desc: "Effective selenium mitigation from drinking water, involves advanced techniques like reverse osmosis (RO), ion exchange, and adsorption (e.g., activated alumina or iron-based media). Iron electrocoagulation, which generates reactive rust to bind selenium, can remove 98%." }]
             },
             {
-                id: "U", title: "Remedial Measures for Uranium",
+                id: "U", title: "Risk Perception & Remedial Measures for Uranium",
+                riskPerception: "The kidney and lungs are found to be the major target organs of Uranium toxicity and it may cause cancer from radioactive uranium. In animal bones, Uranium influences inhibition of osteoblastic activity, thereby reducing bone volume.",
                 sections: [{ desc: "The technologies for uranium removal: Coagulation/filtration, Lime softening, Anion exchange, Reverse osmosis and Activated alumina may remove 80-90% uranium from water." }]
             },
             {
-                id: "Hg", title: "Remedial Measures for Mercury",
+                id: "Hg", title: "Risk Perception & Remedial Measures for Mercury",
                 sections: [{ desc: "Reverse Osmosis (RO), Granular Activated Carbon (GAC) filtration, and specific Ion Exchange resins are effective for mercury removal." }]
             },
             {
-                id: "Al", title: "Remedial Measures for Aluminium",
+                id: "Al", title: "Risk Perception & Remedial Measures for Aluminium",
                 sections: [{ desc: "Reverse Osmosis (RO), Electrodialysis, and distillation. Optimization of coagulation processes in municipal plants is also critical." }]
             },
             {
-                id: "Ba", title: "Remedial Measures for Barium",
+                id: "Ba", title: "Risk Perception & Remedial Measures for Barium",
                 sections: [{ desc: "Ion Exchange (water softening), Reverse Osmosis (RO), and Electrodialysis are highly effective in removing barium." }]
             },
             {
-                id: "B", title: "Remedial Measures for Boron",
+                id: "B", title: "Risk Perception & Remedial Measures for Boron",
                 sections: [{ desc: "Specific Boron-selective Ion Exchange resins and Reverse Osmosis (RO) (most effective at higher pH levels) are used for boron removal." }]
             },
             {
-                id: "Mo", title: "Remedial Measures for Molybdenum",
+                id: "Mo", title: "Risk Perception & Remedial Measures for Molybdenum",
                 sections: [{ desc: "Reverse Osmosis (RO) and Anion Exchange resins are the primary treatments for elevated molybdenum levels." }]
             }
         ];
@@ -313,6 +326,44 @@
             "Ni": "Nickel", "Cu": "Copper", "Zn": "Zinc", "As": "Arsenic", "Se": "Selenium",
             "Cd": "Cadmium", "Pb": "Lead", "U": "Uranium", "Hg": "Mercury", "Al": "Aluminium", 
             "Ba": "Barium", "B": "Boron", "Mo": "Molybdenum"
+        };
+
+        const CGWB_LABS = {
+            "Uttar Pradesh": "Northern Region, Lucknow",
+            "Uttarakhand": "Uttarakhand Region, Dehradun",
+            "Madhya Pradesh": "North Central Region, Bhopal",
+            "Chhattisgarh": "North Central Chhattisgarh Region, Raipur",
+            "Rajasthan": "Western Region, Jaipur",
+            "Gujarat": "West Central Region, Ahmedabad",
+            "Maharashtra": "Central Region, Nagpur",
+            "Andhra Pradesh": "Southern Region, Hyderabad",
+            "Telangana": "Southern Region, Hyderabad",
+            "Karnataka": "South Western Region, Bangalore",
+            "Tamil Nadu": "South Eastern Coastal Region, Chennai",
+            "Kerala": "Kerala Region, Trivandrum",
+            "West Bengal": "Eastern Region, Kolkata",
+            "Odisha": "South Eastern Region, Bhubaneswar",
+            "Bihar": "Mid Eastern Region, Patna",
+            "Jharkhand": "Mid Eastern Region, Patna",
+            "Assam": "North Eastern Region, Guwahati",
+            "Arunachal Pradesh": "North Eastern Region, Guwahati",
+            "Meghalaya": "North Eastern Region, Guwahati",
+            "Nagaland": "North Eastern Region, Guwahati",
+            "Manipur": "North Eastern Region, Guwahati",
+            "Mizoram": "North Eastern Region, Guwahati",
+            "Tripura": "North Eastern Region, Guwahati",
+            "Sikkim": "North Eastern Region, Guwahati",
+            "Haryana": "North Western Region, Chandigarh",
+            "Punjab": "North Western Region, Chandigarh",
+            "Himachal Pradesh": "Northern Himalayan Region, Dharamshala",
+            "Jammu & Kashmir": "North Western Himalayan Region, Jammu",
+            "Ladakh": "North Western Himalayan Region, Jammu",
+            "Goa": "Central Region, Nagpur",
+            "Delhi": "State Unit Office, New Delhi",
+            "Chandigarh": "North Western Region, Chandigarh",
+            "Puducherry": "South Eastern Coastal Region, Chennai",
+            "Andaman & Nicobar": "Eastern Region, Kolkata",
+            "Andaman and Nicobar": "Eastern Region, Kolkata"
         };
 
         const getFullParamNames = (paramsList) => {
@@ -1035,6 +1086,17 @@
                 }));
             };
 
+            const getIssuingOffice = () => {
+                if (!isSingleState) return "CGWB, CHQ-Faridabad";
+                const stateName = reportLocation.trim();
+                const normalizedMatch = Object.keys(CGWB_LABS).find(k => k.toLowerCase() === stateName.toLowerCase());
+                if (normalizedMatch) {
+                    // Replaces the comma in "Region, City" with a hyphen -> "Region-City"
+                    return `CGWB, ${CGWB_LABS[normalizedMatch].replace(', ', '-')}`;
+                }
+                return `CGWB, Regional Office-${stateName}`;
+            };
+
             return (
                 <div className="min-h-screen pb-12">
                     <div className="bg-slate-900 text-white py-3 px-6 shadow-md border-b-4 border-slate-800">
@@ -1183,7 +1245,7 @@
                                                     </div>
                                                 </td>
                                                 <td className="border border-black p-2 font-bold bg-gray-100">Issuing Office</td>
-                                                <td className="border border-black p-2">CGWB, CHQ-Faridabad</td>
+                                                <td className="border border-black p-2">{getIssuingOffice()}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1202,16 +1264,55 @@
                                         const overallContaminated = overallMarginal + overallUnsafe;
                                         
                                         const statesWithHM = Array.from(new Set(reportTableData.filter(s => s.hasHeavyMetals).map(s => s.state)));
-                                        let hmStateText = statesWithHM.length > 0 ? `, and Heavy Metals were analyzed in ${statesWithHM.join(' and ')}` : '';
+                                        
+                                        const formatList = (list) => {
+                                            if (list.length === 0) return '';
+                                            if (list.length === 1) return list[0];
+                                            if (list.length === 2) return list.join(' and ');
+                                            return list.slice(0, -1).join(', ') + ', and ' + list[list.length - 1];
+                                        };
+                                        
+                                        let hmStateText = statesWithHM.length > 0 ? `Additionally, specific testing for Heavy Metals was performed on samples from ${formatList(statesWithHM)}.` : '';
+
+                                        // Determine lab text dynamically based on whether it's a single state
+                                        const getLabText = () => {
+                                            if (!isSingleState) return "across various states in CGWB Regional Chemical Laboratories";
+                                            
+                                            // Normalize state string for matching
+                                            const stateName = reportLocation.trim();
+                                            const normalizedMatch = Object.keys(CGWB_LABS).find(k => k.toLowerCase() === stateName.toLowerCase());
+                                            
+                                            if (normalizedMatch) {
+                                                return `in CGWB Regional Chemical Laboratory, ${CGWB_LABS[normalizedMatch]}`;
+                                            }
+                                            return `in the CGWB Regional Chemical Laboratory for ${stateName}`;
+                                        };
 
                                         return (
-                                            <p className="mb-8 indent-8">
-                                                Total <b>{overallTotal}</b> samples were analyzed for Heavy Metal/basic parameters like pH, Electrical Conductivity, Total Hardness, Calcium, Magnesium, Sodium, Potassium, Carbonate, Bicarbonate, Sulphate, Chloride, Nitrate & Fluoride in {isSingleState ? reportLocation : 'most of the states'}{hmStateText}. Out of the analyzed samples <b>{overallMarginal}</b> were found to be above acceptable limit, <b>{overallUnsafe}</b> were found to be above permissible limit and the total contaminated samples were <b>{overallContaminated}</b> as per BIS Drinking water Standard IS 10500 (2012).
-                                            </p>
+                                            <div className="mb-8">
+                                                <h3 className="font-bold text-lg mb-3">Groundwater Quality Analysis Report Summary</h3>
+                                                <p className="mb-3">
+                                                    A comprehensive analysis of <b>{overallTotal}</b> groundwater samples was conducted {getLabText()} to assess water quality against the BIS Drinking Water Standard (IS 10500:2012).
+                                                </p>
+                                                <p className="mb-6">
+                                                    The testing parameters included pH, Electrical Conductivity, Total Hardness, Calcium, Magnesium, Sodium, Potassium, Carbonate, Bicarbonate, Sulphate, Chloride, Nitrate, and Fluoride. {hmStateText}
+                                                </p>
+
+                                                <h4 className="font-bold mb-2">Key Findings</h4>
+                                                <p className="mb-2">
+                                                    Out of the <b>{overallTotal}</b> total samples analyzed, <b>{overallContaminated}</b> were found to be contaminated. These results are categorized as follows:
+                                                </p>
+                                                <ul className="list-disc pl-8 mb-6 space-y-1">
+                                                    <li>Exceeding Acceptable Limit (but up to permissible limit): <b>{overallMarginal}</b> samples</li>
+                                                    <li>Exceeding Permissible Limit: <b>{overallUnsafe}</b> samples</li>
+                                                </ul>
+
+                                                <p className="mb-4">
+                                                    The following table provides a breakdown of contaminant detection by {isSingleState ? 'District' : 'State/Union Territory'}. Please refer to the attached Excel sheet for the comprehensive, parameter-wise analytical data.
+                                                </p>
+                                            </div>
                                         );
                                     })()}
-
-                                    <p className="mb-4">The following Table shows the {isSingleState ? 'district-wise' : 'State/Union Territory-wise'} details of the contaminants detected in ground water samples. The detailed parameter-wise sample analysis is in the attached excel sheet.</p>
                                     
                                     <h3 className="font-bold underline mb-4">Para I</h3>
                                     
@@ -1224,30 +1325,40 @@
                                             <>
                                                 <p className="mb-6">The anomalies may be termed major in some case.</p>
 
-                                                <h4 className="font-bold text-lg underline mb-4">Remedial Measures</h4>
+                                                <h4 className="font-bold text-lg underline mb-4">Risk Perception and Remedial Measures</h4>
                                                 
                                                 <div className="space-y-6">
                                                     {activeRemedialMeasures.map((measure, idx) => (
-                                                        <div key={idx} className="avoid-break">
-                                                            <h5 className="font-bold underline mb-2">{measure.title}</h5>
-                                                            {measure.desc && <p className="mb-2">{measure.desc}</p>}
+                                                        <div key={idx} className="avoid-break mb-4">
+                                                            <h5 className="font-bold underline mb-2 text-[16px]">{measure.title}</h5>
                                                             
-                                                            {measure.sections.map((sec, sIdx) => (
-                                                                <div key={sIdx} className="mb-3">
-                                                                    {sec.subtitle && <p className="font-bold">{sec.subtitle}</p>}
-                                                                    {sec.desc && <p>{sec.desc}</p>}
-                                                                    
-                                                                    {sec.points && (
-                                                                        <ul className="list-disc pl-8 mt-1 space-y-1">
-                                                                            {sec.points.map((pt, pIdx) => (
-                                                                                <li key={pIdx}>{pt}</li>
-                                                                            ))}
-                                                                        </ul>
-                                                                    )}
-                                                                    
-                                                                    {sec.postDesc && <p className="mt-1">{sec.postDesc}</p>}
+                                                            {measure.riskPerception && (
+                                                                <div className="mb-2">
+                                                                    <span className="font-bold mr-1">Risk Perception:</span>
+                                                                    <span>{measure.riskPerception}</span>
                                                                 </div>
-                                                            ))}
+                                                            )}
+                                                            
+                                                            <div className="mb-2">
+                                                                <span className="font-bold block mb-1">Remedial Measures:</span>
+                                                                {measure.desc && <p className="mb-1">{measure.desc}</p>}
+                                                                {measure.sections.map((sec, sIdx) => (
+                                                                    <div key={sIdx} className="mb-1">
+                                                                        {sec.subtitle && <p className="font-bold inline mr-1">{sec.subtitle}</p>}
+                                                                        {sec.desc && <p className="inline">{sec.desc}</p>}
+                                                                        
+                                                                        {sec.points && (
+                                                                            <ul className="list-disc pl-8 mt-1 space-y-1">
+                                                                                {sec.points.map((pt, pIdx) => (
+                                                                                    <li key={pIdx}>{pt}</li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        )}
+                                                                        
+                                                                        {sec.postDesc && <p className="mt-1">{sec.postDesc}</p>}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1339,8 +1450,8 @@
                             <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-8">
                                 <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-4 border-b border-gray-200 flex justify-between items-center shadow-inner">
                                     <div>
-                                        <h2 className="text-lg font-black text-white drop-shadow-md">BIS 10500:2012 Standards & Remedial Measures</h2>
-                                        <p className="text-xs text-slate-300 mt-0.5 font-medium">Fixed acceptable and permissible limits with corresponding remedial measures strategies.</p>
+                                        <h2 className="text-lg font-black text-white drop-shadow-md">BIS 10500:2012 Standards, Risk Perceptions & Remedial Measures</h2>
+                                        <p className="text-xs text-slate-300 mt-0.5 font-medium">Fixed acceptable and permissible limits with corresponding risk implications and remedial measure strategies.</p>
                                     </div>
                                 </div>
                                 <div className="overflow-x-auto p-3 bg-slate-100">
@@ -1350,7 +1461,7 @@
                                                 <th className="px-3 pb-1 font-black w-32">Parameter</th>
                                                 <th className="px-2 pb-1 font-black w-24 text-center">Acceptable Limit</th>
                                                 <th className="px-2 pb-1 font-black w-24 text-center">Permissible Limit</th>
-                                                <th className="px-3 pb-1 font-black">Remedial Measure</th>
+                                                <th className="px-3 pb-1 font-black">Information & Strategy</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1379,9 +1490,20 @@
                                                             </div>
                                                         </td>
                                                         <td className="p-2 rounded-r-xl border border-l-0 border-gray-100 align-middle">
-                                                            <div className="bg-slate-50/80 border-l-2 border-slate-300 p-2 rounded-lg shadow-inner text-xs text-slate-700 font-medium leading-relaxed">
+                                                            <div className="bg-slate-50/80 border-l-2 border-slate-300 p-2 rounded-lg shadow-inner text-xs text-slate-700 font-medium leading-relaxed flex flex-col gap-2">
                                                                 {measure ? (
-                                                                    measure.sections.map((s, i) => <div key={i}>{s.desc}</div>)
+                                                                    <>
+                                                                        {measure.riskPerception && (
+                                                                            <div>
+                                                                                <span className="font-bold text-red-800">Risk Perception: </span>
+                                                                                {measure.riskPerception}
+                                                                            </div>
+                                                                        )}
+                                                                        <div>
+                                                                            <span className="font-bold text-emerald-800">Remedial Measure: </span>
+                                                                            {measure.sections.map((s, i) => <span key={i}>{s.desc} </span>)}
+                                                                        </div>
+                                                                    </>
                                                                 ) : (
                                                                     <span className="text-gray-400 italic">Standard water treatment measures apply.</span>
                                                                 )}
