@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Splito-Reflector</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for fast data reading/mapping -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- ExcelJS for exact style-preserving file generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- JSZip for ZIP folder facility -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -194,7 +197,6 @@
                 </label>
             </div>
         </header>
-
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <aside class="lg:col-span-3 space-y-6">
                 
@@ -233,7 +235,6 @@
                         Clear Region Selections
                     </button>
                 </div>
-
                 <div class="glass rounded-3xl p-6 shadow-md border-t-4 border-t-lime-400">
                     <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                         <i data-lucide="filter" class="w-6 h-6 text-lime-600"></i>
@@ -271,7 +272,6 @@
                     </div>
                 </div>
             </aside>
-
             <main class="lg:col-span-9 space-y-4">
                 <div id="mapContent" class="space-y-4">
                     <div class="flex justify-between items-center px-2 mb-2">
@@ -280,7 +280,6 @@
                             <span id="spatialBadge" class="hidden text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">Shape Filter Active</span>
                         </h2>
                         <div class="flex items-center gap-3">
-                            <!-- Yellow Badge relocated here -->
                             <span id="rowCount" class="text-sm bg-yellow-400 px-4 py-1.5 rounded-full text-slate-800 font-black shadow-sm border border-yellow-500">0 Rows</span>
                             <button onclick="toggleMapFullscreen()" class="glossy-btn bg-white/60 p-2 rounded-xl text-slate-700 hover:text-blue-600 shadow-sm border border-slate-200" title="Toggle Fullscreen">
                                 <i data-lucide="maximize" id="fullscreenIcon" class="w-5 h-5"></i>
@@ -345,7 +344,6 @@
             </main>
         </div>
     </div>
-
     <!-- Modals -->
     <div id="splitModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
         <div class="modal-panel bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full max-w-md p-8 border border-white">
@@ -353,7 +351,10 @@
                 <div class="bg-orange-100 p-2 rounded-xl shadow-inner"><i data-lucide="folder-archive" class="text-orange-500 w-6 h-6"></i></div>
                 Split to ZIP
             </h3>
-            <p class="text-slate-500 text-sm font-medium mb-8">Group your dataset into individual Excel files based on a specific column and download them instantly as a ZIP.</p>
+            <p class="text-slate-500 text-sm font-medium mb-2">Group your dataset into individual Excel files based on a specific column and download them instantly as a ZIP.</p>
+            <p class="text-lime-600 text-[11px] font-bold mb-6 bg-lime-50 p-2 rounded-lg border border-lime-200">
+                <i data-lucide="sparkles" class="w-3 h-3 inline mr-1"></i> Perfect Clone Engine Active: Retains exact formatting, colors, borders, and strictly original columns from your uploaded file.
+            </p>
             
             <div class="mb-8">
                 <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Select Column to Split By</label>
@@ -362,7 +363,9 @@
             
             <div class="flex gap-4">
                 <button onclick="closeSplitModal()" class="flex-1 glossy-btn bg-gradient-to-br from-slate-200 to-slate-300 text-slate-600 px-4 py-3.5 rounded-xl font-bold transition-all shadow-md">Cancel</button>
-                <button onclick="confirmSplitToZip()" class="flex-[2] glossy-btn bg-gradient-to-br from-lime-400 to-lime-600 text-white px-4 py-3.5 rounded-xl font-bold transition-all shadow-md">Generate ZIP</button>
+                <button id="splitBtnConfirm" onclick="confirmSplitToZip()" class="flex-[2] glossy-btn bg-gradient-to-br from-lime-400 to-lime-600 text-white px-4 py-3.5 rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2">
+                    <i data-lucide="file-zip" class="w-5 h-5"></i> Generate ZIP
+                </button>
             </div>
         </div>
     </div>
@@ -395,7 +398,6 @@
             </div>
         </div>
     </div>
-
     <!-- Column Mapping Modal -->
     <div id="mappingModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4 modal-overlay">
         <div class="modal-panel bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full max-w-5xl max-h-[90vh] flex flex-col border border-white">
@@ -432,7 +434,6 @@
         <i data-lucide="check-circle" class="text-lime-500 w-5 h-5"></i>
         <span id="toastMsg">Done!</span>
     </div>
-
     <script>
         let rawData = [];
         let filteredData = [];
@@ -440,6 +441,10 @@
         let filters = {}; // Attribute filters
         let dynamicFilterCols = []; // Track extra columns added from shapefiles
         
+        let originalFileBuffer = null;
+        let uploadedFileName = "";
+        let originalHeaders = [];
+
         // Spatial State
         let map;
         let markersGroup;
@@ -460,7 +465,6 @@
             showMar: true,
             showAbo: true
         };
-
         const LIMITS = {
             'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH Level', keywords: ['ph', 'ph level', 'hydrogen', 'phvalue'] },
             'TDS': { b1: 500, b2: 2000, unit: 'mg/l', name: 'Total Dissolved Solids', keywords: ['tds', 'total dissolved solids', 'dissolved solids'] },
@@ -490,7 +494,6 @@
             'Ba': { b1: 0.7, b2: 0.7, unit: 'mg/l', name: 'Barium', keywords: ['ba', 'barium'] },
             'B': { b1: 0.5, b2: 2.4, unit: 'mg/l', name: 'Boran', keywords: ['b', 'boran', 'boron'] },
         };
-
         window.onload = () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             initMap();
@@ -544,11 +547,9 @@
                 markersGroup.clearLayers();
             }
         }
-
         function initMap() {
             map = L.map('map').setView([20.5937, 78.9629], 5);
             
-            // Define Map Layers
             const googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
                 maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: '© Google'
             });
@@ -561,10 +562,8 @@
                 maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: '© Google'
             });
 
-            // Set default layer to Google Satellite
             googleSat.addTo(map);
 
-            // Add Layer Control
             const baseMaps = {
                 "Google Satellite": googleSat,
                 "Google Hybrid": googleHybrid,
@@ -576,60 +575,73 @@
         }
 
         // --- Data Import & MAPPING ---
-
         document.getElementById('fileInput').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
+            uploadedFileName = file.name;
+
             const reader = new FileReader();
             reader.onload = (evt) => {
-                const bstr = evt.target.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
+                // Save original buffer for ExcelJS exact replication during split
+                originalFileBuffer = evt.target.result;
+                const wb = XLSX.read(originalFileBuffer, { type: 'array' });
                 
-                // Get headers correctly from row 1
                 const ws = wb.Sheets[wb.SheetNames[0]];
-                const headerRow = XLSX.utils.sheet_to_json(ws, { header: 1 })[0] || [];
-                const excelHeaders = headerRow.map(h => String(h).trim());
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                originalHeaders = [];
 
-                tempRawData = XLSX.utils.sheet_to_json(ws, { defval: "" })
-                    .map(row => {
-                        const r = {};
-                        Object.keys(row).forEach(k => r[k.trim()] = String(row[k]).trim());
-                        return r;
-                    });
+                // Parse headers carefully to avoid duplicate keys in JS object logic
+                for(let C = range.s.c; C <= range.e.c; ++C) {
+                    const cell = ws[XLSX.utils.encode_cell({c:C, r:range.s.r})];
+                    let headerText = cell && cell.v ? String(cell.v).trim() : `Col${C}`;
+                    let baseHeader = headerText;
+                    let counter = 1;
+                    while (originalHeaders.includes(headerText)) {
+                        headerText = `${baseHeader}_${counter++}`;
+                    }
+                    originalHeaders.push(headerText);
+                }
+
+                tempRawData = [];
+                // Process row by row starting after header to keep track of true row Index
+                for(let R = range.s.r + 1; R <= range.e.r; ++R) {
+                    let rowObj = { _originalRowIndex: R + 1 }; // 1-based indexing for ExcelJS
+                    let isEmpty = true;
+                    for(let C = range.s.c; C <= range.e.c; ++C) {
+                        const cell = ws[XLSX.utils.encode_cell({c:C, r:R})];
+                        if(cell && cell.v !== undefined && cell.v !== null && String(cell.v).trim() !== "") {
+                            rowObj[originalHeaders[C - range.s.c]] = String(cell.v).trim();
+                            isEmpty = false;
+                        }
+                    }
+                    if(!isEmpty) tempRawData.push(rowObj);
+                }
                 
-                buildMappingUI(excelHeaders);
+                buildMappingUI(originalHeaders);
                 document.getElementById('mappingModal').classList.remove('hidden');
                 
                 // Reset file input so same file can be re-imported if needed
                 document.getElementById('fileInput').value = '';
             };
-            reader.readAsBinaryString(file);
+            reader.readAsArrayBuffer(file);
         });
 
         function closeMappingModal() {
             document.getElementById('mappingModal').classList.add('hidden');
         }
-
         function guessHeader(standardName, headers) {
             const clean = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
             const sn = clean(standardName);
             
-            // 1. Exact or Clean Match
-            for (let h of headers) {
-                if (clean(h) === sn) return h;
-            }
+            for (let h of headers) { if (clean(h) === sn) return h; }
             
-            // 2. Keyword matching for parameters
             if (LIMITS[standardName]) {
                 for (let kw of LIMITS[standardName].keywords) {
                     const cleanKw = clean(kw);
-                    for (let h of headers) {
-                        if (clean(h) === cleanKw) return h;
-                    }
+                    for (let h of headers) { if (clean(h) === cleanKw) return h; }
                 }
             }
             
-            // 3. Core Metadata Aliases
             const aliases = {
                 'Latitude': ['lat', 'y', 'latitude', 'latitudes'],
                 'Longitude': ['long', 'lng', 'lon', 'x', 'longitude', 'longitudes'],
@@ -699,7 +711,6 @@
         }
 
         // --- Filtering Logic ---
-
         function setupFilters() {
             // Include dynamic columns from shapefiles alongside standard core columns
             const cols = ["State", "District", "Block", "Season", "Source", ...dynamicFilterCols];
@@ -746,7 +757,6 @@
         }
 
         // --- Shapefile Integration & Spatial Join ---
-
         const shpInput = document.getElementById('shapefileInput');
         shpInput.addEventListener('change', async (e) => {
             const files = e.target.files;
@@ -765,7 +775,6 @@
                             geojson = JSON.parse(evt.target.result);
                         }
                         
-                        // If shapefile array, use first or merge. Assume single object here.
                         if (Array.isArray(geojson)) geojson = geojson[0];
 
                         const layerId = 'shp_' + (++shpCounter);
@@ -793,7 +802,6 @@
                             style: defaultStyle,
                             onEachFeature: (feature, layer) => {
                                 layer.on('click', () => {
-                                    // Toggle logic
                                     if (selectedSpatialFeatures.has(feature)) {
                                         selectedSpatialFeatures.delete(feature);
                                         selectedSpatialLayers.delete(layer);
@@ -873,7 +881,6 @@
             const shpData = loadedShapefiles[id];
             let props = [];
             
-            // Search for properties in the shapefile features
             shpData.layer.eachLayer(l => {
                 if (props.length === 0 && l.feature && l.feature.properties) {
                     props = Object.keys(l.feature.properties);
@@ -897,13 +904,12 @@
         function executeSpatialJoin() {
             const prop = document.getElementById('sjPropertySelect').value;
             const colNameInput = document.getElementById('sjColName').value.trim();
-            const colName = colNameInput || prop; // Fallback to property name if empty
+            const colName = colNameInput || prop; 
 
             if (!prop || !currentJoinLayerId) return;
 
             const shpData = loadedShapefiles[currentJoinLayerId];
             
-            // Set Loading UI
             const btn = document.getElementById('applyTagBtn');
             const originalBtnText = btn.innerHTML;
             btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing 0%`;
@@ -911,14 +917,13 @@
 
             showToast("Extracting shapefile attributes... Please wait.");
 
-            // Flatten features and pre-calculate bounding boxes for MASSIVE speedup
             const features = [];
             shpData.layer.eachLayer(l => {
                 if (l.feature && l.feature.geometry) {
                     if (l.feature.geometry.type === 'Polygon' || l.feature.geometry.type === 'MultiPolygon') {
                         features.push({
                             feature: l.feature,
-                            bbox: turf.bbox(l.feature) // Pre-calculate BBox: [minX, minY, maxX, maxY]
+                            bbox: turf.bbox(l.feature) 
                         });
                     }
                 }
@@ -926,7 +931,7 @@
 
             const totalRows = rawData.length;
             let currentIndex = 0;
-            const chunkSize = 250; // Process 250 points per tick to keep UI responsive
+            const chunkSize = 250; 
 
             function processChunk() {
                 const end = Math.min(currentIndex + chunkSize, totalRows);
@@ -935,7 +940,7 @@
                     const r = rawData[i];
                     const lat = parseFloat(r.Latitude || r.Lat);
                     const lng = parseFloat(r.Longitude || r.Long || r.Lng);
-                    let taggedValue = "Outside Boundaries"; // Default value
+                    let taggedValue = "Outside Boundaries"; 
 
                     if (!isNaN(lat) && !isNaN(lng)) {
                         try {
@@ -944,22 +949,17 @@
                                 const fObj = features[j];
                                 const [minX, minY, maxX, maxY] = fObj.bbox;
                                 
-                                // 1. FAST CHECK: Is point roughly inside Bounding Box?
                                 if (lng >= minX && lng <= maxX && lat >= minY && lat <= maxY) {
-                                    // 2. SLOW CHECK: Is point exactly inside complex polygon?
                                     if (turf.booleanPointInPolygon(pt, fObj.feature)) {
                                         taggedValue = fObj.feature.properties[prop];
-                                        // Handle null/empty values nicely
                                         if (taggedValue === null || taggedValue === undefined || taggedValue === '') {
                                             taggedValue = "Unspecified";
                                         }
-                                        break; // Found the containing polygon, exit loop
+                                        break; 
                                     }
                                 }
                             }
-                        } catch(e) {
-                            // Silently ignore malformed geometry points during join
-                        }
+                        } catch(e) {}
                     }
                     r[colName] = String(taggedValue);
                 }
@@ -967,27 +967,23 @@
                 currentIndex = end;
                 
                 if (currentIndex < totalRows) {
-                    // Update progress and schedule next chunk
                     const percent = Math.round((currentIndex / totalRows) * 100);
                     btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing ${percent}%`;
-                    setTimeout(processChunk, 10); // Let UI breathe so it doesn't freeze
+                    setTimeout(processChunk, 10); 
                 } else {
                     finishProcessing();
                 }
             }
 
             function finishProcessing() {
-                // Update column trackers
                 if (!dynamicFilterCols.includes(colName)) {
                     dynamicFilterCols.push(colName);
                 }
 
-                // Push updates to view
                 filteredData = [...rawData]; 
-                setupFilters(); // Re-render the side bar, automatically injecting the new tag
-                applyAllFilters(); // Process view
+                setupFilters(); 
+                applyAllFilters(); 
                 
-                // Reset UI
                 btn.innerHTML = originalBtnText;
                 btn.disabled = false;
                 if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -996,7 +992,6 @@
                 showToast(`Data successfully tagged with: ${colName}`);
             }
 
-            // Start the non-blocking loop
             setTimeout(processChunk, 50);
         }
 
@@ -1021,7 +1016,6 @@
                 shpData.defaultStyle.fillColor = newColor;
                 shpData.defaultStyle.weight = newWeight;
                 
-                // Update layers that are not currently highlighted/selected
                 shpData.layer.eachLayer(l => {
                     if (!selectedSpatialLayers.has(l)) {
                         l.setStyle(shpData.defaultStyle);
@@ -1034,12 +1028,10 @@
             const shpData = loadedShapefiles[id];
             if (!shpData) return;
             
-            // Remove from map
             if (map.hasLayer(shpData.layer)) {
                 map.removeLayer(shpData.layer);
             }
             
-            // Remove any selected features belonging to this shapefile
             shpData.layer.eachLayer(l => {
                 if (selectedSpatialLayers.has(l)) {
                     selectedSpatialLayers.delete(l);
@@ -1050,7 +1042,6 @@
             delete loadedShapefiles[id];
             renderShapefileList();
             
-            // Update UI state
             if (selectedSpatialFeatures.size === 0) {
                 document.getElementById('spatialBadge').classList.add('hidden');
                 document.getElementById('clearSelectionBtn').classList.add('hidden');
@@ -1083,17 +1074,14 @@
         }
 
         // --- Core Filtering Logic ---
-
         function applyAllFilters() {
-            // 1. Attribute filtering
             filteredData = rawData.filter(r => Object.entries(filters).every(([c, s]) => s.has(r[c])));
 
-            // 2. Spatial filtering via Turf.js
             if (selectedSpatialFeatures.size > 0 && filteredData.length > 0) {
                 filteredData = filteredData.filter(r => {
                     const lat = parseFloat(r.Latitude || r.Lat);
                     const lng = parseFloat(r.Longitude || r.Long || r.Lng);
-                    if (isNaN(lat) || isNaN(lng)) return false; // Ignore points with no coords
+                    if (isNaN(lat) || isNaN(lng)) return false; 
                     
                     try {
                         const pt = turf.point([lng, lat]);
@@ -1111,7 +1099,6 @@
                 });
             }
 
-            // 3. Update view
             const count = document.getElementById('rowCount');
             count.innerText = `${filteredData.length} Total Rows`;
             renderMapMarkers();
@@ -1137,7 +1124,6 @@
                     let isMar = val > lim.b1 && val <= lim.b2;
                     let isAbo = val > lim.b2;
 
-                    // Skip point if its category visibility is toggled off
                     if ((isAcc && !markerSettings.showAcc) || 
                         (isMar && !markerSettings.showMar) || 
                         (isAbo && !markerSettings.showAbo)) {
@@ -1175,8 +1161,6 @@
                 }
             });
             
-            // If spatial filter is active, don't continually jump the map zoom.
-            // Only fit bounds if no shapefile interaction is forcing the view.
             if (bounds.length > 0 && selectedSpatialFeatures.size === 0) {
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
@@ -1184,11 +1168,13 @@
 
 
         // --- Modals & Exports ---
-
         function openSplitModal() {
             if (!filteredData.length) return showToast("Please import data first.");
             const select = document.getElementById('splitColSelect');
-            select.innerHTML = Object.keys(filteredData[0]).map(c => `<option value="${c}">${c}</option>`).join('');
+            // Show all columns available in data (including dynamic tags)
+            select.innerHTML = Object.keys(filteredData[0])
+                .filter(c => c !== "_originalRowIndex")
+                .map(c => `<option value="${c}">${c}</option>`).join('');
             document.getElementById('splitModal').classList.remove('hidden');
         }
 
@@ -1198,14 +1184,14 @@
         function toggleMapFullscreen() {
             const mapContainer = document.getElementById('mapContent');
             const icon = document.getElementById('fullscreenIcon');
-            const currentCenter = map.getCenter(); // Save current view
+            const currentCenter = map.getCenter();
 
             isMapFullscreen = !isMapFullscreen;
 
             if (isMapFullscreen) {
                 mapContainer.classList.add('fullscreen-wrapper');
                 icon.setAttribute('data-lucide', 'minimize');
-                document.body.style.overflow = 'hidden'; // Prevents scrolling behind the full screen modal
+                document.body.style.overflow = 'hidden';
             } else {
                 mapContainer.classList.remove('fullscreen-wrapper');
                 icon.setAttribute('data-lucide', 'maximize');
@@ -1213,13 +1199,6 @@
             }
             lucide.createIcons();
             
-            // Properly update Leaflet sizing instantly, then restore previous center view
-            setTimeout(() => { 
-                map.invalidateSize(); 
-                map.setView(currentCenter, map.getZoom(), {animate: false});
-            }, 10);
-            
-            // Fallback invalidate to ensure tiles load if rendering is slightly delayed
             setTimeout(() => { 
                 map.invalidateSize(); 
             }, 300);
@@ -1230,36 +1209,139 @@
             const col = document.getElementById('splitColSelect').value;
             const groups = {};
             
-            // Group data by chosen column
+            // Collect the true original row indexes to keep for each group
             filteredData.forEach(r => {
                 const val = (r[col] || "Unspecified").toString().replace(/[/\\?%*:|"<>]/g, '-');
                 if (!groups[val]) groups[val] = [];
-                groups[val].push(r);
+                groups[val].push(r._originalRowIndex);
             });
 
             const zip = new JSZip();
-            showToast("Generating ZIP folder...");
-
-            // Create individual Excel files and add to ZIP
-            Object.entries(groups).forEach(([name, rows]) => {
-                const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.json_to_sheet(rows);
-                XLSX.utils.book_append_sheet(wb, ws, "Data");
-                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-                zip.file(`${name}.xlsx`, wbout);
-            });
-
-            // Generate ZIP and download
-            const content = await zip.generateAsync({ type: "blob" });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(content);
-            link.download = `WQ_Split_Files_By_${col}.zip`;
-            link.click();
+            const btn = document.getElementById('splitBtnConfirm');
+            const originalBtnHtml = btn.innerHTML;
             
-            closeSplitModal();
-            showToast("ZIP Folder Downloaded");
-        }
+            const groupEntries = Object.entries(groups);
+            const totalGroups = groupEntries.length;
+            
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Starting...`;
+            btn.disabled = true;
 
+            showToast(`Generating ${totalGroups} files... Fast clone active.`);
+
+            // Allow UI to update before blocking the thread with heavy Excel computations
+            setTimeout(async () => {
+                try {
+                    const isXLSX = uploadedFileName.toLowerCase().endsWith('.xlsx');
+                    
+                    if (isXLSX && originalFileBuffer) {
+                        // -------------------------------------------------------------
+                        // EXCELJS PATH: 100% PERFECT CLONE (Keeps styles, fonts, borders, columns)
+                        // HIGHLY OPTIMIZED: Loads template only once, avoids spliceRows completely
+                        // -------------------------------------------------------------
+                        btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Reading template...`;
+                        await new Promise(res => setTimeout(res, 5));
+
+                        const templateWorkbook = new ExcelJS.Workbook();
+                        await templateWorkbook.xlsx.load(originalFileBuffer);
+                        const templateSheet = templateWorkbook.worksheets[0];
+                        const colCount = templateSheet.columnCount || 50;
+
+                        let processed = 0;
+                        for (const [name, rowIndices] of groupEntries) {
+                            processed++;
+                            // Live UI update for progress
+                            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> File ${processed}/${totalGroups}`;
+                            await new Promise(res => setTimeout(res, 1)); // Yield to keep browser tab responsive
+
+                            const wb = new ExcelJS.Workbook();
+                            const ws = wb.addWorksheet(templateSheet.name || "Data");
+
+                            // Copy sheet settings (such as grid lines view state)
+                            ws.views = templateSheet.views;
+
+                            // Copy column widths safely
+                            for (let c = 1; c <= colCount; c++) {
+                                const templateCol = templateSheet.getColumn(c);
+                                if (templateCol && templateCol.width) {
+                                    ws.getColumn(c).width = templateCol.width;
+                                }
+                            }
+
+                            // Copy the original Header (row 1)
+                            const headerRow = templateSheet.getRow(1);
+                            const targetHeaderRow = ws.getRow(1);
+                            if (headerRow.height) targetHeaderRow.height = headerRow.height;
+                            headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                                const targetCell = targetHeaderRow.getCell(colNumber);
+                                targetCell.value = cell.value;
+                                targetCell.style = cell.style;
+                            });
+
+                            // Copy matched rows for this specific group
+                            rowIndices.forEach((sourceRowIdx, newIdx) => {
+                                const sourceRow = templateSheet.getRow(sourceRowIdx);
+                                const targetRow = ws.getRow(newIdx + 2); // Rows start at 2 below the header
+                                if (sourceRow.height) targetRow.height = sourceRow.height;
+                                sourceRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                                    const targetCell = targetRow.getCell(colNumber);
+                                    targetCell.value = cell.value;
+                                    targetCell.style = cell.style;
+                                });
+                            });
+
+                            const outBuffer = await wb.xlsx.writeBuffer();
+                            zip.file(`${name}.xlsx`, outBuffer);
+                        }
+                    } else {
+                        // -------------------------------------------------------------
+                        // FALLBACK PATH: For CSV / XLS files (Filters data directly, ensuring NO EXTRA COLUMNS)
+                        // -------------------------------------------------------------
+                        let processed = 0;
+                        Object.entries(groups).forEach(([name, rowIndices]) => {
+                            processed++;
+                            btn.innerHTML = `File ${processed}/${totalGroups}...`;
+                            
+                            const keepSet = new Set(rowIndices);
+                            const originalColumnsOnlyRows = tempRawData
+                                .filter(r => keepSet.has(r._originalRowIndex))
+                                .map(r => {
+                                    const cleanObj = {};
+                                    // Strip app-added metadata to ensure no extra columns
+                                    originalHeaders.forEach(k => cleanObj[k] = r[k]); 
+                                    return cleanObj;
+                                });
+                            
+                            const wb = XLSX.utils.book_new();
+                            const ws = XLSX.utils.json_to_sheet(originalColumnsOnlyRows);
+                            XLSX.utils.book_append_sheet(wb, ws, "Data");
+                            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                            zip.file(`${name}.xlsx`, wbout);
+                        });
+                    }
+
+                    btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Zipping...`;
+                    await new Promise(res => setTimeout(res, 50));
+
+                    // Download ZIP
+                    const content = await zip.generateAsync({ type: "blob" });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(content);
+                    link.download = `Split_WQ_Files_By_${col}.zip`;
+                    link.click();
+                    
+                    closeSplitModal();
+                    showToast("ZIP Folder Generated & Downloaded");
+
+                } catch (err) {
+                    console.error("ZIP Generation Error:", err);
+                    showToast("Error processing ZIP files. Check console.");
+                } finally {
+                    btn.innerHTML = originalBtnHtml;
+                    btn.disabled = false;
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+            }, 100);
+        }
         function runAnalysis() {
             if (!filteredData.length) return showToast("No data available for analysis.");
 
@@ -1353,7 +1435,15 @@
         function runUnion() {
             if (!filteredData.length) return;
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filteredData), "Union_Dataset");
+            
+            // Strip index row for export
+            const cleanData = filteredData.map(r => {
+                const c = {...r};
+                delete c._originalRowIndex;
+                return c;
+            });
+            
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cleanData), "Union_Dataset");
             XLSX.writeFile(wb, "WQ_Union_Export.xlsx");
             showToast("Union File Created");
         }
