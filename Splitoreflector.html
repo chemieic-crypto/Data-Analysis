@@ -1211,7 +1211,8 @@
             
             // Collect the true original row indexes to keep for each group
             filteredData.forEach(r => {
-                const val = (r[col] || "Unspecified").toString().replace(/[/\\?%*:|"<>]/g, '-');
+                let val = (r[col] || "Unspecified").toString().replace(/[/\\?%*:|"<>]/g, '-');
+                val = val.substring(0, 100); // Guard against extremely long file names
                 if (!groups[val]) groups[val] = [];
                 groups[val].push(r._originalRowIndex);
             });
@@ -1235,16 +1236,24 @@
                     
                     if (isXLSX && originalFileBuffer) {
                         // -------------------------------------------------------------
-                        // EXCELJS PATH: 100% PERFECT CLONE (Keeps styles, fonts, borders, columns)
-                        // HIGHLY OPTIMIZED: Loads template only once, avoids spliceRows completely
+                        // EXCELJS PATH: 100% PERFECT CLONE
+                        // Fixed: Implemented deep cloning of styles and views to prevent shared 
+                        // reference crashes when ExcelJS writes to multiple workbooks.
                         // -------------------------------------------------------------
                         btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Reading template...`;
                         await new Promise(res => setTimeout(res, 5));
 
                         const templateWorkbook = new ExcelJS.Workbook();
-                        await templateWorkbook.xlsx.load(originalFileBuffer);
+                        // Passing sliced buffer to prevent ArrayBuffer detaching issues
+                        await templateWorkbook.xlsx.load(originalFileBuffer.slice(0));
                         const templateSheet = templateWorkbook.worksheets[0];
                         const colCount = templateSheet.columnCount || 50;
+
+                        // Utility to safely deep clone ExcelJS objects
+                        const deepClone = (obj) => {
+                            if (!obj) return obj;
+                            try { return JSON.parse(JSON.stringify(obj)); } catch(e) { return Object.assign({}, obj); }
+                        };
 
                         let processed = 0;
                         for (const [name, rowIndices] of groupEntries) {
@@ -1256,10 +1265,12 @@
                             const wb = new ExcelJS.Workbook();
                             const ws = wb.addWorksheet(templateSheet.name || "Data");
 
-                            // Copy sheet settings (such as grid lines view state)
-                            ws.views = templateSheet.views;
+                            // Copy sheet settings safely
+                            if (templateSheet.views) {
+                                ws.views = deepClone(templateSheet.views);
+                            }
 
-                            // Copy column widths safely
+                            // Copy column widths
                             for (let c = 1; c <= colCount; c++) {
                                 const templateCol = templateSheet.getColumn(c);
                                 if (templateCol && templateCol.width) {
@@ -1270,23 +1281,46 @@
                             // Copy the original Header (row 1)
                             const headerRow = templateSheet.getRow(1);
                             const targetHeaderRow = ws.getRow(1);
-                            if (headerRow.height) targetHeaderRow.height = headerRow.height;
-                            headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                                const targetCell = targetHeaderRow.getCell(colNumber);
-                                targetCell.value = cell.value;
-                                targetCell.style = cell.style;
-                            });
+                            if (headerRow && headerRow.height) targetHeaderRow.height = headerRow.height;
+                            if (headerRow) {
+                                headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                                    const targetCell = targetHeaderRow.getCell(colNumber);
+                                    
+                                    // SAFELY COPY VALUE: Flatten formulas to their computed result.
+                                    // This prevents the "Shared Formula master must exist" error when extracting disjointed rows.
+                                    let cVal = cell.value;
+                                    if (cVal && typeof cVal === 'object' && ('formula' in cVal || 'sharedFormula' in cVal)) {
+                                        targetCell.value = cVal.result !== undefined ? cVal.result : null;
+                                    } else {
+                                        targetCell.value = cVal;
+                                    }
+                                    
+                                    // SAFELY COPY STYLE: Break references so internal exceljs mutation doesn't crash cross-workbooks
+                                    if (cell.style) targetCell.style = deepClone(cell.style);
+                                });
+                            }
 
                             // Copy matched rows for this specific group
                             rowIndices.forEach((sourceRowIdx, newIdx) => {
                                 const sourceRow = templateSheet.getRow(sourceRowIdx);
                                 const targetRow = ws.getRow(newIdx + 2); // Rows start at 2 below the header
-                                if (sourceRow.height) targetRow.height = sourceRow.height;
-                                sourceRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                                    const targetCell = targetRow.getCell(colNumber);
-                                    targetCell.value = cell.value;
-                                    targetCell.style = cell.style;
-                                });
+                                if (sourceRow && sourceRow.height) targetRow.height = sourceRow.height;
+                                if (sourceRow) {
+                                    sourceRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                                        const targetCell = targetRow.getCell(colNumber);
+                                        
+                                        // SAFELY COPY VALUE: Flatten formulas to avoid Shared Formula context errors
+                                        let cVal = cell.value;
+                                        if (cVal && typeof cVal === 'object' && ('formula' in cVal || 'sharedFormula' in cVal)) {
+                                            targetCell.value = cVal.result !== undefined ? cVal.result : null;
+                                        } else {
+                                            targetCell.value = cVal;
+                                        }
+                                        
+                                        // SAFELY COPY STYLE
+                                        if (cell.style) targetCell.style = deepClone(cell.style);
+                                    });
+                                }
                             });
 
                             const outBuffer = await wb.xlsx.writeBuffer();
@@ -1294,12 +1328,14 @@
                         }
                     } else {
                         // -------------------------------------------------------------
-                        // FALLBACK PATH: For CSV / XLS files (Filters data directly, ensuring NO EXTRA COLUMNS)
+                        // FALLBACK PATH: For CSV / XLS files (SheetJS route)
+                        // Fixed: Using async `for...of` loop to permit thread yielding.
                         // -------------------------------------------------------------
                         let processed = 0;
-                        Object.entries(groups).forEach(([name, rowIndices]) => {
+                        for (const [name, rowIndices] of groupEntries) {
                             processed++;
-                            btn.innerHTML = `File ${processed}/${totalGroups}...`;
+                            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> File ${processed}/${totalGroups}`;
+                            await new Promise(res => setTimeout(res, 1));
                             
                             const keepSet = new Set(rowIndices);
                             const originalColumnsOnlyRows = tempRawData
@@ -1316,7 +1352,7 @@
                             XLSX.utils.book_append_sheet(wb, ws, "Data");
                             const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
                             zip.file(`${name}.xlsx`, wbout);
-                        });
+                        }
                     }
 
                     btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Zipping...`;
