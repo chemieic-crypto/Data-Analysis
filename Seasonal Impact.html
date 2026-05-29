@@ -137,6 +137,7 @@
         .badge-improved { background: linear-gradient(180deg, #10b981 0%, #047857 100%); border: 1px solid #064e3b; }
         .badge-deteriorated { background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%); border: 1px solid #7f1d1d; }
         .badge-unchanged { background: linear-gradient(180deg, #64748b 0%, #475569 100%); border: 1px solid #334155; }
+        .badge-na { background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%); border: 1px solid #374151; opacity: 0.8; }
 
         .frozen-col { position: sticky !important; left: 0; z-index: 5; background: var(--frozen-bg) !important; color: var(--text-main) !important; }
         .frozen-col-2 { position: sticky !important; left: 50px; z-index: 5; background: var(--frozen-bg) !important; color: var(--text-main) !important; }
@@ -207,6 +208,28 @@
                 <div>
                     <label class="block text-[11px] font-extrabold text-emerald-500 mb-1.5 uppercase tracking-wider">Chemical Parameter</label>
                     <select id="parameter-select" class="w-full glass-input rounded-md p-2.5 text-sm font-bold border-emerald-500 bg-emerald-900/10 text-emerald-500" onchange="runAnalysis()"></select>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5 pt-5 border-t border-slate-700/50">
+                <div>
+                    <label class="block text-[11px] font-extrabold text-muted mb-1.5 uppercase tracking-wider"><i class="fa-solid fa-filter mr-1"></i> State Filter</label>
+                    <select id="filter-state" class="w-full glass-input rounded-md p-2.5 text-sm font-bold text-blue-400" onchange="updateDistrictFilter(); runAnalysis()">
+                        <option value="All">All States</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-extrabold text-muted mb-1.5 uppercase tracking-wider"><i class="fa-solid fa-filter mr-1"></i> District Filter</label>
+                    <select id="filter-district" class="w-full glass-input rounded-md p-2.5 text-sm font-bold text-blue-400" onchange="updateBlockFilter(); runAnalysis()">
+                        <option value="All">All Districts</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-extrabold text-muted mb-1.5 uppercase tracking-wider"><i class="fa-solid fa-filter mr-1"></i> Block Filter</label>
+                    <select id="filter-block" class="w-full glass-input rounded-md p-2.5 text-sm font-bold text-blue-400" onchange="runAnalysis()">
+                        <option value="All">All Blocks</option>
+                    </select>
                 </div>
             </div>
         </section>
@@ -298,8 +321,10 @@
                 <div class="flex flex-wrap gap-3">
                     <button onclick="switchTab('tab-general')" id="btn-tab-general" class="tab-3d active px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-chart-pie mr-1"></i>General Summary</button>
                     <button onclick="switchTab('tab-perm')" id="btn-tab-perm" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i>Permissible Limits</button>
+                    <button onclick="switchTab('tab-availability')" id="btn-tab-availability" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-database mr-1"></i>Data Availability</button>
                     <button onclick="switchTab('tab-detailed')" id="btn-tab-detailed" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-table-list mr-1"></i>Detailed Matrix</button>
                     <button onclick="switchTab('tab-map')" id="btn-tab-map" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-map-location-dot mr-1"></i>Advanced Map</button>
+                    <button onclick="switchTab('tab-methodology')" id="btn-tab-methodology" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-book-open mr-1"></i>Methodology</button>
                 </div>
                 <div class="flex gap-3">
                     <button onclick="exportCurrentToExcel()" class="btn-excel px-4 py-2.5 rounded-lg text-sm font-black shadow-lg"><i class="fa-solid fa-file-excel mr-1"></i> Export Active Tab</button>
@@ -337,7 +362,26 @@
                 </div>
             </div>
 
-            <!-- Tab 3: Detailed Matrix -->
+            <!-- Tab 3: Data Availability -->
+            <div id="tab-availability" class="tab-content hidden p-4">
+                <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg">
+                    <table class="report-table" id="availability-table">
+                        <thead>
+                            <tr>
+                                <th>S.No.</th>
+                                <th class="text-left">Parameter</th>
+                                <th>Total Locations</th>
+                                <th>Valid Base Data</th>
+                                <th>Valid Compare Data</th>
+                                <th>Valid Paired Data</th>
+                            </tr>
+                        </thead>
+                        <tbody id="availability-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 4: Detailed Matrix -->
             <div id="tab-detailed" class="tab-content hidden p-4">
                 <div id="detailed-warning" class="bg-blue-900/40 border border-blue-500/30 text-blue-200 text-xs font-bold p-3 rounded-lg mb-4 hidden">
                     <i class="fa-solid fa-triangle-exclamation text-orange-400 mr-2"></i> Large Dataset Detected. Displaying the first 1,000 rows to maintain browser performance. <strong class="text-white">Use "Export Active Tab" to download all records perfectly to Excel.</strong>
@@ -355,7 +399,7 @@
                 </div>
             </div>
             
-            <!-- Tab 4: Advanced Geospatial Map -->
+            <!-- Tab 5: Advanced Geospatial Map -->
             <div id="tab-map" class="tab-content hidden p-4 space-y-4">
                 <div class="flex flex-col xl:flex-row justify-between gap-4 p-4 card-3d rounded-lg">
                     <!-- Color Picker Panel -->
@@ -363,7 +407,6 @@
                         <strong class="text-blue-500 uppercase tracking-wide"><i class="fa-solid fa-palette mr-1"></i> Legend:</strong>
                         <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Improved <input type="color" id="col-imp" value="#10b981" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
                         <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Deteriorated <input type="color" id="col-det" value="#ef4444" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
-                        <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Unchanged <input type="color" id="col-unc" value="#64748b" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
                     </div>
 
                     <!-- Size & Advanced Tools -->
@@ -389,11 +432,20 @@
                             <select id="map-parameter-select" class="glass-input text-xs p-1 rounded font-bold text-emerald-700 dark:text-emerald-400 bg-transparent border-none outline-none" onchange="syncParamSelect(this.value)"></select>
                         </label>
 
-                        <label class="text-xs font-black bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg cursor-pointer transition shadow-lg">
-                            <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Boundary (.zip)
-                            <input type="file" id="shp-upload" accept=".zip" class="hidden" onchange="handleShapefile(event)">
-                        </label>
-                        <button onclick="clearShapefiles()" class="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg shadow-lg font-bold" title="Clear Boundaries"><i class="fa-solid fa-trash"></i></button>
+                        <div class="flex items-center gap-2 bg-blue-900/10 p-1.5 rounded-lg border border-blue-500/30">
+                            <label class="text-xs font-black bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg cursor-pointer transition shadow-lg">
+                                <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Boundary (.zip)
+                                <input type="file" id="shp-upload" accept=".zip" class="hidden" onchange="handleShapefile(event)">
+                            </label>
+                            <button onclick="clearShapefiles()" class="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg shadow-lg font-bold" title="Clear Boundaries"><i class="fa-solid fa-trash"></i></button>
+                            
+                            <!-- Dynamic Shapefile Filters -->
+                            <div id="shp-filter-container" class="hidden items-center gap-2 ml-2 pl-2 border-l border-blue-500/30">
+                                <span class="text-[10px] uppercase font-bold text-blue-500">Filter Boundary:</span>
+                                <select id="shp-prop-select" class="glass-input text-xs p-1 rounded font-bold text-blue-400 bg-transparent border-none outline-none" onchange="updateShpValues()"></select>
+                                <select id="shp-val-select" class="glass-input text-xs p-1 rounded font-bold text-blue-400 bg-transparent border-none outline-none max-w-[150px]" onchange="updateMapVisuals()"></select>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -405,6 +457,65 @@
                 <!-- Map Container - dynamically turns pure white when basemap is hidden -->
                 <div id="map-container" class="w-full h-[650px] rounded-xl border border-black/10 dark:border-white/20 shadow-2xl z-0 bg-gray-100 dark:bg-black/30 flex items-center justify-center text-muted relative transition-colors duration-300">
                     <span id="map-empty-msg" class="font-bold text-lg"><i class="fa-solid fa-map text-4xl mb-3 block text-center text-blue-500/50"></i> Waiting for matched geographical data...</span>
+                </div>
+            </div>
+
+            <!-- Tab 6: Methodology -->
+            <div id="tab-methodology" class="tab-content hidden p-4 space-y-6">
+                <div class="glass-card p-6">
+                    <h3 class="text-2xl font-black text-blue-400 mb-4 border-b border-blue-500/30 pb-2">Tool Methodology & Overview</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Data Templates -->
+                        <div class="bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10">
+                            <h4 class="text-lg font-bold text-orange-500 dark:text-orange-400 mb-2"><i class="fa-solid fa-file-csv mr-2"></i>1. Accepted Data Templates</h4>
+                            <p class="text-sm text-muted mb-3">This analyzer dynamically processes two distinct data architectures:</p>
+                            <ul class="text-sm space-y-2 text-muted">
+                                <li><strong class="text-gray-800 dark:text-white">Standard Format (Long):</strong> Data is organized by rows. Each row represents a location at a specific time (e.g., Pre-monsoon 2022). Requires <code>Year</code> and <code>Season</code> columns to group and compare periods.</li>
+                                <li><strong class="text-gray-800 dark:text-white">Wide Format:</strong> Data is organized by columns. A single row contains all periods for a location. The tool automatically detects column pairs ending in <code>PRM</code> (Pre-monsoon) and <code>POM</code> (Post-monsoon).</li>
+                            </ul>
+                        </div>
+
+                        <!-- Capabilities -->
+                        <div class="bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10">
+                            <h4 class="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2"><i class="fa-solid fa-microchip mr-2"></i>2. Core Capabilities</h4>
+                            <ul class="text-sm space-y-2 text-muted">
+                                <li><strong class="text-gray-800 dark:text-white">Trend Analysis:</strong> Automatically computes % change between Base and Compare periods. Classifies as <em>Improved</em>, <em>Deteriorated</em>, or <em>Unchanged</em>.</li>
+                                <li><strong class="text-gray-800 dark:text-white">Permissible Limit Flagging:</strong> Cross-references concentrations against WHO/BIS limits (e.g., TDS &gt; 2000, F &gt; 1.5) to highlight critical deterioration.</li>
+                                <li><strong class="text-gray-800 dark:text-white">HD IDW Geospatial Interpolation:</strong> Uses Inverse Distance Weighting to create continuous, glossy heatmaps constrained perfectly to shapefile administrative boundaries.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Tab Explanations -->
+                    <div class="mt-6 bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10">
+                        <h4 class="text-lg font-bold text-indigo-600 dark:text-indigo-400 mb-2"><i class="fa-solid fa-layer-group mr-2"></i>3. Analytical Tabs Explained</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-sm text-muted">
+                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
+                                <strong class="text-blue-600 dark:text-blue-300 block mb-1">General Summary</strong> Aggregates locations (State/Dist/Block) showing the Count (N) and Percentage (%) of improving vs deteriorating wells.
+                            </div>
+                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
+                                <strong class="text-rose-600 dark:text-rose-300 block mb-1">Permissible Limits</strong> Isolates critical locations. Shows wells that were already beyond limits and deteriorated further.
+                            </div>
+                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
+                                <strong class="text-amber-600 dark:text-amber-300 block mb-1">Data Availability</strong> Validates data completeness. Shows exactly how many records had valid numbers for both base and compare periods.
+                            </div>
+                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
+                                <strong class="text-emerald-600 dark:text-emerald-300 block mb-1">Detailed Matrix</strong> A complete row-by-row breakdown showing the raw Base value, Compare value, and assigned Status.
+                            </div>
+                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
+                                <strong class="text-indigo-600 dark:text-indigo-300 block mb-1">Advanced Map</strong> High-Definition IDW mapping restricted precisely to uploaded administrative shapefile boundaries.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Example Section -->
+                    <div class="mt-6 border-t border-black/10 dark:border-white/10 pt-6">
+                        <h4 class="text-lg font-bold text-blue-600 dark:text-blue-400 mb-4"><i class="fa-solid fa-bolt mr-2"></i>4. Live Data Example (<span id="live-example-status" class="text-orange-500 dark:text-orange-400">Awaiting Data</span>)</h4>
+                        <div id="live-example-container" class="overflow-x-auto rounded-lg border border-black/10 dark:border-white/10 shadow-lg bg-black/5 dark:bg-black/20 p-4 text-center text-muted text-sm font-bold">
+                            Upload and map your dataset to see a live sample of how the algorithm interprets your rows!
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -741,10 +852,71 @@
                 mapPSel.appendChild(new Option(getParamLabel(p), p));
             });
 
+            // Populate Filter dropdowns
+            let states = new Set();
+            rawData.forEach(r => {
+                let s = r[columnMapping.state];
+                if (s && String(s).trim() !== '') states.add(String(s).trim());
+            });
+            let stateSelect = document.getElementById('filter-state');
+            if(stateSelect) {
+                stateSelect.innerHTML = '<option value="All">All States</option>';
+                Array.from(states).sort().forEach(s => stateSelect.add(new Option(s, s)));
+                updateDistrictFilter();
+            }
+
             setupDetailedHeaders();
             runAnalysis();
             
             document.getElementById('controls-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function updateDistrictFilter() {
+            let stateFilter = document.getElementById('filter-state') ? document.getElementById('filter-state').value : 'All';
+            let districts = new Set();
+            
+            rawData.forEach(r => {
+                let s = r[columnMapping.state] ? String(r[columnMapping.state]).trim() : '';
+                let d = r[columnMapping.district] ? String(r[columnMapping.district]).trim() : '';
+                if (d && d !== '' && (stateFilter === 'All' || s === stateFilter)) {
+                    districts.add(d);
+                }
+            });
+            
+            let distSelect = document.getElementById('filter-district');
+            if(!distSelect) return;
+            let currentDist = distSelect.value;
+            distSelect.innerHTML = '<option value="All">All Districts</option>';
+            Array.from(districts).sort().forEach(d => distSelect.add(new Option(d, d)));
+            
+            if (currentDist !== 'All' && districts.has(currentDist)) distSelect.value = currentDist;
+            else distSelect.value = 'All';
+
+            updateBlockFilter();
+        }
+
+        function updateBlockFilter() {
+            let stateFilter = document.getElementById('filter-state') ? document.getElementById('filter-state').value : 'All';
+            let distFilter = document.getElementById('filter-district') ? document.getElementById('filter-district').value : 'All';
+            let blocks = new Set();
+            
+            rawData.forEach(r => {
+                let s = r[columnMapping.state] ? String(r[columnMapping.state]).trim() : '';
+                let d = r[columnMapping.district] ? String(r[columnMapping.district]).trim() : '';
+                let b = r[columnMapping.block] ? String(r[columnMapping.block]).trim() : '';
+                if (b && b !== '' && (stateFilter === 'All' || s === stateFilter) && (distFilter === 'All' || d === distFilter)) {
+                    blocks.add(b);
+                }
+            });
+            
+            let blockSelect = document.getElementById('filter-block');
+            if(!blockSelect) return;
+            let currentBlock = blockSelect.value;
+            blockSelect.innerHTML = '<option value="All">All Blocks</option>';
+            Array.from(blocks).sort().forEach(b => blockSelect.add(new Option(b, b)));
+            
+            if (currentBlock !== 'All' && blocks.has(currentBlock)) blockSelect.value = currentBlock;
+            else blockSelect.value = 'All';
         }
 
         function setupDetailedHeadersEmpty() {
@@ -795,8 +967,21 @@
             let pairedData = {};
             let pCount = 0, uCount = 0;
 
+            let fState = document.getElementById('filter-state') ? document.getElementById('filter-state').value : 'All';
+            let fDist = document.getElementById('filter-district') ? document.getElementById('filter-district').value : 'All';
+            let fBlock = document.getElementById('filter-block') ? document.getElementById('filter-block').value : 'All';
+
             for(let idx = 0; idx < rawData.length; idx++) {
                 let row = rawData[idx];
+                
+                let rowState = row[columnMapping.state] ? String(row[columnMapping.state]).trim() : '';
+                let rowDist = row[columnMapping.district] ? String(row[columnMapping.district]).trim() : '';
+                let rowBlock = row[columnMapping.block] ? String(row[columnMapping.block]).trim() : '';
+                
+                if (fState !== 'All' && rowState !== fState) continue;
+                if (fDist !== 'All' && rowDist !== fDist) continue;
+                if (fBlock !== 'All' && rowBlock !== fBlock) continue;
+
                 let wid = "";
                 if(matchStrategy === 'well_id') wid = String(row[columnMapping.wellId]||'').trim().toUpperCase();
                 else wid = `${row[columnMapping.state]}-${row[columnMapping.district]}-${row[columnMapping.block]}-${row[columnMapping.location]}`.toUpperCase();
@@ -860,8 +1045,9 @@
                             vc = parseFloat(loc.comp[p]);
                         }
                         
-                        let stat = 'Unchanged', pct = 0;
+                        let stat = '#NA', pct = 0;
                         if(!isNaN(vb) && !isNaN(vc)) {
+                            stat = 'Unchanged';
                             let isRSC = p.toUpperCase().includes('RSC');
                             if(!isRSC) { vb = Math.max(vb,0); vc = Math.max(vc,0); } 
                             
@@ -971,8 +1157,149 @@
                 if(data.permLimit !== null) renderPermDOM(data.permStats, agg);
                 renderDetailedDOM(data.rows);
                 
+                generateAvailabilitySummary(bp, cp, ms);
                 updateMapVisuals();
+                updateMethodologyLiveExample();
             }, 10);
+        }
+
+        function generateAvailabilitySummary(basePeriod, compPeriod, matchStrategy) {
+            let fState = document.getElementById('filter-state') ? document.getElementById('filter-state').value : 'All';
+            let fDist = document.getElementById('filter-district') ? document.getElementById('filter-district').value : 'All';
+            let fBlock = document.getElementById('filter-block') ? document.getElementById('filter-block').value : 'All';
+
+            let locMap = {}; 
+            
+            for(let idx = 0; idx < rawData.length; idx++) {
+                let row = rawData[idx];
+                
+                let rowState = row[columnMapping.state] ? String(row[columnMapping.state]).trim() : '';
+                let rowDist = row[columnMapping.district] ? String(row[columnMapping.district]).trim() : '';
+                let rowBlock = row[columnMapping.block] ? String(row[columnMapping.block]).trim() : '';
+                
+                if (fState !== 'All' && rowState !== fState) continue;
+                if (fDist !== 'All' && rowDist !== fDist) continue;
+                if (fBlock !== 'All' && rowBlock !== fBlock) continue;
+
+                let wid = "";
+                if(matchStrategy === 'well_id') wid = String(row[columnMapping.wellId]||'').trim().toUpperCase();
+                else wid = `${row[columnMapping.state]}-${row[columnMapping.district]}-${row[columnMapping.block]}-${row[columnMapping.location]}`.toUpperCase();
+                
+                if(!wid) continue;
+
+                if (currentDataFormat === 'wide') {
+                    let uniqueWid = wid + "_W_" + idx;
+                    locMap[uniqueWid] = { base: row, comp: row };
+                } else {
+                    let y = row[columnMapping.year]; let s = row[columnMapping.season];
+                    let period = `${y} | ${s}`;
+                    if (period !== basePeriod && period !== compPeriod) continue;
+
+                    if (!locMap[wid]) locMap[wid] = { base: null, comp: null };
+                    if(period === basePeriod) locMap[wid].base = row;
+                    if(period === compPeriod) locMap[wid].comp = row;
+                }
+            }
+
+            let summary = {};
+            activeParametersInFile.forEach(p => summary[p] = { total: 0, baseV: 0, compV: 0, pairedV: 0 });
+
+            let keys = Object.keys(locMap);
+            for(let i=0; i<keys.length; i++) {
+                let loc = locMap[keys[i]];
+                
+                activeParametersInFile.forEach(p => {
+                    let hasBase = false, hasComp = false;
+
+                    if (currentDataFormat === 'wide') {
+                        const pair = wideParamPairs[p];
+                        if (loc.base && loc.base[pair.base] !== undefined && loc.base[pair.base] !== "" && !isNaN(parseFloat(loc.base[pair.base]))) hasBase = true;
+                        if (loc.comp && loc.comp[pair.comp] !== undefined && loc.comp[pair.comp] !== "" && !isNaN(parseFloat(loc.comp[pair.comp]))) hasComp = true;
+                    } else {
+                        if (loc.base && loc.base[p] !== undefined && loc.base[p] !== "" && !isNaN(parseFloat(loc.base[p]))) hasBase = true;
+                        if (loc.comp && loc.comp[p] !== undefined && loc.comp[p] !== "" && !isNaN(parseFloat(loc.comp[p]))) hasComp = true;
+                    }
+
+                    if (hasBase || hasComp) {
+                        summary[p].total++;
+                        if (hasBase) summary[p].baseV++;
+                        if (hasComp) summary[p].compV++;
+                        if (hasBase && hasComp) summary[p].pairedV++;
+                    }
+                });
+            }
+
+            let tbody = document.getElementById('availability-tbody');
+            if (!tbody) return;
+            let html = '';
+            activeParametersInFile.forEach((p, idx) => {
+                let s = summary[p];
+                html += `<tr>
+                    <td>${idx+1}</td>
+                    <td class="text-left font-bold text-emerald-400">${getParamLabel(p)}</td>
+                    <td class="font-bold bg-white/5">${s.total}</td>
+                    <td class="text-amber-400 font-bold">${s.baseV}</td>
+                    <td class="text-blue-400 font-bold">${s.compV}</td>
+                    <td class="text-emerald-400 font-bold">${s.pairedV}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function updateMethodologyLiveExample() {
+            const container = document.getElementById('live-example-container');
+            const status = document.getElementById('live-example-status');
+            
+            if (!globalAggregatedDataCache || !globalAggregatedDataCache.data || globalAggregatedDataCache.data.rows.length === 0) {
+                status.innerText = "Awaiting Valid Paired Data";
+                status.className = "text-orange-500 dark:text-orange-400";
+                return;
+            }
+
+            status.innerText = "Active - Using Filtered Data";
+            status.className = "text-emerald-500 dark:text-emerald-400";
+
+            let sampleRows = globalAggregatedDataCache.data.rows.slice(0, 4); // show up to 4 rows
+            let param = globalAggregatedDataCache.param;
+
+            let html = `
+                <p class="text-left text-xs mb-3 text-blue-600 dark:text-blue-300">Here is how the system is currently calculating <strong>${getParamLabel(param)}</strong> for your actual locations:</p>
+                <div class="overflow-x-auto rounded border border-black/10 dark:border-white/10 shadow bg-white dark:bg-black/30">
+                <table class="report-table w-full text-sm">
+                    <thead>
+                        <tr>
+                            <th>Well ID</th>
+                            <th class="text-left">Location Detail</th>
+                            <th>Base Value</th>
+                            <th>Compare Value</th>
+                            <th>Change (%)</th>
+                            <th>Algorithm Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            sampleRows.forEach(r => {
+                let c = r.chem[param];
+                let bCls = c.s==='Improved' ? 'badge-improved' : (c.s==='Deteriorated' ? 'badge-deteriorated' : (c.s==='#NA' ? 'badge-na' : 'badge-unchanged'));
+                let pctStr = (c.p !== 0 && c.s !== '#NA') ? (c.p > 0 ? '+' : '') + c.p.toFixed(1) + '%' : '--';
+
+                html += `
+                    <tr>
+                        <td class="font-mono text-blue-500 dark:text-blue-400">${r.id}</td>
+                        <td class="text-left">${r.loc} (${r.district}, ${r.state})</td>
+                        <td class="font-bold">${c.b}</td>
+                        <td class="font-bold">${c.c}</td>
+                        <td class="text-muted">${pctStr}</td>
+                        <td><span class="badge-status ${bCls}">${c.s}</span></td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+            container.classList.remove('text-center');
+            container.classList.add('text-left');
         }
 
         function renderGeneralDOM(stats, agg) {
@@ -1120,7 +1447,7 @@
                 for(let j=0; j<activeParametersInFile.length; j++) {
                     let p = activeParametersInFile[j];
                     let c = r.chem[p]; 
-                    let bCls = c.s==='Improved' ? 'badge-improved' : (c.s==='Deteriorated' ? 'badge-deteriorated' : 'badge-unchanged');
+                    let bCls = c.s==='Improved' ? 'badge-improved' : (c.s==='Deteriorated' ? 'badge-deteriorated' : (c.s==='#NA' ? 'badge-na' : 'badge-unchanged'));
                     rowHtml += `<td class="border-l border-white/10">${c.b}</td><td class="font-bold">${c.c}</td><td class="border-r border-white/10"><span class="badge-status ${bCls}">${c.s}</span></td>`;
                 }
                 rowHtml += '</tr>';
@@ -1145,20 +1472,50 @@
         function getColorForIDW(val) {
             let impCol = hexToRgb(document.getElementById('col-imp').value);
             let detCol = hexToRgb(document.getElementById('col-det').value);
-            let uncCol = hexToRgb(document.getElementById('col-unc').value);
 
-            if (val < 0) {
-                let factor = Math.min(Math.abs(val) / 25, 1.0); // Smooth gradient up to 25% improvement
-                return interpolateColor(uncCol, impCol, factor);
-            } else if (val > 0) {
-                let factor = Math.min(val / 25, 1.0); // Smooth gradient up to 25% deterioration
-                return interpolateColor(uncCol, detCol, factor);
+            // Direct continuous blend between Red and Green to remove all white halo patches
+            // Full Green at <= -5%, Full Red at >= +5%
+            if (val <= -5) return impCol;
+            if (val >= 5) return detCol;
+            
+            // Seamless gradient in the middle crossing 0
+            let factor = (val + 5) / 10.0;
+            return interpolateColor(impCol, detCol, factor);
+        }
+
+        function getFeaturesToClip() {
+            if (!currentShapefileGeoJSON) return [];
+            let features = turf.flatten(currentShapefileGeoJSON).features;
+            
+            let prop = document.getElementById('shp-prop-select') ? document.getElementById('shp-prop-select').value : '';
+            let val = document.getElementById('shp-val-select') ? document.getElementById('shp-val-select').value : 'All';
+            
+            if (prop && val !== 'All') {
+                features = features.filter(f => f.properties && String(f.properties[prop]) === val);
             }
-            return uncCol;
+            return features;
+        }
+
+        // Populates the secondary dropdown with unique values for the selected shapefile property
+        function updateShpValues() {
+            let prop = document.getElementById('shp-prop-select').value;
+            let valSel = document.getElementById('shp-val-select');
+            valSel.innerHTML = '<option value="All">All Regions</option>';
+            
+            if (prop && currentShapefileGeoJSON) {
+                let vals = new Set();
+                turf.flatten(currentShapefileGeoJSON).features.forEach(f => {
+                    if (f.properties && f.properties[prop]) {
+                        vals.add(String(f.properties[prop]).trim());
+                    }
+                });
+                Array.from(vals).sort().forEach(v => valSel.add(new Option(v, v)));
+            }
+            updateMapVisuals();
         }
 
         // Ultra-Fast HD Spatial Grid Search IDW Engine - FULLY REBUILT FOR NATURAL GLOSS AND PROJECTION ALIGNMENT
-        function drawFastHDIDWLayer(pts, minLat, maxLat, minLon, maxLon) {
+        function drawFastHDIDWLayer(pts, minLat, maxLat, minLon, maxLon, featuresToClip) {
             if(idwOverlay) leafletMap.removeLayer(idwOverlay);
             if(!document.getElementById('enable-idw').checked || pts.length === 0) return;
 
@@ -1167,14 +1524,14 @@
             setTimeout(() => {
                 let bLatMin = minLat, bLatMax = maxLat, bLonMin = minLon, bLonMax = maxLon;
 
-                // CRITICAL STRETCH FIX: If shapefile exists, stretch IDW bounds completely to its edges
-                if (currentShapefileGeoJSON) {
-                    const shpLayerTemp = L.geoJSON(currentShapefileGeoJSON);
-                    const shpBbox = shpLayerTemp.getBounds();
-                    bLatMin = shpBbox.getSouth();
-                    bLatMax = shpBbox.getNorth();
-                    bLonMin = shpBbox.getWest();
-                    bLonMax = shpBbox.getEast();
+                // CRITICAL STRETCH FIX: Stretch IDW bounds completely to selected state edges
+                if (featuresToClip && featuresToClip.length > 0) {
+                    let fc = turf.featureCollection(featuresToClip);
+                    let shpBbox = turf.bbox(fc);
+                    bLatMin = shpBbox[1];
+                    bLatMax = shpBbox[3];
+                    bLonMin = shpBbox[0];
+                    bLonMax = shpBbox[2];
                 }
 
                 let latPad = (bLatMax - bLatMin) * 0.05 || 0.1;
@@ -1184,24 +1541,21 @@
                 let imgMinLon = bLonMin - lonPad, imgMaxLon = bLonMax + lonPad;
                 let bounds = [[imgMinLat, imgMinLon], [imgMaxLat, imgMaxLon]];
                 
-                // INCREASE RESOLUTION FOR REAL GLOSS (1200px width fixes blurriness natively)
+                // HIGH SPEED RESOLUTION (800px width scales incredibly fast & smooth natively)
                 let canvas = document.createElement('canvas');
-                canvas.width = 1200; 
+                canvas.width = 800; 
                 
                 // PROJECTION FIX: Leaflet overlays stretch non-linearly (Web Mercator).
-                // We MUST project canvas Y linearly over the mathematical Mercator domain, not raw Latitudes.
                 let lat2y = (lat) => Math.log(Math.tan((90 + lat) * Math.PI / 360));
                 let imgMinY = lat2y(imgMinLat);
                 let imgMaxY = lat2y(imgMaxLat);
                 
-                // Accurately set height proportional to Mercator space to preserve aspect ratio
                 let widthMercator = (imgMaxLon - imgMinLon) * Math.PI / 180;
                 let heightMercator = imgMaxY - imgMinY;
-                canvas.height = Math.floor(canvas.width * (heightMercator / widthMercator)) || 1200;
+                canvas.height = Math.floor(canvas.width * (heightMercator / widthMercator)) || 800;
                 
                 let ctx = canvas.getContext('2d');
                 
-                // Proper Web Mercator coordinates mapping
                 let ll2xy = (lat, lon) => {
                     let x = ((lon - imgMinLon) / (imgMaxLon - imgMinLon)) * canvas.width;
                     let y = (1 - ((lat2y(lat) - imgMinY) / (imgMaxY - imgMinY))) * canvas.height;
@@ -1210,8 +1564,8 @@
                 
                 let cpts = pts.map(p => { let xy = ll2xy(p.lat, p.lon); return {x: xy.x, y: xy.y, v: p.val}; });
                 
-                // Spatial Indexing adjusted for higher resolution map
-                const GRID_SIZE = 120;
+                // Optimized High-Speed Spatial Indexing
+                const GRID_SIZE = 80;
                 let grid = new Array(GRID_SIZE * GRID_SIZE).fill().map(() => []);
                 let cellW = canvas.width / GRID_SIZE;
                 let cellH = canvas.height / GRID_SIZE;
@@ -1223,7 +1577,6 @@
                     grid[gy * GRID_SIZE + gx].push(p);
                 }
                 
-                // Offscreen canvas for raw IDW pixel generation
                 let rawCanvas = document.createElement('canvas');
                 rawCanvas.width = canvas.width; rawCanvas.height = canvas.height;
                 let rawCtx = rawCanvas.getContext('2d');
@@ -1237,7 +1590,7 @@
                     for(let px = 0; px < canvas.width; px++) {
                         let gx = Math.floor(px / cellW);
                         let num = 0, den = 0;
-                        let searchRad = 6; // Sufficient footprint for beautiful, natural blending
+                        let searchRad = 5; // Adjusted radius for maximum blend without lag
                         
                         for(let sy = Math.max(0, gy - searchRad); sy <= Math.min(GRID_SIZE - 1, gy + searchRad); sy++) {
                             for(let sx = Math.max(0, gx - searchRad); sx <= Math.min(GRID_SIZE - 1, gx + searchRad); sx++) {
@@ -1246,8 +1599,8 @@
                                     let cp = cellPts[i];
                                     let dx = px - cp.x, dy = py - cp.y;
                                     let d2 = dx*dx + dy*dy;
-                                    if(d2 < 0.1) d2 = 0.1; // Prevent div by 0 artifact points
-                                    let w = 1.0 / Math.pow(d2, 1.15); // Glossy decay factor for wide interpolation
+                                    if(d2 < 0.1) d2 = 0.1; 
+                                    let w = 1.0 / Math.pow(d2, 1.4); // Dropped decay to 1.4 for a much softer, more continuous gloss
                                     num += w * cp.v;
                                     den += w;
                                 }
@@ -1268,9 +1621,9 @@
                 rawCtx.putImageData(imgData, 0, 0);
 
                 // Precise Shapefile Clipping Engine via standard Canvas Clipping path
-                if (currentShapefileGeoJSON) {
+                if (featuresToClip && featuresToClip.length > 0) {
                     ctx.beginPath();
-                    turf.flatten(currentShapefileGeoJSON).features.forEach(f => {
+                    featuresToClip.forEach(f => {
                         if(f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon')) {
                             f.geometry.coordinates.forEach((ring) => {
                                 ring.forEach((coord, j) => {
@@ -1300,20 +1653,24 @@
             mapMarkersLayer.clearLayers();
             const cols = {
                 i: document.getElementById('col-imp').value,
-                d: document.getElementById('col-det').value, 
-                u: document.getElementById('col-unc').value
+                d: document.getElementById('col-det').value
             };
             
             let bounds = [];
             let validPoints = [];
+            let featuresToClip = getFeaturesToClip(); // Extracted dynamic features to pass properly
 
             let rows = globalAggregatedDataCache.data.rows;
             for(let i=0; i<rows.length; i++) {
                 let r = rows[i];
                 let lat = parseFloat(r.lat), lon = parseFloat(r.lon);
                 if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
-                    let c = r.chem[globalAggregatedDataCache.param]; if(!c) continue;
-                    let mCol = cols.u;
+                    let c = r.chem[globalAggregatedDataCache.param]; 
+                    
+                    // Exclude missing (#NA) AND perfectly Unchanged items from both markers and IDW math
+                    if(!c || c.s === '#NA' || c.s === 'Unchanged') continue; 
+                    
+                    let mCol = cols.i;
                     if(c.s === 'Improved') mCol = cols.i;
                     else if(c.s === 'Deteriorated') mCol = cols.d;
                     
@@ -1329,13 +1686,20 @@
             }
             
             if (bounds.length > 0) {
-                leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+                // Adjust Zoom precisely to the Selected Region if active, otherwise use points
+                if (featuresToClip.length > 0 && document.getElementById('shp-val-select') && document.getElementById('shp-val-select').value !== 'All') {
+                    let fc = turf.featureCollection(featuresToClip);
+                    let shpBbox = turf.bbox(fc);
+                    leafletMap.fitBounds([[shpBbox[1], shpBbox[0]], [shpBbox[3], shpBbox[2]]]);
+                } else {
+                    leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+                }
                 
                 if(document.getElementById('enable-idw').checked) {
                     let lats = validPoints.map(p => p.lat), lons = validPoints.map(p => p.lon);
                     let minLat = Math.min(...lats), maxLat = Math.max(...lats);
                     let minLon = Math.min(...lons), maxLon = Math.max(...lons);
-                    drawFastHDIDWLayer(validPoints, minLat, maxLat, minLon, maxLon);
+                    drawFastHDIDWLayer(validPoints, minLat, maxLat, minLon, maxLon, featuresToClip);
                 } else if (idwOverlay) {
                     leafletMap.removeLayer(idwOverlay);
                 }
@@ -1348,11 +1712,25 @@
             reader.onload = function(e) {
                 shp(e.target.result).then(function(geojson) {
                     currentShapefileGeoJSON = geojson;
-                    shpLayer.clearLayers();
-                    // Sharp glossy blue highlight for bounds as shown in reference image
-                    L.geoJSON(geojson, { style: { color: "#3b82f6", weight: 3, fillOpacity: 0.0, opacity: 1 } }).addTo(shpLayer);
-                    if(geojson.bbox) leafletMap.fitBounds([[geojson.bbox[1], geojson.bbox[0]], [geojson.bbox[3], geojson.bbox[2]]]);
-                    updateMapVisuals();
+                    
+                    // Populate Filter dropdowns directly from Shapefile
+                    let props = new Set();
+                    turf.flatten(geojson).features.forEach(f => {
+                        if(f.properties) Object.keys(f.properties).forEach(k => props.add(k));
+                    });
+                    
+                    let propSel = document.getElementById('shp-prop-select');
+                    if(propSel) {
+                        propSel.innerHTML = '<option value="">-- SHP Field --</option>';
+                        Array.from(props).sort().forEach(p => propSel.add(new Option(p, p)));
+                        document.getElementById('shp-val-select').innerHTML = '<option value="All">All Regions</option>';
+                        
+                        let container = document.getElementById('shp-filter-container');
+                        container.classList.remove('hidden');
+                        container.classList.add('flex');
+                    }
+
+                    updateMapVisuals(); // Centralized drawing function handles clipping
                 }).catch(err => alert("Error parsing shapefile: " + err));
             };
             reader.readAsArrayBuffer(file);
@@ -1361,6 +1739,11 @@
         function clearShapefiles() { 
             if(shpLayer) shpLayer.clearLayers(); 
             currentShapefileGeoJSON = null; 
+            let container = document.getElementById('shp-filter-container');
+            if(container) {
+                container.classList.add('hidden');
+                container.classList.remove('flex');
+            }
             updateMapVisuals(); 
         }
 
@@ -1560,6 +1943,7 @@
                         if(status === 'Improved') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
                         else if(status === 'Deteriorated') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
                         else if(status === 'Unchanged') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                        else if(status === '#NA') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } }; // Gray color for #NA
                     }
                 });
                 r++;
@@ -1626,6 +2010,10 @@
             ['base-period', 'compare-period', 'parameter-select'].forEach(id => {
                 document.getElementById(id).innerHTML = '<option>-- Pending Upload --</option>';
             });
+
+            if(document.getElementById('filter-state')) document.getElementById('filter-state').innerHTML = '<option value="All">All States</option>';
+            if(document.getElementById('filter-district')) document.getElementById('filter-district').innerHTML = '<option value="All">All Districts</option>';
+            if(document.getElementById('filter-block')) document.getElementById('filter-block').innerHTML = '<option value="All">All Blocks</option>';
             
             initDonutChart();
             updateDonutChart(0, 0); // initialize empty chart
