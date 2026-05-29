@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groundwater Quality: Advanced Multi-Year HD Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Theme Variables - High Contrast & Compatibility */
+        :root {
+            --bg-grad-1: #0f172a; --bg-grad-2: #020617;
+            --text-main: #f8fafc; --text-muted: #94a3b8;
+            --glass-bg: rgba(30, 41, 59, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            --input-bg: #1e293b; --input-border: #475569;
+            --table-th-bg: linear-gradient(180deg, #1e3a8a 0%, #172554 100%);
+            --table-th-border: #3b82f6;
+            --table-td-bg: rgba(30, 41, 59, 0.7);
+            --table-td-hover: rgba(51, 65, 85, 1);
+            --table-td-border: rgba(255, 255, 255, 0.05);
+            --frozen-bg: #0f172a;
+            --kpi-bg: rgba(30, 41, 59, 0.6);
+            --main-panel-glow: rgba(59, 130, 246, 0.2);
+            --btn-text: #ffffff;
+        }
+
+        body.light-theme {
+            --bg-grad-1: #f1f5f9; --bg-grad-2: #e2e8f0;
+            --text-main: #0f172a; --text-muted: #475569;
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --glass-border: rgba(0, 0, 0, 0.15);
+            --glass-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.15);
+            --input-bg: #ffffff; --input-border: #cbd5e1;
+            --table-th-bg: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+            --table-th-border: #1e3a8a;
+            --table-td-bg: rgba(255, 255, 255, 1);
+            --table-td-hover: rgba(241, 245, 249, 1);
+            --table-td-border: rgba(0, 0, 0, 0.1);
+            --frozen-bg: #f8fafc;
+            --kpi-bg: rgba(255, 255, 255, 0.9);
+            --main-panel-glow: rgba(59, 130, 246, 0.4);
+            --btn-text: #ffffff;
+        }
+
+        body { background: radial-gradient(circle at top left, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%); color: var(--text-main); transition: background 0.4s ease, color 0.4s ease; overflow-x: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .glass-card { background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 1rem; }
+        .main-interface-panel { box-shadow: 0 0 25px var(--main-panel-glow); border: 1px solid rgba(59, 130, 246, 0.5); }
+        .glass-input { background-color: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-main); }
+        .kpi-box { background: var(--kpi-bg); border: 1px solid var(--glass-border); box-shadow: inset 0 1px 0 rgba(255,255,255,0.1); }
+        
+        select option { background-color: #1e293b; color: white; }
+        body.light-theme select option { background-color: #ffffff; color: black; }
+
+        .btn-3d { background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%); border: 1px solid #1e3a8a; color: var(--btn-text); box-shadow: 0 4px 0 #1e3a8a, 0 5px 10px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3); transition: all 0.1s; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+        .btn-3d:active { transform: translateY(4px); box-shadow: 0 0 0 #1e3a8a, 0 2px 4px rgba(0,0,0,0.2), inset 0 2px 4px rgba(0,0,0,0.3); }
+        .btn-orange-3d { background: linear-gradient(180deg, #f97316 0%, #c2410c 100%); border: 1px solid #9a3412; color: var(--btn-text); box-shadow: 0 5px 0 #9a3412, 0 6px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3); transition: all 0.1s; text-shadow: 0 1px 2px rgba(0,0,0,0.5); cursor: pointer; display: inline-flex; align-items: center;}
+        .btn-orange-3d:active { transform: translateY(5px); box-shadow: 0 0 0 #9a3412, inset 0 3px 5px rgba(0,0,0,0.4); }
+        .btn-3d-green { background: linear-gradient(180deg, #10b981 0%, #047857 100%); border: 1px solid #064e3b; color: var(--btn-text); box-shadow: 0 4px 0 #064e3b, 0 5px 10px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3); transition: all 0.1s; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+        .btn-3d-green:active { transform: translateY(4px); box-shadow: 0 0 0 #064e3b, inset 0 2px 4px rgba(0,0,0,0.3); }
+        .btn-excel { background: linear-gradient(180deg, #eab308 0%, #a16207 100%); border: 1px solid #713f12; color: var(--btn-text); box-shadow: 0 4px 0 #713f12, 0 5px 10px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4); transition: all 0.1s; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+        .btn-excel:active { transform: translateY(4px); box-shadow: 0 0 0 #713f12, inset 0 2px 4px rgba(0,0,0,0.4); }
+
+        .tab-3d { background: linear-gradient(180deg, #475569 0%, #334155 100%); border: 1px solid #1e293b; color: #f8fafc; box-shadow: 0 4px 0 #1e293b, 0 4px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1); transition: all 0.15s; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.5); transform: translateY(0px);}
+        .tab-3d:hover { background: linear-gradient(180deg, #64748b 0%, #475569 100%); }
+        .tab-3d:active { transform: translateY(4px); box-shadow: 0 0 0 #1e293b, inset 0 2px 4px rgba(0,0,0,0.3); }
+        .tab-3d.active { background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%); border: 1px solid #1e3a8a; box-shadow: 0 3px 0 #1e3a8a, inset 0 1px 0 rgba(255,255,255,0.3); transform: translateY(1px); color: white; }
+
+        .report-table { border-collapse: separate; border-spacing: 0; border-radius: 0.5rem; width: 100%; text-align: center; border: 1px solid var(--table-td-border); }
+        .report-table th { background: var(--table-th-bg); color: #ffffff; border-bottom: 2px solid var(--table-th-border); border-right: 1px solid rgba(0,0,0,0.2); padding: 0.65rem 0.5rem; font-size: 0.8rem; font-weight: 700; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .report-table td { background: var(--table-td-bg); color: var(--text-main); border-bottom: 1px solid var(--table-td-border); border-right: 1px solid var(--table-td-border); padding: 0.5rem; font-size: 0.8rem; white-space: nowrap; font-weight: 500; }
+        .report-table tbody tr:hover td { background: var(--table-td-hover) !important; }
+        .total-row td { background: linear-gradient(180deg, #facc15 0%, #ca8a04 100%) !important; color: #000000 !important; font-weight: 900; border-bottom: 2px solid #a16207; }
+
+        .badge-status { display: inline-flex; padding: 0.2rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: white; text-shadow: 0 1px 1px rgba(0,0,0,0.3); box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2); }
+        .badge-improved { background: linear-gradient(180deg, #10b981 0%, #047857 100%); border: 1px solid #064e3b; }
+        .badge-deteriorated { background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%); border: 1px solid #7f1d1d; }
+        .badge-unchanged { background: linear-gradient(180deg, #64748b 0%, #475569 100%); border: 1px solid #334155; }
+
+        .frozen-col { position: sticky !important; left: 0; z-index: 5; background: var(--frozen-bg) !important; color: var(--text-main) !important; }
+        .frozen-col-2 { position: sticky !important; left: 50px; z-index: 5; background: var(--frozen-bg) !important; color: var(--text-main) !important; }
+        th.frozen-col, th.frozen-col-2 { z-index: 10 !important; background: var(--table-th-bg) !important; color: white !important;}
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-grad-1); }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        .empty-row-faded { opacity: 0.5; filter: grayscale(50%); background-color: rgba(0,0,0,0.1); }
+        
+        /* Map specific UI additions */
+        .map-toggle-label {
+            display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.4rem 0.6rem;
+            border-radius: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.75rem; font-weight: 700; color: var(--text-muted); transition: all 0.2s;
+        }
+        .map-toggle-label:hover { background: rgba(0,0,0,0.4); color: white; }
+    </style>
+</head>
+<body class="min-h-screen py-6">
+
+    <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
+        
+        <header class="glass-card p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="bg-gradient-to-tr from-blue-600 to-indigo-400 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-2 border-white/20">
+                    <i class="fa-solid fa-droplet text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-emerald-500">Groundwater Quality HD Analyzer</h1>
+                    <p class="text-xs text-muted font-semibold">Fast Processing Engine & High Density IDW</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="toggleTheme()" class="btn-3d w-10 h-10 rounded-full flex items-center justify-center" title="Toggle Light/Dark Mode">
+                    <i class="fa-solid fa-moon text-lg" id="theme-icon"></i>
+                </button>
+            </div>
+        </header>
+
+        <section id="upload-section" class="flex flex-col items-center justify-center py-6 glass-card">
+            <label for="dataset-file" class="btn-orange-3d px-12 py-5 rounded-xl text-xl font-black shadow-2xl">
+                <i class="fa-solid fa-file-excel mr-3 text-3xl"></i> Upload Dataset (CSV / XLSX)
+                <input id="dataset-file" type="file" accept=".csv, .xlsx" class="hidden" onchange="handleFileUpload(event)" />
+            </label>
+            <div id="upload-status" class="mt-4 px-4 py-2 rounded-lg hidden text-sm font-bold glass-card border-none bg-black/20 text-muted"></div>
+        </section>
+
+        <section id="mapping-section" class="glass-card p-6 hidden">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+                <h2 class="text-xl font-extrabold text-orange-500 drop-shadow-md"><i class="fa-solid fa-table-columns mr-2"></i>Map Structural Columns</h2>
+                
+                <div class="bg-black/20 p-2 rounded-lg border-l-4 border-orange-500 flex flex-wrap items-center gap-4 text-sm text-muted">
+                    <strong class="text-blue-400"><i class="fa-solid fa-layer-group mr-1"></i> Data Format Layout:</strong>
+                    <label class="cursor-pointer font-bold flex items-center gap-1"><input type="radio" name="dataFormat" value="standard" checked onchange="toggleFormat()"> Standard (Rows by Time)</label>
+                    <label class="cursor-pointer font-bold flex items-center gap-1"><input type="radio" name="dataFormat" value="wide" onchange="toggleFormat()"> Wide (Columns e.g. ECPRM/ECPOM)</label>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="p-3 kpi-box rounded-lg border-blue-500/30 transition-opacity duration-300" id="time-mapping-box">
+                    <span class="text-xs text-blue-500 font-bold uppercase">Time & ID</span>
+                    <div class="mt-2 space-y-2">
+                        <div><label class="text-[10px] font-bold text-muted">Year Col *</label><select id="map-year" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                        <div><label class="text-[10px] font-bold text-muted">Season Col *</label><select id="map-season" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                        <div><label class="text-[10px] font-bold text-muted">Well ID Col *</label><select id="map-wellid" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                    </div>
+                </div>
+                <div class="p-3 kpi-box rounded-lg border-indigo-500/30">
+                    <span class="text-xs text-indigo-500 font-bold uppercase">Admin Boundaries</span>
+                    <div class="mt-2 space-y-2">
+                        <div><label class="text-[10px] font-bold text-muted">State Col</label><select id="map-state" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                        <div><label class="text-[10px] font-bold text-muted">District Col</label><select id="map-district" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                        <div><label class="text-[10px] font-bold text-muted">Block Col</label><select id="map-block" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                    </div>
+                </div>
+                <div class="p-3 kpi-box rounded-lg border-emerald-500/30">
+                    <span class="text-xs text-emerald-500 font-bold uppercase">Geography</span>
+                    <div class="mt-2 space-y-2">
+                        <div><label class="text-[10px] font-bold text-muted">Location Name</label><select id="map-location" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                        <div><label class="text-[10px] font-bold text-muted">Latitude</label><select id="map-lat" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                        <div><label class="text-[10px] font-bold text-muted">Longitude</label><select id="map-lon" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                    </div>
+                </div>
+                <div class="p-3 kpi-box rounded-lg border-amber-500/30">
+                    <span class="text-xs text-amber-500 font-bold uppercase">Meta Data</span>
+                    <div class="mt-2 space-y-2">
+                        <div><label class="text-[10px] font-bold text-muted">Gram Panchayat</label><select id="map-gp" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                        <div><label class="text-[10px] font-bold text-muted">Well Type</label><select id="map-welltype" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                        <div><label class="text-[10px] font-bold text-muted">Aquifer</label><select id="map-aquifer" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-5 flex justify-end">
+                <button onclick="confirmMapping()" class="btn-3d py-2.5 px-8 rounded-lg font-black text-sm tracking-wide"><i class="fa-solid fa-check mr-2"></i> Confirm Setup</button>
+            </div>
+        </section>
+
+        <section id="controls-section" class="glass-card main-interface-panel p-5">
+            <h2 class="text-lg font-bold mb-4 text-blue-500 border-b border-blue-500/20 pb-2"><i class="fa-solid fa-sliders mr-2"></i>Analysis Settings</h2>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="period-control"><label class="block text-xs font-bold text-muted mb-1 uppercase">Base Period</label><select id="base-period" class="w-full glass-input rounded p-2 text-sm font-semibold" onchange="runAnalysis()"></select></div>
+                <div class="period-control"><label class="block text-xs font-bold text-muted mb-1 uppercase">Compare Period</label><select id="compare-period" class="w-full glass-input rounded p-2 text-sm font-semibold" onchange="runAnalysis()"></select></div>
+                <div>
+                    <label class="block text-xs font-bold text-muted mb-1 uppercase">Pairing Logic</label>
+                    <select id="match-strategy" class="w-full glass-input rounded p-2 text-sm" onchange="runAnalysis()">
+                        <option value="well_id">Match by Well ID</option>
+                        <option value="location">Match by (State+Dist+Block+Loc)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-muted mb-1 uppercase">Aggregation Level</label>
+                    <select id="aggregation-level" class="w-full glass-input rounded p-2 text-sm" onchange="runAnalysis()">
+                        <option value="State">State-wise</option>
+                        <option value="District">District-wise</option>
+                        <option value="Block">Block-wise</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-emerald-500 mb-1 uppercase">Chemical Parameter</label>
+                    <select id="parameter-select" class="w-full glass-input rounded p-2 text-sm font-bold border-emerald-500 bg-emerald-900/10" onchange="runAnalysis()"></select>
+                </div>
+            </div>
+        </section>
+
+        <section id="results-section" class="glass-card overflow-hidden">
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b border-white/5 bg-black/20">
+                <div class="kpi-box p-3 rounded-lg"><span class="text-[10px] text-amber-500 font-bold uppercase">Base Records</span><h4 class="text-2xl font-black text-amber-400" id="stat-pre-count">0</h4></div>
+                <div class="kpi-box p-3 rounded-lg"><span class="text-[10px] text-blue-500 font-bold uppercase">Compare Records</span><h4 class="text-2xl font-black text-blue-400" id="stat-post-count">0</h4></div>
+                <div class="kpi-box p-3 rounded-lg border-emerald-500/30 bg-emerald-900/10"><span class="text-[10px] text-emerald-500 font-bold uppercase">Matched Locations</span><h4 class="text-2xl font-black text-emerald-400" id="stat-paired-count">0</h4></div>
+                <div class="kpi-box p-3 rounded-lg border-rose-500/30 bg-rose-900/10"><span class="text-[10px] text-rose-500 font-bold uppercase">Unpaired/Excluded</span><h4 class="text-2xl font-black text-rose-400" id="stat-unpaired-count">0</h4></div>
+            </div>
+
+            <div class="flex flex-col md:flex-row justify-between items-center p-4 border-b border-white/5 bg-black/10 gap-4">
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="switchTab('tab-general')" id="btn-tab-general" class="tab-3d active px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-chart-pie mr-1"></i>General Summary</button>
+                    <button onclick="switchTab('tab-perm')" id="btn-tab-perm" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i>Permissible Limits</button>
+                    <button onclick="switchTab('tab-detailed')" id="btn-tab-detailed" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-table-list mr-1"></i>Detailed Matrix</button>
+                    <button onclick="switchTab('tab-map')" id="btn-tab-map" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-map-location-dot mr-1"></i>Advanced Map</button>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="exportCurrentToExcel()" class="btn-excel px-4 py-2.5 rounded-lg text-sm font-black shadow-lg"><i class="fa-solid fa-file-excel mr-1"></i> Export Active Tab</button>
+                    <button onclick="exportAllSummariesToExcel()" class="btn-3d-green px-4 py-2.5 rounded-lg text-sm font-black shadow-lg"><i class="fa-solid fa-rocket mr-1"></i> EXPORT ALL PARAMS</button>
+                </div>
+            </div>
+
+            <div id="tab-general" class="tab-content block p-4">
+                <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg">
+                    <table class="report-table" id="report-table">
+                        <thead id="report-thead">
+                            </thead>
+                        <tbody id="report-tbody"></tbody>
+                        <tfoot id="report-tfoot"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-perm" class="tab-content hidden p-4">
+                <div id="no-perm-msg" class="p-10 text-center text-muted font-bold glass-card hidden">
+                    <i class="fa-solid fa-info-circle text-3xl mb-3 text-blue-500"></i>
+                    <p>No permissible limit configured for this specific parameter in the database.</p>
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg" id="perm-table-container">
+                    <table class="report-table" id="perm-table">
+                        <thead id="perm-thead">
+                           </thead>
+                        <tbody id="perm-tbody"></tbody>
+                        <tfoot id="perm-tfoot"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-detailed" class="tab-content hidden p-4">
+                <div id="detailed-warning" class="bg-blue-900/40 border border-blue-500/30 text-blue-200 text-xs font-bold p-3 rounded-lg mb-4 hidden">
+                    <i class="fa-solid fa-triangle-exclamation text-orange-400 mr-2"></i> Large Dataset Detected. Displaying the first 1,000 rows to maintain browser performance. <strong class="text-white">Use "Export Active Tab" to download all records perfectly to Excel.</strong>
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-white/10 max-h-[500px] shadow-lg relative">
+                    <table class="report-table relative" id="detailed-table">
+                        <thead class="sticky top-0 z-30 shadow-md">
+                            <tr id="detailed-header-row-1">
+                                </tr>
+                            <tr id="detailed-header-row-2"></tr>
+                        </thead>
+                        <tbody id="detailed-tbody" class="z-10"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="tab-map" class="tab-content hidden p-4 space-y-4">
+                <div class="flex flex-col xl:flex-row justify-between gap-4 p-4 glass-card rounded-lg">
+                    <div class="flex flex-wrap items-center gap-3 text-xs font-bold text-muted">
+                        <strong class="text-blue-500 uppercase tracking-wide"><i class="fa-solid fa-palette mr-1"></i> Status Legend:</strong>
+                        <label class="flex items-center gap-1.5 bg-black/20 p-1.5 rounded cursor-pointer border border-white/10">Imp >20% <input type="color" id="col-imp-gt" value="#059669" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
+                        <label class="flex items-center gap-1.5 bg-black/20 p-1.5 rounded cursor-pointer border border-white/10">Imp &le;20% <input type="color" id="col-imp-lt" value="#34d399" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
+                        <label class="flex items-center gap-1.5 bg-black/20 p-1.5 rounded cursor-pointer border border-white/10">Det >20% <input type="color" id="col-det-gt" value="#dc2626" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
+                        <label class="flex items-center gap-1.5 bg-black/20 p-1.5 rounded cursor-pointer border border-white/10">Det &le;20% <input type="color" id="col-det-lt" value="#f87171" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
+                        <label class="flex items-center gap-1.5 bg-black/20 p-1.5 rounded cursor-pointer border border-white/10">Unchanged <input type="color" id="col-unc" value="#64748b" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex items-center gap-3 mr-2">
+                            <label class="map-toggle-label"><input type="checkbox" id="show-basemap" checked onchange="toggleLayers()" class="accent-blue-500"> Base Map</label>
+                            <label class="map-toggle-label"><input type="checkbox" id="show-points" checked onchange="toggleLayers()" class="accent-blue-500"> Data Points</label>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 bg-black/20 p-1 rounded-lg border border-white/10 text-muted">
+                            <span class="text-[10px] uppercase font-bold ml-2">Point Size</span>
+                            <button onclick="changeRadius(-1)" class="w-6 h-6 flex items-center justify-center bg-white/10 rounded hover:bg-white/20 font-bold transition text-sm">-</button>
+                            <span id="radius-val" class="w-4 text-center text-xs font-bold">6</span>
+                            <button onclick="changeRadius(1)" class="w-6 h-6 flex items-center justify-center bg-white/10 rounded hover:bg-white/20 font-bold transition text-sm">+</button>
+                        </div>
+                        
+                        <label class="flex items-center gap-2 bg-indigo-900/40 p-2 rounded-lg border border-indigo-500/50 cursor-pointer text-xs font-bold text-indigo-200 hover:bg-indigo-900/60 transition" title="Applies Fast HD Grid Search IDW">
+                            <input type="checkbox" id="enable-idw" onchange="updateMapVisuals()" class="accent-indigo-500"> Generate HD IDW Surface
+                        </label>
+
+                        <label class="text-xs font-black bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg cursor-pointer transition shadow-lg">
+                            <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Boundary (.zip)
+                            <input type="file" id="shp-upload" accept=".zip" class="hidden" onchange="handleShapefile(event)">
+                        </label>
+                        <button onclick="clearShapefiles()" class="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg shadow-lg font-bold" title="Clear Boundaries"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                
+                <div id="idw-loading-status" class="hidden absolute z-50 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-900/90 text-white px-6 py-4 rounded-xl shadow-2xl font-bold border border-blue-500/50 flex flex-col items-center">
+                    <i class="fa-solid fa-spinner fa-spin text-3xl mb-2"></i>
+                    <span>Processing High Density Spatial Grid...</span>
+                </div>
+                
+                <div id="map-container" class="w-full h-[550px] rounded-xl border border-white/20 shadow-2xl z-0 bg-black/30 flex items-center justify-center text-muted relative">
+                    <span id="map-empty-msg" class="font-bold text-lg"><i class="fa-solid fa-map text-4xl mb-3 block text-center text-blue-500/50"></i> Waiting for matched geographical data...</span>
+                </div>
+            </div>
+
+        </section>
+    </div>
+
+    <script>
+        // High Precision Parameter database (EXCLUDED pH)
+        const limits = {
+            'TDS': { b1: 500, b2: 2000, unit: 'mg/l', name: 'Total Dissolved Solids', keywords: ['tds', 'total dissolved solids'] },
+            'Turbidity': { b1: 1, b2: 5, unit: 'NTU', name: 'Turbidity', keywords: ['turbidity'] },
+            'Alkalinity': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Alkalinity', keywords: ['alkalinity', 'total alkalinity'] },
+            'TH': { b1: 200, b2: 600, unit: 'mg/l as CaCO3', name: 'Total Hardness', keywords: ['th', 'total hardness', 'hardness'] },
+            'EC': { b1: 750, b2: 3000, unit: 'µS/cm at 25°C', name: 'Electrical Conductivity', keywords: ['ec', 'cond', 'conductivity', 'electrical conductivity'] },
+            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride', keywords: ['cl', 'chloride'] },
+            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate', keywords: ['no3', 'nitrate'] },
+            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride', keywords: ['f', 'fluoride'] },
+            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron', keywords: ['fe', 'iron', 'total iron'] },
+            'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic', keywords: ['as', 'arsenic'] },
+            'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium', keywords: ['u', 'uranium'] },
+            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc', keywords: ['zn', 'zinc'] },
+            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper', keywords: ['cu', 'copper'] },
+            'Pb': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Lead', keywords: ['Pb', 'lead'] },
+            'Cd': { b1: 0.003, b2: 0.003, unit: 'mg/L', name: 'Cadmium', keywords: ['cd', 'cadmium'] },
+            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium', keywords: ['cr', 'chromium'] },
+            'Hg': { b1: 0.001, b2: 0.001, unit: 'mg/L', name: 'Mercury', keywords: ['hg', 'mercury'] },
+            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel', keywords: ['ni', 'nickel'] },
+            'Se': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Selenium', keywords: ['se', 'selenium'] },
+            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium', keywords: ['ca', 'calcium'] },
+            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium', keywords: ['mg', 'magnesium'] },
+            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate', keywords: ['so4', 'sulphate', 'sulfate'] },
+            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese', keywords: ['Mn', 'Manganese'] },
+            'Al': { b1: 0.03, b2: 0.2, unit: 'mg/l', name: 'Alluminium', keywords: ['Al', 'Alluminium'] },
+            'Ba': { b1: 0.7, b2: 0.7, unit: 'mg/l', name: 'Barium', keywords: ['Ba', 'Barium'] },
+            'B': { b1: 0.5, b2: 2.4, unit: 'mg/l', name: 'Boran', keywords: ['B', 'Boran'] },
+            'Mo': { b1: 0.05, b2: 0.07, unit: 'mg/l', name: 'Boran', keywords: ['Mo', 'Molybdnum'] },
+            'RSC': { b1: 1.25, b2: 2.5, unit: 'meq/L', name: 'RSC', keywords: ['rsc'] }
+        };
+
+        let rawData = [];
+        let columnMapping = {}; 
+        let activeParametersInFile = [];
+        let allPeriods = [];
+        let globalAggregatedDataCache = null;
+
+        // Wide Format Support
+        let currentDataFormat = 'standard'; 
+        let wideParamPairs = {}; 
+
+        // Maps
+        let leafletMap = null;
+        let baseMapLayer = null;
+        let mapMarkersLayer = null;
+        let shpLayer = null;
+        let idwOverlay = null;
+        let currentShapefileGeoJSON = null;
+        let currentPointRadius = 6;
+        let detailedTableLimit = 1000;
+
+        // HELPER: Generates the full parameter label
+        function getParamLabel(p) {
+            const lw = p.toLowerCase();
+            for (let k in limits) {
+                if (limits[k].keywords.some(kw => lw.includes(kw))) {
+                    return limits[k].unit ? `${p} ${limits[k].unit}` : p;
+                }
+            }
+            return p;
+        }
+        
+        function getParamConfig(col) {
+            const lw = col.toLowerCase();
+            for (let k in limits) { if (limits[k].keywords.some(kw => lw.includes(kw))) return limits[k]; }
+            return { b2: null, unit: '' };
+        }
+
+        // HELPER: Determines columns to show based on Aggregation Level
+        function getHierarchyColumns(aggLevel) {
+            if (aggLevel === 'State') return ["State"];
+            if (aggLevel === 'District') return ["State", "District"];
+            if (aggLevel === 'Block') return ["State", "District", "Block"];
+            return ["Location"];
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            const icon = document.getElementById('theme-icon');
+            icon.className = isLight ? "fa-solid fa-sun text-lg" : "fa-solid fa-moon text-lg";
+            if (baseMapLayer) {
+                baseMapLayer.setUrl(`https://{s}.basemaps.cartocdn.com/${isLight ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`);
+            }
+        }
+        
+        function toggleFormat() {
+            currentDataFormat = document.querySelector('input[name="dataFormat"]:checked').value;
+            const timeBox = document.getElementById('time-mapping-box');
+            const periodControls = document.querySelectorAll('.period-control');
+            
+            if (currentDataFormat === 'wide') {
+                document.getElementById('map-year').disabled = true;
+                document.getElementById('map-season').disabled = true;
+                timeBox.classList.add('opacity-50');
+                periodControls.forEach(el => el.classList.add('hidden'));
+            } else {
+                document.getElementById('map-year').disabled = false;
+                document.getElementById('map-season').disabled = false;
+                timeBox.classList.remove('opacity-50');
+                periodControls.forEach(el => el.classList.remove('hidden'));
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-3d').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.remove('hidden');
+            document.getElementById('btn-' + tabId).classList.add('active');
+            if (tabId === 'tab-map' && leafletMap) setTimeout(() => leafletMap.invalidateSize(), 100);
+        }
+
+        function initMap() {
+            if(leafletMap) return;
+            const container = document.getElementById('map-container');
+            container.innerHTML = '';  container.style.display = 'block';
+            leafletMap = L.map('map-container').setView([22.5, 78.9], 4);
+            const isLight = document.body.classList.contains('light-theme');
+            
+            baseMapLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${isLight ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`, { maxZoom: 20 });
+            baseMapLayer.addTo(leafletMap);
+            
+            mapMarkersLayer = L.layerGroup().addTo(leafletMap); 
+            shpLayer = L.layerGroup().addTo(leafletMap);
+        }
+
+        function toggleLayers() {
+            if(!leafletMap) return;
+            const showBase = document.getElementById('show-basemap').checked;
+            const showPts = document.getElementById('show-points').checked;
+            
+            if(showBase && !leafletMap.hasLayer(baseMapLayer)) leafletMap.addLayer(baseMapLayer);
+            else if(!showBase && leafletMap.hasLayer(baseMapLayer)) leafletMap.removeLayer(baseMapLayer);
+            
+            if(showPts && !leafletMap.hasLayer(mapMarkersLayer)) leafletMap.addLayer(mapMarkersLayer);
+            else if(!showPts && leafletMap.hasLayer(mapMarkersLayer)) leafletMap.removeLayer(mapMarkersLayer);
+        }
+
+        function changeRadius(delta) {
+            currentPointRadius = Math.max(1, Math.min(20, currentPointRadius + delta));
+            document.getElementById('radius-val').innerText = currentPointRadius;
+            updateMapVisuals();
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0]; 
+            if (!file) return;
+            const statusEl = document.getElementById('upload-status');
+            statusEl.classList.remove('hidden'); 
+            statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Reading & Parsing Dataset...';
+            
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            if (ext === 'csv') {
+                Papa.parse(file, {
+                    header: true, skipEmptyLines: true, transformHeader: h => h.trim(),
+                    complete: function(results) { 
+                        rawData = results.data; 
+                        processRawData(file.name); 
+                    }
+                });
+            } else if (ext === 'xlsx' || ext === 'xls') {
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const wb = new ExcelJS.Workbook();
+                    await wb.xlsx.load(buffer);
+                    const ws = wb.worksheets[0];
+                    
+                    let headers = [];
+                    ws.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                        headers[colNumber] = cell.value ? String(cell.value).trim() : `Col_${colNumber}`;
+                    });
+                    
+                    rawData = [];
+                    ws.eachRow((row, rowNumber) => {
+                        if (rowNumber === 1) return; // skip header row
+                        let rowObj = {};
+                        headers.forEach((header, colNumber) => {
+                            if(!header) return;
+                            let cell = row.getCell(colNumber);
+                            let val = cell.value;
+                            
+                            if (val && typeof val === 'object' && val.result !== undefined) val = val.result;
+                            else if (val && typeof val === 'object' && val.richText) val = val.richText.map(rt => rt.text).join('');
+                            else if (val instanceof Date) val = val.toISOString().split('T')[0];
+                            
+                            rowObj[header] = (val !== null && val !== undefined) ? String(val).trim() : "";
+                        });
+                        
+                        if(Object.values(rowObj).some(v => v !== "")) {
+                            rawData.push(rowObj);
+                        }
+                    });
+                    processRawData(file.name);
+                } catch (e) {
+                    statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation mr-2 text-rose-500"></i> Error parsing Excel file. Ensure it is a valid .xlsx file.';
+                    console.error(e);
+                }
+            } else {
+                statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation mr-2 text-rose-500"></i> Unsupported file format. Please upload CSV or XLSX.';
+            }
+        }
+
+        function processRawData(fileName) {
+            if (rawData.length === 0) {
+                document.getElementById('upload-status').innerHTML = `<i class="fa-solid fa-circle-exclamation mr-2 text-rose-500"></i> No data found in the file.`;
+                return;
+            }
+            
+            document.getElementById('upload-status').innerHTML = `<i class="fa-solid fa-check-circle mr-2 text-emerald-500"></i> Successfully loaded <strong>${rawData.length}</strong> records from <em>${fileName}</em>. Please map columns below.`;
+            
+            const headers = Object.keys(rawData[0]);
+            const fields = ['map-year', 'map-season', 'map-wellid', 'map-state', 'map-district', 'map-block', 'map-location', 'map-gp', 'map-lat', 'map-lon', 'map-welltype', 'map-aquifer'];
+            fields.forEach(f => {
+                const sel = document.getElementById(f); sel.innerHTML = '<option value="">-- Blank --</option>';
+                headers.forEach(h => sel.appendChild(new Option(h, h)));
+            });
+
+            const exactHeaders = {
+                'map-year': ['Year', 'year'], 'map-season': ['Season', 'season'], 'map-wellid': ['Well_ID', 'well id', 'site', 'uid'],
+                'map-state': ['State/UT', 'state'], 'map-district': ['District', 'district name'], 'map-block': ['Block', 'taluka'],
+                'map-location': ['Location', 'village'], 'map-lat': ['Latitude', 'lat'], 'map-lon': ['Longitude', 'lon'],
+                'map-gp': ['Gram Panchayat', 'gp'], 'map-welltype': ['Well Type', 'source type'], 'map-aquifer': ['Aquifer']
+            };
+            for(let key in exactHeaders) {
+                let matched = headers.find(h => exactHeaders[key].some(kw => h.toLowerCase().includes(kw.toLowerCase())));
+                if(matched) document.getElementById(key).value = matched;
+            }
+            
+            document.getElementById('mapping-section').classList.remove('hidden');
+            document.getElementById('mapping-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function confirmMapping() {
+            columnMapping = {
+                year: document.getElementById('map-year').value, season: document.getElementById('map-season').value,
+                wellId: document.getElementById('map-wellid').value, state: document.getElementById('map-state').value,
+                district: document.getElementById('map-district').value, block: document.getElementById('map-block').value,
+                location: document.getElementById('map-location').value, lat: document.getElementById('map-lat').value,
+                lon: document.getElementById('map-lon').value, gp: document.getElementById('map-gp').value,
+                welltype: document.getElementById('map-welltype').value, aquifer: document.getElementById('map-aquifer').value
+            };
+            
+            if (currentDataFormat === 'standard') {
+                if (!columnMapping.year || !columnMapping.season || !columnMapping.wellId) { alert("Year, Season, and Well ID are mandatory in Standard Layout."); return; }
+            } else {
+                if (!columnMapping.wellId && !columnMapping.location) { alert("Well ID or Location mapping is highly recommended in Wide Layout."); }
+            }
+            
+            document.getElementById('mapping-section').classList.add('hidden');
+
+            const pSel = document.getElementById('parameter-select');
+            pSel.innerHTML = '';
+            wideParamPairs = {};
+
+            if (currentDataFormat === 'standard') {
+                let periodsSet = new Set();
+                rawData.forEach(r => {
+                    let y = r[columnMapping.year]; let s = r[columnMapping.season];
+                    if(y && s) periodsSet.add(`${y} | ${s}`);
+                });
+                allPeriods = Array.from(periodsSet).sort();
+
+                let baseSel = document.getElementById('base-period'), compSel = document.getElementById('compare-period');
+                baseSel.innerHTML = ''; compSel.innerHTML = '';
+                allPeriods.forEach(p => { baseSel.appendChild(new Option(p, p)); compSel.appendChild(new Option(p, p)); });
+                
+                if(allPeriods.length > 1) {
+                    let pre = allPeriods.find(p => p.toLowerCase().includes('pre')); let post = allPeriods.find(p => p.toLowerCase().includes('post'));
+                    if(pre && post) { baseSel.value = pre; compSel.value = post; } else { compSel.value = allPeriods[1]; }
+                }
+
+                const mappedVals = Object.values(columnMapping).filter(v => v !== "");
+                const unmapped = Object.keys(rawData[0]).filter(h => !mappedVals.includes(h));
+                activeParametersInFile = unmapped.filter(col => {
+                    const lw = col.toLowerCase(); return Object.values(limits).some(c => c.keywords.some(kw => lw.includes(kw)));
+                });
+                if(activeParametersInFile.length === 0) activeParametersInFile = unmapped;
+                
+            } else {
+                // Wide Format Pair Detection
+                const headers = Object.keys(rawData[0]);
+                headers.forEach(h => {
+                    let uh = h.toUpperCase();
+                    if (uh.endsWith('PRM')) {
+                        let baseNameRaw = h.substring(0, h.length - 3);
+                        let compNameRaw = headers.find(x => x.toUpperCase() === baseNameRaw.toUpperCase() + 'POM');
+                        if (compNameRaw) {
+                            let baseUpper = baseNameRaw.toUpperCase();
+                            if(baseUpper !== 'PH') { // Explicitly block pH
+                                wideParamPairs[baseNameRaw] = { base: h, comp: compNameRaw };
+                            }
+                        }
+                    }
+                });
+                activeParametersInFile = Object.keys(wideParamPairs);
+                if (activeParametersInFile.length === 0) alert("No PRM/POM column pairs detected! Please check your dataset or select 'Standard' format.");
+            }
+
+            activeParametersInFile.forEach(p => pSel.appendChild(new Option(getParamLabel(p), p)));
+
+            setupDetailedHeaders();
+            runAnalysis();
+            
+            document.getElementById('controls-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function setupDetailedHeadersEmpty() {
+            const h1 = document.getElementById('detailed-header-row-1');
+            const h2 = document.getElementById('detailed-header-row-2');
+            h1.querySelectorAll('.dyn').forEach(e=>e.remove()); 
+            h2.querySelectorAll('.dyn').forEach(e=>e.remove());
+            
+            h1.innerHTML = `
+                <th rowspan="2" class="frozen-col" style="left:0px;">Sl.</th>
+                <th rowspan="2" class="frozen-col-2" style="left:50px;">Well ID</th>
+                <th rowspan="2">State</th>
+                <th rowspan="2">District</th>
+                <th rowspan="2">Block</th>
+                <th rowspan="2">Location</th>
+                <th colspan="3" class="dyn border-l border-white/20 text-muted">Awaiting Parameter...</th>`;
+            h2.innerHTML = `
+                <th class="dyn border-l border-white/10 text-muted">Base</th>
+                <th class="dyn text-muted">Compare</th>
+                <th class="dyn border-r border-white/10 text-muted">Status</th>`;
+                
+            document.getElementById('detailed-tbody').innerHTML = '<tr><td colspan="100" class="py-10 text-center text-muted font-bold">Please upload and map a dataset to view detailed matrix.</td></tr>';
+        }
+
+        function setupDetailedHeaders() {
+            const h1 = document.getElementById('detailed-header-row-1');
+            const h2 = document.getElementById('detailed-header-row-2');
+            h1.querySelectorAll('.dyn').forEach(e=>e.remove()); h2.querySelectorAll('.dyn').forEach(e=>e.remove());
+            
+            h1.innerHTML = `
+                <th rowspan="2" class="frozen-col" style="left:0px;">Sl.</th>
+                <th rowspan="2" class="frozen-col-2" style="left:50px;">Well ID</th>
+                <th rowspan="2">State</th>
+                <th rowspan="2">District</th>
+                <th rowspan="2">Block</th>
+                <th rowspan="2">Location</th>
+            `;
+            h2.innerHTML = '';
+
+            activeParametersInFile.forEach(p => {
+                h1.innerHTML += `<th colspan="3" class="dyn border-l border-white/20">${getParamLabel(p)}</th>`;
+                h2.innerHTML += `<th class="dyn border-l border-white/10">Base</th><th class="dyn">Compare</th><th class="dyn border-r border-white/10">Status</th>`;
+            });
+        }
+
+        function generateDataArrays(targetParam, aggLevel, basePeriod, compPeriod, matchStrategy) {
+            let uBase = new Set(), uComp = new Set();
+            let pairedData = {};
+            let pCount = 0, uCount = 0;
+
+            // Loop optimization: Only extract what is absolutely needed
+            for(let idx = 0; idx < rawData.length; idx++) {
+                let row = rawData[idx];
+                let wid = "";
+                if(matchStrategy === 'well_id') wid = String(row[columnMapping.wellId]||'').trim().toUpperCase();
+                else wid = `${row[columnMapping.state]}-${row[columnMapping.district]}-${row[columnMapping.block]}-${row[columnMapping.location]}`.toUpperCase();
+
+                if (currentDataFormat === 'wide') {
+                    // Prevent large wide files from overwriting duplicate row locations by adding _W_{idx}
+                    let uniqueWid = (wid || "UID") + "_W_" + idx;
+                    uBase.add(uniqueWid);
+                    uComp.add(uniqueWid);
+                    pairedData[uniqueWid] = {
+                        id: row[columnMapping.wellId] || `Row_${idx+1}`, 
+                        state: row[columnMapping.state]||'Unknown', district: row[columnMapping.district]||'Unknown',
+                        block: row[columnMapping.block]||'Unknown', loc: row[columnMapping.location]||'Unknown', 
+                        lat: row[columnMapping.lat]||'', lon: row[columnMapping.lon]||'', 
+                        base: row, 
+                        comp: row
+                    };
+                } else {
+                    if(!wid) continue;
+                    let y = row[columnMapping.year]; let s = row[columnMapping.season];
+                    let period = `${y} | ${s}`;
+                    if (period !== basePeriod && period !== compPeriod) continue;
+
+                    if (period === basePeriod) uBase.add(wid);
+                    if (period === compPeriod) uComp.add(wid);
+
+                    if (!pairedData[wid]) pairedData[wid] = {
+                        id: wid, state: row[columnMapping.state]||'Unknown', district: row[columnMapping.district]||'Unknown',
+                        block: row[columnMapping.block]||'Unknown', loc: row[columnMapping.location]||'Unknown', lat: row[columnMapping.lat]||'', lon: row[columnMapping.lon]||'', base: null, comp: null
+                    };
+                    if(period === basePeriod) pairedData[wid].base = row;
+                    if(period === compPeriod) pairedData[wid].comp = row;
+                }
+            }
+
+            const cfg = getParamConfig(targetParam);
+            const perm = cfg.b2;
+            let stats = {}, permStats = {}, rows = [];
+            
+            // Loop over paired objects
+            let keys = Object.keys(pairedData);
+            for(let i=0; i<keys.length; i++) {
+                let loc = pairedData[keys[i]];
+                if(loc.base && loc.comp) pCount++; else uCount++;
+                
+                if (loc.base && loc.comp) {
+                    let aggKey = loc[aggLevel.toLowerCase()] || 'Unknown';
+                    
+                    if (!stats[aggKey]) stats[aggKey] = { s:0, i:0, i_l2:0, i_g2:0, d:0, d_l2:0, d_g2:0, u:0, state: loc.state, district: loc.district, block: loc.block };
+                    if (!permStats[aggKey]) permStats[aggKey] = { s:0, a_b:0, i_sa:0, i_sb:0, d_t:0, d_a:0, u_a:0, state: loc.state, district: loc.district, block: loc.block };
+
+                    let dr = { id: loc.id, state: loc.state, district: loc.district, block: loc.block, loc: loc.loc, lat: loc.lat, lon: loc.lon, chem: {} };
+                    
+                    for(let j=0; j<activeParametersInFile.length; j++) {
+                        let p = activeParametersInFile[j];
+                        let vb, vc;
+                        if (currentDataFormat === 'wide') {
+                            const pair = wideParamPairs[p];
+                            vb = parseFloat(loc.base[pair.base]);
+                            vc = parseFloat(loc.comp[pair.comp]);
+                        } else {
+                            vb = parseFloat(loc.base[p]); 
+                            vc = parseFloat(loc.comp[p]);
+                        }
+                        
+                        let stat = 'Unchanged', pct = 0;
+                        if(!isNaN(vb) && !isNaN(vc)) {
+                            let isRSC = p.toUpperCase().includes('RSC');
+                            
+                            // Safe math: non-RSC shouldn't be negative in real-world logic, clamping to 0 if data has anomalies
+                            if(!isRSC) { vb = Math.max(vb,0); vc = Math.max(vc,0); } 
+                            
+                            if(vc < vb) stat = 'Improved'; else if(vc > vb) stat = 'Deteriorated';
+                            
+                            // Absolute baseline in division handles negative RSC baselines correctly
+                            if(vb !== 0) pct = ((vc - vb) / Math.abs(vb)) * 100;
+                            else if(vb === 0 && vc !== 0) pct = vc > 0 ? 100 : -100; 
+                        }
+                        dr.chem[p] = { b: isNaN(vb)?'--':vb, c: isNaN(vc)?'--':vc, s: stat, p: pct };
+                    }
+                    rows.push(dr);
+
+                    let cur = dr.chem[targetParam];
+                    if (cur.b !== '--' && cur.c !== '--') {
+                        let st = stats[aggKey]; st.s++;
+                        
+                        if(cur.s === 'Improved') { st.i++; if(cur.p >= -20) st.i_l2++; else st.i_g2++; }
+                        else if(cur.s === 'Deteriorated') { st.d++; if(cur.p <= 20) st.d_l2++; else st.d_g2++; }
+                        else { st.u++; }
+
+                        if(perm !== null) {
+                            let ps = permStats[aggKey]; 
+                            ps.s++; // Track total samples for this aggregation group
+                            
+                            if(cur.b > perm) {
+                                ps.a_b++;
+                                if(cur.s==='Improved' && cur.c>perm) ps.i_sa++;
+                                if(cur.s==='Improved' && cur.c<=perm) ps.i_sb++;
+                                if(cur.s==='Deteriorated') { ps.d_t++; if(cur.c>perm) ps.d_a++; }
+                                if(cur.s==='Unchanged') ps.u_a++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return { uBaseCnt: uBase.size, uCompCnt: uComp.size, pCount, uCount, stats, permStats, rows, permLimit: perm };
+        }
+
+        function calculatePctStr(part, total) { return total === 0 ? "0.0%" : ((part / total) * 100).toFixed(1) + "%"; }
+
+        function runAnalysis() {
+            const bp = document.getElementById('base-period').value;
+            const cp = document.getElementById('compare-period').value;
+            const ms = document.getElementById('match-strategy').value;
+            const agg = document.getElementById('aggregation-level').value;
+            const param = document.getElementById('parameter-select').value;
+            if(!param) return;
+
+            // Defer execution slightly to let UI catch up (e.g., if a spinner is added)
+            setTimeout(() => {
+                const data = generateDataArrays(param, agg, bp, cp, ms);
+                globalAggregatedDataCache = { param, agg, data };
+
+                document.getElementById('stat-pre-count').innerText = data.uBaseCnt;
+                document.getElementById('stat-post-count').innerText = data.uCompCnt;
+                document.getElementById('stat-paired-count').innerText = data.pCount;
+                document.getElementById('stat-unpaired-count').innerText = data.uCount;
+
+                document.getElementById('perm-table-container').classList.toggle('hidden', data.permLimit === null);
+                document.getElementById('no-perm-msg').classList.toggle('hidden', data.permLimit !== null);
+
+                renderGeneralDOM(data.stats, agg);
+                if(data.permLimit !== null) renderPermDOM(data.permStats, agg);
+                renderDetailedDOM(data.rows); // This now handles limits internally
+                
+                // Only update visuals if the map tab is active or just setup data
+                updateMapVisuals();
+            }, 10);
+        }
+
+        function renderGeneralDOM(stats, agg) {
+            const thead = document.getElementById('report-thead');
+            const tbody = document.getElementById('report-tbody');
+            const tfoot = document.getElementById('report-tfoot');
+            
+            const hierCols = getHierarchyColumns(agg);
+            let thLocHTML = hierCols.map(col => `<th rowspan="2" class="text-left">${col}</th>`).join("");
+            
+            thead.innerHTML = `
+                <tr>
+                    <th rowspan="2">S.No.</th> ${thLocHTML} <th rowspan="2">Samples Analyzed</th>
+                    <th colspan="6" class="bg-emerald-600/50">Improved</th><th colspan="6" class="bg-rose-600/50">Deteriorated</th><th colspan="2" class="bg-slate-600/50">Unchanged</th>
+                </tr>
+                <tr>
+                    <th class="bg-emerald-600/20">Total (N)</th><th class="bg-emerald-600/20">(%)</th><th class="bg-emerald-600/20">&le; 20% (N)</th><th class="bg-emerald-600/20">(%)</th><th class="bg-emerald-600/20">&gt; 20% (N)</th><th class="bg-emerald-600/20">(%)</th>
+                    <th class="bg-rose-600/20">Total (N)</th><th class="bg-rose-600/20">(%)</th><th class="bg-rose-600/20">&le; 20% (N)</th><th class="bg-rose-600/20">(%)</th><th class="bg-rose-600/20">&gt; 20% (N)</th><th class="bg-rose-600/20">(%)</th>
+                    <th class="bg-slate-600/20">Total (N)</th><th class="bg-slate-600/20">(%)</th>
+                </tr>`;
+
+            let tbodyHTML = '';
+            let tot = { s:0, i:0, i_l2:0, i_g2:0, d:0, d_l2:0, d_g2:0, u:0 };
+            let keys = Object.keys(stats).sort();
+            
+            if(keys.length === 0) { 
+                tbody.innerHTML = `<tr><td colspan="50" class="py-10 text-muted font-bold">No matches found or awaiting dataset import.</td></tr>`; 
+                tfoot.innerHTML = ''; 
+                return; 
+            }
+
+            for(let i=0; i<keys.length; i++) {
+                let k = keys[i];
+                let s = stats[k]; 
+                tot.s += s.s; tot.i += s.i; tot.i_l2 += s.i_l2; tot.i_g2 += s.i_g2;
+                tot.d += s.d; tot.d_l2 += s.d_l2; tot.d_g2 += s.d_g2; tot.u += s.u;
+                
+                let trLocHTML = hierCols.map(col => `<td class="text-left font-bold text-blue-400">${s[col.toLowerCase()] || k}</td>`).join("");
+                let trClass = s.s === 0 ? "empty-row-faded" : "";
+
+                tbodyHTML += `<tr class="${trClass}">
+                    <td>${i+1}</td> ${trLocHTML}
+                    <td class="font-bold bg-white/5">${s.s}</td>
+                    <td class="text-emerald-400 bg-emerald-900/20 font-bold">${s.i}</td><td class="text-emerald-300 text-xs">${calculatePctStr(s.i, s.s)}</td>
+                    <td>${s.i_l2}</td><td class="text-[10px] text-muted">${calculatePctStr(s.i_l2, s.s)}</td>
+                    <td>${s.i_g2}</td><td class="text-[10px] text-muted">${calculatePctStr(s.i_g2, s.s)}</td>
+                    <td class="text-rose-400 bg-rose-900/20 font-bold">${s.d}</td><td class="text-rose-300 text-xs">${calculatePctStr(s.d, s.s)}</td>
+                    <td>${s.d_l2}</td><td class="text-[10px] text-muted">${calculatePctStr(s.d_l2, s.s)}</td>
+                    <td>${s.d_g2}</td><td class="text-[10px] text-muted">${calculatePctStr(s.d_g2, s.s)}</td>
+                    <td class="text-slate-400 bg-slate-800/50 font-bold">${s.u}</td><td class="text-slate-300 text-xs">${calculatePctStr(s.u, s.s)}</td>
+                </tr>`;
+            }
+            tbody.innerHTML = tbodyHTML;
+
+            tfoot.innerHTML = `<tr class="total-row">
+                <td colspan="${1 + hierCols.length}" class="text-left">Overall Totals</td><td>${tot.s}</td>
+                <td>${tot.i}</td><td>${calculatePctStr(tot.i, tot.s)}</td><td>${tot.i_l2}</td><td>${calculatePctStr(tot.i_l2, tot.s)}</td><td>${tot.i_g2}</td><td>${calculatePctStr(tot.i_g2, tot.s)}</td>
+                <td>${tot.d}</td><td>${calculatePctStr(tot.d, tot.s)}</td><td>${tot.d_l2}</td><td>${calculatePctStr(tot.d_l2, tot.s)}</td><td>${tot.d_g2}</td><td>${calculatePctStr(tot.d_g2, tot.s)}</td>
+                <td>${tot.u}</td><td>${calculatePctStr(tot.u, tot.s)}</td></tr>`;
+        }
+
+        function renderPermDOM(stats, agg) {
+            const thead = document.getElementById('perm-thead');
+            const tbody = document.getElementById('perm-tbody');
+            const tfoot = document.getElementById('perm-tfoot');
+            
+            const hierCols = getHierarchyColumns(agg);
+            let thLocHTML = hierCols.map(col => `<th rowspan="2" class="text-left">${col}</th>`).join("");
+            
+            thead.innerHTML = `<tr>
+                <th rowspan="2">S.No.</th> ${thLocHTML}
+                <th colspan="2" class="bg-rose-600/40">Base > Permissible</th>
+                <th colspan="2" class="bg-amber-600/30">Improved but > Perm</th>
+                <th colspan="2" class="bg-emerald-600/40">Improved & &le; Perm</th>
+                <th colspan="2" class="bg-rose-600/20">Total Deteriorated</th>
+                <th colspan="2" class="bg-rose-600/60">Deteriorated & > Perm</th>
+                <th colspan="2">Unchanged & > Perm</th>
+            </tr>
+            <tr>
+                <th class="bg-rose-600/20">(N)</th><th class="bg-rose-600/20">(%)</th>
+                <th class="bg-amber-600/20">(N)</th><th class="bg-amber-600/20">(%)</th>
+                <th class="bg-emerald-600/20">(N)</th><th class="bg-emerald-600/20">(%)</th>
+                <th class="bg-rose-600/10">(N)</th><th class="bg-rose-600/10">(%)</th>
+                <th class="bg-rose-600/40">(N)</th><th class="bg-rose-600/40">(%)</th>
+                <th class="bg-slate-600/20">(N)</th><th class="bg-slate-600/20">(%)</th>
+            </tr>`;
+            
+            let tbodyHTML = '';
+            let tot = { s:0, a_b:0, i_sa:0, i_sb:0, d_t:0, d_a:0, u_a:0 }; let idx = 1;
+            let keys = Object.keys(stats).sort();
+
+            if(keys.length === 0) { 
+                tbody.innerHTML = `<tr><td colspan="50" class="py-10 text-muted font-bold">No matches found or awaiting dataset import.</td></tr>`; 
+                tfoot.innerHTML = ''; 
+                return; 
+            }
+
+            for(let i=0; i<keys.length; i++) {
+                let k = keys[i];
+                let s = stats[k]; 
+                tot.s += s.s; tot.a_b += s.a_b; tot.i_sa += s.i_sa; tot.i_sb += s.i_sb; tot.d_t += s.d_t; tot.d_a += s.d_a; tot.u_a += s.u_a;
+                
+                let trLocHTML = hierCols.map(col => `<td class="text-left font-bold text-blue-400">${s[col.toLowerCase()] || k}</td>`).join("");
+                let trClass = (s.a_b === 0 && s.d_t === 0) ? "empty-row-faded" : "";
+
+                tbodyHTML += `<tr class="${trClass}"><td>${idx++}</td> ${trLocHTML}
+                    <td class="text-rose-400 bg-rose-900/20 font-bold">${s.a_b}</td><td class="text-xs text-muted">${calculatePctStr(s.a_b, s.s)}</td>
+                    <td class="text-amber-400">${s.i_sa}</td><td class="text-xs text-muted">${calculatePctStr(s.i_sa, s.s)}</td>
+                    <td class="text-emerald-400 font-bold">${s.i_sb}</td><td class="text-xs text-muted">${calculatePctStr(s.i_sb, s.s)}</td>
+                    <td class="text-rose-300">${s.d_t}</td><td class="text-xs text-muted">${calculatePctStr(s.d_t, s.s)}</td>
+                    <td class="text-rose-500 font-bold">${s.d_a}</td><td class="text-xs text-muted">${calculatePctStr(s.d_a, s.s)}</td>
+                    <td>${s.u_a}</td><td class="text-xs text-muted">${calculatePctStr(s.u_a, s.s)}</td></tr>`;
+            }
+            tbody.innerHTML = tbodyHTML;
+            
+            tfoot.innerHTML = `<tr class="total-row"><td colspan="${1 + hierCols.length}" class="text-left">Totals</td>
+                <td>${tot.a_b}</td><td>${calculatePctStr(tot.a_b, tot.s)}</td>
+                <td>${tot.i_sa}</td><td>${calculatePctStr(tot.i_sa, tot.s)}</td>
+                <td>${tot.i_sb}</td><td>${calculatePctStr(tot.i_sb, tot.s)}</td>
+                <td>${tot.d_t}</td><td>${calculatePctStr(tot.d_t, tot.s)}</td>
+                <td>${tot.d_a}</td><td>${calculatePctStr(tot.d_a, tot.s)}</td>
+                <td>${tot.u_a}</td><td>${calculatePctStr(tot.u_a, tot.s)}</td>
+            </tr>`;
+        }
+
+        function renderDetailedDOM(rows) {
+            const tb = document.getElementById('detailed-tbody'); tb.innerHTML = '';
+            const warning = document.getElementById('detailed-warning');
+            
+            if(rows.length === 0) { 
+                tb.innerHTML = '<tr><td colspan="100" class="py-10 text-center text-muted font-bold">No details available.</td></tr>'; 
+                warning.classList.add('hidden');
+                return; 
+            }
+
+            // High Performance DOM creation - Limit UI array size to prevent browser freeze
+            let renderRows = rows.length > detailedTableLimit ? rows.slice(0, detailedTableLimit) : rows;
+            
+            if(rows.length > detailedTableLimit) {
+                warning.classList.remove('hidden');
+            } else {
+                warning.classList.add('hidden');
+            }
+
+            let htmlArr = [];
+            for(let i=0; i<renderRows.length; i++) {
+                let r = renderRows[i];
+                let rowHtml = `<tr><td class="frozen-col" style="left:0">${i+1}</td><td class="frozen-col-2 font-mono text-[10px] text-blue-400" style="left:50px">${r.id}</td><td class="text-left">${r.state}</td><td class="text-left">${r.district}</td><td class="text-left">${r.block}</td><td class="text-left">${r.loc}</td>`;
+                
+                for(let j=0; j<activeParametersInFile.length; j++) {
+                    let p = activeParametersInFile[j];
+                    let c = r.chem[p]; 
+                    let bCls = c.s==='Improved' ? 'badge-improved' : (c.s==='Deteriorated' ? 'badge-deteriorated' : 'badge-unchanged');
+                    rowHtml += `<td class="border-l border-white/10">${c.b}</td><td class="font-bold">${c.c}</td><td class="border-r border-white/10"><span class="badge-status ${bCls}">${c.s}</span></td>`;
+                }
+                rowHtml += '</tr>';
+                htmlArr.push(rowHtml);
+            }
+            tb.innerHTML = htmlArr.join('');
+        }
+
+        // Generate Colors for Map based on legend
+        function hexToRgb(hex) {
+            let r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
+            return [r,g,b];
+        }
+
+        function getColorForIDW(val) {
+            if(val <= -20) return hexToRgb(document.getElementById('col-imp-gt').value);
+            if(val <= 0) return hexToRgb(document.getElementById('col-imp-lt').value);
+            if(val <= 20) return hexToRgb(document.getElementById('col-det-lt').value);
+            return hexToRgb(document.getElementById('col-det-gt').value);
+        }
+
+        // Ultra-Fast HD Spatial Grid Search IDW Engine
+        function drawFastHDIDWLayer(pts, minLat, maxLat, minLon, maxLon) {
+            if(idwOverlay) leafletMap.removeLayer(idwOverlay);
+            if(!document.getElementById('enable-idw').checked || pts.length === 0) return;
+
+            document.getElementById('idw-loading-status').classList.remove('hidden');
+
+            // Wrap in setTimeout to let UI render the loading message
+            setTimeout(() => {
+                let latPad = (maxLat - minLat) * 0.05 || 0.1;
+                let lonPad = (maxLon - minLon) * 0.05 || 0.1;
+                
+                let imgMinLat = minLat - latPad, imgMaxLat = maxLat + latPad;
+                let imgMinLon = minLon - lonPad, imgMaxLon = maxLon + lonPad;
+                let bounds = [[imgMinLat, imgMinLon], [imgMaxLat, imgMaxLon]];
+                
+                // High Definition Canvas Map (up to 500px resolution)
+                let canvas = document.createElement('canvas');
+                canvas.width = 500; 
+                canvas.height = Math.floor(500 * ((imgMaxLat - imgMinLat) / (imgMaxLon - imgMinLon))) || 500;
+                let ctx = canvas.getContext('2d');
+                
+                let ll2xy = (lat, lon) => {
+                    let x = ((lon - imgMinLon) / (imgMaxLon - imgMinLon)) * canvas.width;
+                    let y = (1 - ((lat - imgMinLat) / (imgMaxLat - imgMinLat))) * canvas.height;
+                    return {x, y};
+                };
+                
+                let cpts = pts.map(p => { let xy = ll2xy(p.lat, p.lon); return {x: xy.x, y: xy.y, v: p.val}; });
+                
+                // Spatial Indexing (50x50 Grid) - Supercharge performance 100x+
+                const GRID_SIZE = 50;
+                let grid = new Array(GRID_SIZE * GRID_SIZE).fill().map(() => []);
+                let cellW = canvas.width / GRID_SIZE;
+                let cellH = canvas.height / GRID_SIZE;
+
+                for(let i=0; i<cpts.length; i++) {
+                    let p = cpts[i];
+                    let gx = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p.x / cellW)));
+                    let gy = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p.y / cellH)));
+                    grid[gy * GRID_SIZE + gx].push(p);
+                }
+                
+                let imgData = ctx.createImageData(canvas.width, canvas.height);
+                let data = imgData.data;
+
+                // IDW Execution over pixels utilizing the localized grid search
+                for(let py = 0; py < canvas.height; py++) {
+                    let gy = Math.floor(py / cellH);
+                    for(let px = 0; px < canvas.width; px++) {
+                        let gx = Math.floor(px / cellW);
+                        let num = 0, den = 0;
+                        
+                        // Search 5x5 localized cell neighborhood (search radius = 2 cells)
+                        let searchRad = 2;
+                        
+                        for(let sy = Math.max(0, gy - searchRad); sy <= Math.min(GRID_SIZE - 1, gy + searchRad); sy++) {
+                            for(let sx = Math.max(0, gx - searchRad); sx <= Math.min(GRID_SIZE - 1, gx + searchRad); sx++) {
+                                let cellPts = grid[sy * GRID_SIZE + sx];
+                                for(let i = 0; i < cellPts.length; i++) {
+                                    let cp = cellPts[i];
+                                    let dx = px - cp.x, dy = py - cp.y;
+                                    let d2 = dx*dx + dy*dy;
+                                    if(d2 < 0.001) d2 = 0.001; 
+                                    
+                                    // Power 2.5 for HD Natural Neighbor look
+                                    let w = 1.0 / Math.pow(d2, 1.25); 
+                                    num += w * cp.v;
+                                    den += w;
+                                }
+                            }
+                        }
+                        
+                        if(den > 0) {
+                            let val = num / den;
+                            let rgb = getColorForIDW(val);
+                            let idx = (py * canvas.width + px) * 4;
+                            data[idx] = rgb[0];
+                            data[idx+1] = rgb[1];
+                            data[idx+2] = rgb[2];
+                            data[idx+3] = 190; // Alpha Opacity
+                        }
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+
+                // Shapefile Clipping Engine via HTML5 Canvas Composting
+                if (currentShapefileGeoJSON) {
+                    let maskCanvas = document.createElement('canvas');
+                    maskCanvas.width = canvas.width; maskCanvas.height = canvas.height;
+                    let mctx = maskCanvas.getContext('2d');
+                    mctx.fillStyle = 'black';
+
+                    turf.flatten(currentShapefileGeoJSON).features.forEach(f => {
+                        if(f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon')) {
+                            mctx.beginPath();
+                            f.geometry.coordinates.forEach((ring, i) => {
+                                ring.forEach((coord, j) => {
+                                    let xy = ll2xy(coord[1], coord[0]);
+                                    if(j === 0) mctx.moveTo(xy.x, xy.y);
+                                    else mctx.lineTo(xy.x, xy.y);
+                                });
+                            });
+                            mctx.fill('evenodd');
+                        }
+                    });
+
+                    ctx.globalCompositeOperation = 'destination-in';
+                    ctx.drawImage(maskCanvas, 0, 0);
+                    ctx.globalCompositeOperation = 'source-over';
+                }
+
+                let dataUrl = canvas.toDataURL();
+                idwOverlay = L.imageOverlay(dataUrl, bounds, { opacity: 0.85 }).addTo(leafletMap);
+
+                document.getElementById('idw-loading-status').classList.add('hidden');
+            }, 50); // Yield thread
+        }
+
+        function updateMapVisuals() {
+            if(!globalAggregatedDataCache) return;
+            initMap(); 
+            mapMarkersLayer.clearLayers();
+            const cols = {
+                i_gt: document.getElementById('col-imp-gt').value, i_lt: document.getElementById('col-imp-lt').value,
+                d_gt: document.getElementById('col-det-gt').value, d_lt: document.getElementById('col-det-lt').value, u: document.getElementById('col-unc').value
+            };
+            
+            let bounds = [];
+            let validPoints = [];
+
+            // Draw Markers
+            let rows = globalAggregatedDataCache.data.rows;
+            for(let i=0; i<rows.length; i++) {
+                let r = rows[i];
+                let lat = parseFloat(r.lat), lon = parseFloat(r.lon);
+                if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
+                    let c = r.chem[globalAggregatedDataCache.param]; if(!c) continue;
+                    let mCol = cols.u;
+                    if(c.s === 'Improved') mCol = (c.p >= -20) ? cols.i_lt : cols.i_gt;
+                    else if(c.s === 'Deteriorated') mCol = (c.p <= 20) ? cols.d_lt : cols.d_gt;
+                    
+                    let mrk = L.circleMarker([lat, lon], { radius: currentPointRadius, fillColor: mCol, color: '#fff', weight: 1, fillOpacity: 0.9, shadowColor: '#000', shadowBlur: 3 });
+                    mrk.bindPopup(`<div style="font-family:inherit;font-size:12px;color:#333"><b style="color:#2563eb">${r.id}</b><br>${r.loc}, ${r.state}<hr style="margin:5px 0"><b>${getParamLabel(globalAggregatedDataCache.param)}</b>: ${c.b} &rarr; ${c.c}<br><span style="display:inline-block;background:${mCol};color:#fff;padding:3px 6px;border-radius:4px;margin-top:4px;font-weight:bold;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4)">${c.s}</span></div>`);
+                    mapMarkersLayer.addLayer(mrk); 
+                    bounds.push([lat, lon]);
+                    
+                    if(c.b !== '--' && c.c !== '--') {
+                        validPoints.push({ lat, lon, val: c.p }); 
+                    }
+                }
+            }
+            
+            if (bounds.length > 0) {
+                leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+                
+                if(document.getElementById('enable-idw').checked) {
+                    let lats = validPoints.map(p => p.lat), lons = validPoints.map(p => p.lon);
+                    let minLat = Math.min(...lats), maxLat = Math.max(...lats);
+                    let minLon = Math.min(...lons), maxLon = Math.max(...lons);
+                    drawFastHDIDWLayer(validPoints, minLat, maxLat, minLon, maxLon);
+                } else if (idwOverlay) {
+                    leafletMap.removeLayer(idwOverlay);
+                }
+            }
+        }
+
+        function handleShapefile(event) {
+            const file = event.target.files[0]; if (!file) return;
+            initMap(); const reader = new FileReader();
+            reader.onload = function(e) {
+                shp(e.target.result).then(function(geojson) {
+                    currentShapefileGeoJSON = geojson;
+                    shpLayer.clearLayers();
+                    L.geoJSON(geojson, { style: { color: "#3b82f6", weight: 2, fillOpacity: 0.05 } }).addTo(shpLayer);
+                    if(geojson.bbox) leafletMap.fitBounds([[geojson.bbox[1], geojson.bbox[0]], [geojson.bbox[3], geojson.bbox[2]]]);
+                    updateMapVisuals(); // Regenerates Map + IDW clip
+                }).catch(err => alert("Error parsing shapefile: " + err));
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function clearShapefiles() { 
+            if(shpLayer) shpLayer.clearLayers(); 
+            currentShapefileGeoJSON = null; 
+            updateMapVisuals(); 
+        }
+
+        // =========================================================================
+        // EXCELJS - TRUE EXCEL UNIFIED TABLE GENERATOR ENGINE 
+        // =========================================================================
+
+        function sanitizeSheetName(name) { return name.replace(/[\\\/\?\*\[\]\:]/g, '_').substring(0, 31); }
+
+        function buildUnifiedGeneralSheet(ws, allParamsDataArr, aggLevel) {
+            let hierCols = getHierarchyColumns(aggLevel);
+            let H = hierCols.length;
+            let r = 1;
+
+            ws.getCell(`A${r}`).value = `Unified Groundwater Quality Summary (${aggLevel}-wise Matrix)`;
+            ws.getCell(`A${r}`).font = { size: 14, bold: true, color: { argb: 'FF1D4ED8' } };
+            ws.mergeCells(r, 1, r, H + 17);
+            r++;
+
+            const h1 = ["S.No.", ...hierCols, "Parameter", "Samples Analyzed", "Improved", "", "", "", "", "", "Deteriorated", "", "", "", "", "", "Unchanged", ""];
+            const h2 = ["", ...hierCols.map(()=>""), "", "", "Total (N)", "(%)", "<= 20% (N)", "(%)", "> 20% (N)", "(%)", "Total (N)", "(%)", "<= 20% (N)", "(%)", "> 20% (N)", "(%)", "Total (N)", "(%)"];
+            
+            ws.getRow(r).values = h1;
+            ws.getRow(r+1).values = h2;
+            
+            ws.mergeCells(r, 1, r+1, 1); 
+            for(let i=1; i<=H; i++) ws.mergeCells(r, 1+i, r+1, 1+i); 
+            ws.mergeCells(r, H+2, r+1, H+2); 
+            ws.mergeCells(r, H+3, r+1, H+3); 
+            ws.mergeCells(r, H+4, r, H+9); 
+            ws.mergeCells(r, H+10, r, H+15); 
+            ws.mergeCells(r, H+16, r, H+17); 
+            
+            for(let i=0; i<2; i++){
+                ws.getRow(r+i).eachCell({ includeEmpty: true }, (cell, c) => {
+                    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                    
+                    if(c >= H+4 && c <= H+9) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+                    else if(c >= H+10 && c <= H+15) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } };
+                    else if(c >= H+16 && c <= H+17) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+                    else cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+                });
+            }
+            r += 2;
+
+            allParamsDataArr.forEach(item => {
+                let paramLabel = getParamLabel(item.param);
+                let keys = Object.keys(item.data.stats).sort();
+                
+                keys.forEach((k, idx) => {
+                    let s = item.data.stats[k]; 
+                    
+                    let row = ws.getRow(r);
+                    let hierValues = hierCols.map(col => s[col.toLowerCase()] || k);
+
+                    row.values = [ idx+1, ...hierValues, paramLabel, s.s, s.i, calculatePctStr(s.i, s.s), s.i_l2, calculatePctStr(s.i_l2, s.s), s.i_g2, calculatePctStr(s.i_g2, s.s),
+                        s.d, calculatePctStr(s.d, s.s), s.d_l2, calculatePctStr(s.d_l2, s.s), s.d_g2, calculatePctStr(s.d_g2, s.s), s.u, calculatePctStr(s.u, s.s) ];
+                    
+                    row.eachCell({ includeEmpty: true }, (cell, c) => {
+                        cell.alignment = { horizontal: (c >= 2 && c <= H+2) ? 'left' : 'center' };
+                        cell.border = { top: {style:'thin', color:{argb:'FFEEEEEE'}}, bottom: {style:'thin', color:{argb:'FFEEEEEE'}} };
+                        
+                        if(s.s === 0) cell.font = { color: { argb: 'FF94A3B8'} };
+
+                        if(c >= H+4 && c <= H+9) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+                        else if(c >= H+10 && c <= H+15) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                        else if(c >= H+16 && c <= H+17) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                    });
+                    r++;
+                });
+            });
+            ws.columns.forEach(col => { col.width = 15; });
+        }
+
+        function buildUnifiedPermSheet(ws, allParamsDataArr, aggLevel) {
+            let hierCols = getHierarchyColumns(aggLevel);
+            let H = hierCols.length;
+            let r = 1;
+
+            ws.getCell(`A${r}`).value = `Unified Permissible Limits Tracker (${aggLevel}-wise Matrix)`;
+            ws.getCell(`A${r}`).font = { size: 14, bold: true, color: { argb: 'FF1D4ED8' } };
+            ws.mergeCells(r, 1, r, H + 14);
+            r++;
+
+            const h1 = ["S.No.", ...hierCols, "Parameter", "Base > Permissible", "", "Improved but > Perm", "", "Improved & <= Perm", "", "Total Deteriorated", "", "Deteriorated & > Perm", "", "Unchanged & > Perm", ""];
+            const h2 = ["", ...hierCols.map(()=>""), "", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)"];
+            
+            ws.getRow(r).values = h1;
+            ws.getRow(r+1).values = h2;
+            
+            ws.mergeCells(r, 1, r+1, 1); 
+            for(let i=1; i<=H; i++) ws.mergeCells(r, 1+i, r+1, 1+i); 
+            ws.mergeCells(r, H+2, r+1, H+2); 
+            ws.mergeCells(r, H+3, r, H+4); 
+            ws.mergeCells(r, H+5, r, H+6); 
+            ws.mergeCells(r, H+7, r, H+8); 
+            ws.mergeCells(r, H+9, r, H+10); 
+            ws.mergeCells(r, H+11, r, H+12); 
+            ws.mergeCells(r, H+13, r, H+14);
+
+            for(let i=0; i<2; i++) {
+                ws.getRow(r+i).eachCell((cell, c) => {
+                    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    let bg = 'FF1E3A8A';
+                    if (c===H+3 || c===H+4) bg = 'FFE11D48'; // Rose
+                    if (c===H+5 || c===H+6) bg = 'FFD97706'; // Amber
+                    if (c===H+7 || c===H+8) bg = 'FF059669'; // Emerald
+                    if (c===H+9 || c===H+10) bg = 'FFFDA4AF'; // Light Rose
+                    if (c===H+11 || c===H+12) bg = 'FF9F1239'; // Dark Rose
+                    if (c===H+13 || c===H+14) bg = 'FF475569'; // Slate
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                });
+            }
+            r+=2;
+
+            allParamsDataArr.forEach(item => {
+                if(item.data.permLimit === null) return; 
+                let paramLabel = getParamLabel(item.param);
+                let keys = Object.keys(item.data.permStats).sort();
+
+                keys.forEach((k, idx) => {
+                    let s = item.data.permStats[k];
+                    let hierValues = hierCols.map(col => s[col.toLowerCase()] || k);
+                    let row = ws.getRow(r);
+
+                    row.values = [idx+1, ...hierValues, paramLabel,
+                        s.a_b, calculatePctStr(s.a_b, s.s),
+                        s.i_sa, calculatePctStr(s.i_sa, s.s),
+                        s.i_sb, calculatePctStr(s.i_sb, s.s),
+                        s.d_t, calculatePctStr(s.d_t, s.s),
+                        s.d_a, calculatePctStr(s.d_a, s.s),
+                        s.u_a, calculatePctStr(s.u_a, s.s)
+                    ];
+                    
+                    row.eachCell((cell, c) => {
+                        cell.alignment = { horizontal: (c >= 2 && c <= H+2) ? 'left' : 'center' };
+                        cell.border = { bottom: {style:'thin', color:{argb:'FFEEEEEE'}} };
+                        
+                        if(s.a_b === 0 && s.d_t === 0) cell.font = { color: { argb: 'FF94A3B8'} };
+
+                        if (c===H+3 || c===H+4) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                        if (c===H+5 || c===H+6) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                        if (c===H+7 || c===H+8) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+                        if (c===H+9 || c===H+10 || c===H+11 || c===H+12) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                    });
+                    r++;
+                });
+            });
+            ws.columns.forEach(col => { col.width = 17; });
+        }
+
+        function buildMatrixSheetRows(ws, rows) {
+            let r = 1;
+            const h1 = ["Sl.", "Well ID", "State", "District", "Block", "Location"];
+            const h2 = ["", "", "", "", "", ""];
+            let cIdx = 7;
+            
+            activeParametersInFile.forEach(p => {
+                h1.push(getParamLabel(p), "", ""); h2.push("Base", "Compare", "Status");
+                ws.mergeCells(r, cIdx, r, cIdx+2);
+                cIdx += 3;
+            });
+            
+            ws.mergeCells(r, 1, r+1, 1); ws.mergeCells(r, 2, r+1, 2); ws.mergeCells(r, 3, r+1, 3);
+            ws.mergeCells(r, 4, r+1, 4); ws.mergeCells(r, 5, r+1, 5); ws.mergeCells(r, 6, r+1, 6);
+
+            ws.getRow(r).values = h1; ws.getRow(r+1).values = h2;
+            for(let i=0; i<2; i++){
+                ws.getRow(r+i).eachCell((cell) => {
+                    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                });
+            }
+            r += 2;
+
+            // This perfectly safely loops all 5000+ rows because ExcelJS doesn't use the DOM thread
+            for(let i=0; i<rows.length; i++) {
+                let rowData = rows[i];
+                let rv = [i+1, rowData.id, rowData.state, rowData.district, rowData.block, rowData.loc];
+                let styles = [];
+                
+                for(let j=0; j<activeParametersInFile.length; j++) {
+                    let p = activeParametersInFile[j];
+                    let chem = rowData.chem[p]; 
+                    rv.push(chem.b, chem.c, chem.s); styles.push(chem.s);
+                }
+                
+                let row = ws.getRow(r); row.values = rv;
+                row.eachCell({ includeEmpty: true }, (cell, c) => {
+                    cell.alignment = { horizontal: 'center' };
+                    cell.border = { top: {style:'thin', color:{argb:'FFEEEEEE'}}, bottom: {style:'thin', color:{argb:'FFEEEEEE'}} };
+                    if (c > 6) {
+                        let status = styles[Math.floor((c - 7) / 3)];
+                        if(status === 'Improved') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+                        else if(status === 'Deteriorated') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                        else if(status === 'Unchanged') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                    }
+                });
+                r++;
+            }
+            ws.columns.forEach(col => { col.width = 15; });
+        }
+
+        async function exportCurrentToExcel() {
+            if(!globalAggregatedDataCache) return alert("Please generate a report first.");
+            const wb = new ExcelJS.Workbook();
+            const { param, agg, data } = globalAggregatedDataCache;
+
+            const wsGen = wb.addWorksheet("General");
+            buildUnifiedGeneralSheet(wsGen, [{param, data}], agg); 
+
+            if(data.permLimit !== null) {
+                const wsPerm = wb.addWorksheet("Limits");
+                buildUnifiedPermSheet(wsPerm, [{param, data}], agg);
+            }
+
+            const wsMatrix = wb.addWorksheet("Matrix");
+            buildMatrixSheetRows(wsMatrix, data.rows);
+
+            const buffer = await wb.xlsx.writeBuffer();
+            saveAs(new Blob([buffer]), `Groundwater_Report_${sanitizeSheetName(param)}.xlsx`);
+        }
+
+        async function exportAllSummariesToExcel() {
+            if(activeParametersInFile.length === 0) return alert("No parameters mapped to export.");
+            
+            const wb = new ExcelJS.Workbook();
+            const wsGen = wb.addWorksheet("Unified_General_Summary");
+            const wsPerm = wb.addWorksheet("Unified_Perm_Limits");
+            
+            const agg = document.getElementById('aggregation-level').value;
+            const bp = currentDataFormat === 'standard' ? document.getElementById('base-period').value : null;
+            const cp = currentDataFormat === 'standard' ? document.getElementById('compare-period').value : null;
+            const ms = document.getElementById('match-strategy').value;
+
+            let allParamsDataArr = [];
+            let completeMatrixRows = [];
+
+            activeParametersInFile.forEach(p => {
+                let data = generateDataArrays(p, agg, bp, cp, ms);
+                allParamsDataArr.push({ param: p, data: data });
+                if(completeMatrixRows.length === 0) completeMatrixRows = data.rows; 
+            });
+
+            buildUnifiedGeneralSheet(wsGen, allParamsDataArr, agg);
+            buildUnifiedPermSheet(wsPerm, allParamsDataArr, agg);
+
+            const wsMatrix = wb.addWorksheet("Complete_Matrix");
+            buildMatrixSheetRows(wsMatrix, completeMatrixRows);
+
+            const buffer = await wb.xlsx.writeBuffer();
+            saveAs(new Blob([buffer]), `Groundwater_Full_Report_All_Params.xlsx`);
+        }
+
+        // Initialize Empty App State on Load
+        function initEmptyState() {
+            setupDetailedHeadersEmpty();
+            renderGeneralDOM({}, 'State');
+            renderPermDOM({}, 'State');
+            
+            ['base-period', 'compare-period', 'parameter-select'].forEach(id => {
+                document.getElementById(id).innerHTML = '<option>-- Pending Upload --</option>';
+            });
+        }
+        
+        window.onload = initEmptyState;
+    </script>
+</body>
+</html>
