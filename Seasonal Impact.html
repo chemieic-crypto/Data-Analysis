@@ -4,14 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Groundwater Quality: Advanced Multi-Year HD Analyzer</title>
+    <!-- Tailwind CSS for layout framework -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PapaParse for fast CSV processing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <!-- ExcelJS & FileSaver for True Styled Excel Generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- Leaflet CSS & JS for Mapping -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- shpjs for Shapefile ZIP parsing -->
     <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+    <!-- Turf.js for Spatial operations -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+    <!-- Apache ECharts for 3D Donut Chart -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -29,9 +38,15 @@
             --table-td-hover: rgba(51, 65, 85, 1);
             --table-td-border: rgba(255, 255, 255, 0.05);
             --frozen-bg: #0f172a;
-            --kpi-bg: rgba(30, 41, 59, 0.6);
             --main-panel-glow: rgba(59, 130, 246, 0.2);
             --btn-text: #ffffff;
+            
+            /* 3D UI Colors */
+            --kpi-container-bg: #334155;
+            --kpi-container-border: #1e293b;
+            --card-3d-bg: #1e293b;
+            --card-3d-border: #334155;
+            --card-3d-shadow: 0 4px 6px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.05);
         }
 
         body.light-theme {
@@ -47,20 +62,57 @@
             --table-td-hover: rgba(241, 245, 249, 1);
             --table-td-border: rgba(0, 0, 0, 0.1);
             --frozen-bg: #f8fafc;
-            --kpi-bg: rgba(255, 255, 255, 0.9);
             --main-panel-glow: rgba(59, 130, 246, 0.4);
             --btn-text: #ffffff;
+
+            /* 3D UI Colors Light */
+            --kpi-container-bg: #d1d5db; /* Grey container */
+            --kpi-container-border: #9ca3af;
+            --card-3d-bg: #ffffff;
+            --card-3d-border: #e5e7eb;
+            --card-3d-shadow: 0 6px 12px -2px rgba(0,0,0,0.15), inset 0 -3px 0 rgba(0,0,0,0.05), inset 0 2px 0 rgba(255,255,255,1);
         }
 
         body { background: radial-gradient(circle at top left, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%); color: var(--text-main); transition: background 0.4s ease, color 0.4s ease; overflow-x: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .glass-card { background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 1rem; }
-        .main-interface-panel { box-shadow: 0 0 25px var(--main-panel-glow); border: 1px solid rgba(59, 130, 246, 0.5); }
-        .glass-input { background-color: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-main); }
-        .kpi-box { background: var(--kpi-bg); border: 1px solid var(--glass-border); box-shadow: inset 0 1px 0 rgba(255,255,255,0.1); }
+        .glass-input { background-color: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-main); font-weight: 600;}
         
         select option { background-color: #1e293b; color: white; }
         body.light-theme select option { background-color: #ffffff; color: black; }
 
+        /* Modern 3D Settings Panel */
+        .panel-3d {
+            border-top: 5px solid #3b82f6 !important;
+            box-shadow: 0 10px 20px -5px rgba(0,0,0,0.2), 0 4px 6px -2px rgba(0,0,0,0.1), inset 0 2px 5px rgba(255,255,255,0.4) !important;
+        }
+
+        /* 3D KPI Strip */
+        .kpi-container-3d {
+            background: var(--kpi-container-bg);
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.15);
+            border: 1px solid var(--kpi-container-border);
+            border-bottom: 2px solid rgba(0,0,0,0.2);
+        }
+
+        .card-3d {
+            background: var(--card-3d-bg);
+            box-shadow: var(--card-3d-shadow);
+            border: 1px solid var(--card-3d-border);
+            border-radius: 0.75rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .card-3d:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2), inset 0 -3px 0 rgba(0,0,0,0.05); }
+        .card-3d h4 { text-shadow: 1px 2px 2px rgba(0,0,0,0.1); }
+        
+        /* Colored Edge accents for Cards */
+        .card-edge-amber { border-left: 5px solid #f59e0b; }
+        .card-edge-blue { border-left: 5px solid #3b82f6; }
+        .card-edge-emerald { border-left: 5px solid #10b981; }
+        .card-edge-rose { border-left: 5px solid #f43f5e; }
+
+        /* 3D Buttons */
         .btn-3d { background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%); border: 1px solid #1e3a8a; color: var(--btn-text); box-shadow: 0 4px 0 #1e3a8a, 0 5px 10px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3); transition: all 0.1s; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
         .btn-3d:active { transform: translateY(4px); box-shadow: 0 0 0 #1e3a8a, 0 2px 4px rgba(0,0,0,0.2), inset 0 2px 4px rgba(0,0,0,0.3); }
         .btn-orange-3d { background: linear-gradient(180deg, #f97316 0%, #c2410c 100%); border: 1px solid #9a3412; color: var(--btn-text); box-shadow: 0 5px 0 #9a3412, 0 6px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3); transition: all 0.1s; text-shadow: 0 1px 2px rgba(0,0,0,0.5); cursor: pointer; display: inline-flex; align-items: center;}
@@ -110,35 +162,61 @@
 
     <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
         
-        <header class="glass-card p-5 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
-                <div class="bg-gradient-to-tr from-blue-600 to-indigo-400 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-2 border-white/20">
-                    <i class="fa-solid fa-droplet text-xl"></i>
+        <!-- Main Workspace Controls (Acting as integrated Top Header) -->
+        <section id="controls-section" class="glass-card panel-3d p-6 relative">
+            
+            <!-- Integrated Header, Theme & Upload Actions -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 border-b border-blue-500/20 pb-4 gap-4">
+                <div>
+                    <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-emerald-500 mb-1">Groundwater Quality HD Analyzer</h1>
+                    <h2 class="text-sm font-bold text-blue-500 flex items-center"><i class="fa-solid fa-sliders mr-2"></i>Analysis Settings & Data Management</h2>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <label for="dataset-file" class="btn-orange-3d px-5 py-2.5 rounded-lg text-sm font-black shadow-lg cursor-pointer">
+                        <i class="fa-solid fa-file-excel mr-2"></i> Upload Dataset
+                        <input id="dataset-file" type="file" accept=".csv, .xlsx" class="hidden" onchange="handleFileUpload(event)" />
+                    </label>
+                    <button onclick="toggleTheme()" class="btn-3d w-10 h-10 rounded-full flex items-center justify-center shadow-lg" title="Toggle Light/Dark Mode">
+                        <i class="fa-solid fa-moon text-lg" id="theme-icon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Upload Feedback Banner -->
+            <div id="upload-status" class="mb-5 px-4 py-3 rounded-lg hidden text-sm font-bold bg-black/5 dark:bg-black/20 text-muted border border-black/10 dark:border-white/10"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-5">
+                <div class="period-control"><label class="block text-[11px] font-extrabold text-muted mb-1.5 uppercase tracking-wider">Base Period</label><select id="base-period" class="w-full glass-input rounded-md p-2.5 text-sm" onchange="runAnalysis()"></select></div>
+                <div class="period-control"><label class="block text-[11px] font-extrabold text-muted mb-1.5 uppercase tracking-wider">Compare Period</label><select id="compare-period" class="w-full glass-input rounded-md p-2.5 text-sm" onchange="runAnalysis()"></select></div>
+                <div>
+                    <label class="block text-[11px] font-extrabold text-muted mb-1.5 uppercase tracking-wider">Pairing Logic</label>
+                    <select id="match-strategy" class="w-full glass-input rounded-md p-2.5 text-sm" onchange="runAnalysis()">
+                        <option value="well_id">Match by Well ID</option>
+                        <option value="location">Match by (State+Dist+Block+Loc)</option>
+                    </select>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-emerald-500">Groundwater Quality HD Analyzer</h1>
-                    <p class="text-xs text-muted font-semibold">Fast Processing Engine & High Density IDW</p>
+                    <label class="block text-[11px] font-extrabold text-muted mb-1.5 uppercase tracking-wider">Aggregation Level</label>
+                    <select id="aggregation-level" class="w-full glass-input rounded-md p-2.5 text-sm" onchange="runAnalysis()">
+                        <option value="State">State-wise</option>
+                        <option value="District">District-wise</option>
+                        <option value="Block">Block-wise</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-extrabold text-emerald-500 mb-1.5 uppercase tracking-wider">Chemical Parameter</label>
+                    <select id="parameter-select" class="w-full glass-input rounded-md p-2.5 text-sm font-bold border-emerald-500 bg-emerald-900/10 text-emerald-500" onchange="runAnalysis()"></select>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
-                <button onclick="toggleTheme()" class="btn-3d w-10 h-10 rounded-full flex items-center justify-center" title="Toggle Light/Dark Mode">
-                    <i class="fa-solid fa-moon text-lg" id="theme-icon"></i>
-                </button>
-            </div>
-        </header>
-
-        <section id="upload-section" class="flex flex-col items-center justify-center py-6 glass-card">
-            <label for="dataset-file" class="btn-orange-3d px-12 py-5 rounded-xl text-xl font-black shadow-2xl">
-                <i class="fa-solid fa-file-excel mr-3 text-3xl"></i> Upload Dataset (CSV / XLSX)
-                <input id="dataset-file" type="file" accept=".csv, .xlsx" class="hidden" onchange="handleFileUpload(event)" />
-            </label>
-            <div id="upload-status" class="mt-4 px-4 py-2 rounded-lg hidden text-sm font-bold glass-card border-none bg-black/20 text-muted"></div>
         </section>
 
+        <!-- Step 2: Mapping Section (Appears between controls and results post-upload) -->
         <section id="mapping-section" class="glass-card p-6 hidden">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                 <h2 class="text-xl font-extrabold text-orange-500 drop-shadow-md"><i class="fa-solid fa-table-columns mr-2"></i>Map Structural Columns</h2>
                 
+                <!-- Format Toggle -->
                 <div class="bg-black/20 p-2 rounded-lg border-l-4 border-orange-500 flex flex-wrap items-center gap-4 text-sm text-muted">
                     <strong class="text-blue-400"><i class="fa-solid fa-layer-group mr-1"></i> Data Format Layout:</strong>
                     <label class="cursor-pointer font-bold flex items-center gap-1"><input type="radio" name="dataFormat" value="standard" checked onchange="toggleFormat()"> Standard (Rows by Time)</label>
@@ -147,7 +225,7 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="p-3 kpi-box rounded-lg border-blue-500/30 transition-opacity duration-300" id="time-mapping-box">
+                <div class="p-3 card-3d rounded-lg transition-opacity duration-300" id="time-mapping-box">
                     <span class="text-xs text-blue-500 font-bold uppercase">Time & ID</span>
                     <div class="mt-2 space-y-2">
                         <div><label class="text-[10px] font-bold text-muted">Year Col *</label><select id="map-year" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
@@ -155,7 +233,7 @@
                         <div><label class="text-[10px] font-bold text-muted">Well ID Col *</label><select id="map-wellid" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
                     </div>
                 </div>
-                <div class="p-3 kpi-box rounded-lg border-indigo-500/30">
+                <div class="p-3 card-3d rounded-lg">
                     <span class="text-xs text-indigo-500 font-bold uppercase">Admin Boundaries</span>
                     <div class="mt-2 space-y-2">
                         <div><label class="text-[10px] font-bold text-muted">State Col</label><select id="map-state" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
@@ -163,7 +241,7 @@
                         <div><label class="text-[10px] font-bold text-muted">Block Col</label><select id="map-block" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
                     </div>
                 </div>
-                <div class="p-3 kpi-box rounded-lg border-emerald-500/30">
+                <div class="p-3 card-3d rounded-lg">
                     <span class="text-xs text-emerald-500 font-bold uppercase">Geography</span>
                     <div class="mt-2 space-y-2">
                         <div><label class="text-[10px] font-bold text-muted">Location Name</label><select id="map-location" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
@@ -171,7 +249,7 @@
                         <div><label class="text-[10px] font-bold text-muted">Longitude</label><select id="map-lon" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
                     </div>
                 </div>
-                <div class="p-3 kpi-box rounded-lg border-amber-500/30">
+                <div class="p-3 card-3d rounded-lg">
                     <span class="text-xs text-amber-500 font-bold uppercase">Meta Data</span>
                     <div class="mt-2 space-y-2">
                         <div><label class="text-[10px] font-bold text-muted">Gram Panchayat</label><select id="map-gp" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
@@ -185,42 +263,37 @@
             </div>
         </section>
 
-        <section id="controls-section" class="glass-card main-interface-panel p-5">
-            <h2 class="text-lg font-bold mb-4 text-blue-500 border-b border-blue-500/20 pb-2"><i class="fa-solid fa-sliders mr-2"></i>Analysis Settings</h2>
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div class="period-control"><label class="block text-xs font-bold text-muted mb-1 uppercase">Base Period</label><select id="base-period" class="w-full glass-input rounded p-2 text-sm font-semibold" onchange="runAnalysis()"></select></div>
-                <div class="period-control"><label class="block text-xs font-bold text-muted mb-1 uppercase">Compare Period</label><select id="compare-period" class="w-full glass-input rounded p-2 text-sm font-semibold" onchange="runAnalysis()"></select></div>
-                <div>
-                    <label class="block text-xs font-bold text-muted mb-1 uppercase">Pairing Logic</label>
-                    <select id="match-strategy" class="w-full glass-input rounded p-2 text-sm" onchange="runAnalysis()">
-                        <option value="well_id">Match by Well ID</option>
-                        <option value="location">Match by (State+Dist+Block+Loc)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-muted mb-1 uppercase">Aggregation Level</label>
-                    <select id="aggregation-level" class="w-full glass-input rounded p-2 text-sm" onchange="runAnalysis()">
-                        <option value="State">State-wise</option>
-                        <option value="District">District-wise</option>
-                        <option value="Block">Block-wise</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-emerald-500 mb-1 uppercase">Chemical Parameter</label>
-                    <select id="parameter-select" class="w-full glass-input rounded p-2 text-sm font-bold border-emerald-500 bg-emerald-900/10" onchange="runAnalysis()"></select>
-                </div>
-            </div>
-        </section>
-
+        <!-- Results Dashboard -->
         <section id="results-section" class="glass-card overflow-hidden">
             
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b border-white/5 bg-black/20">
-                <div class="kpi-box p-3 rounded-lg"><span class="text-[10px] text-amber-500 font-bold uppercase">Base Records</span><h4 class="text-2xl font-black text-amber-400" id="stat-pre-count">0</h4></div>
-                <div class="kpi-box p-3 rounded-lg"><span class="text-[10px] text-blue-500 font-bold uppercase">Compare Records</span><h4 class="text-2xl font-black text-blue-400" id="stat-post-count">0</h4></div>
-                <div class="kpi-box p-3 rounded-lg border-emerald-500/30 bg-emerald-900/10"><span class="text-[10px] text-emerald-500 font-bold uppercase">Matched Locations</span><h4 class="text-2xl font-black text-emerald-400" id="stat-paired-count">0</h4></div>
-                <div class="kpi-box p-3 rounded-lg border-rose-500/30 bg-rose-900/10"><span class="text-[10px] text-rose-500 font-bold uppercase">Unpaired/Excluded</span><h4 class="text-2xl font-black text-rose-400" id="stat-unpaired-count">0</h4></div>
+            <!-- 3D KPI Strip with Chart -->
+            <div class="flex flex-col lg:flex-row kpi-container-3d p-5 gap-6 rounded-t-xl">
+                <!-- Data Cards -->
+                <div class="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="card-3d card-edge-amber p-4 flex flex-col justify-center">
+                        <span class="text-[10px] text-amber-500 font-extrabold uppercase tracking-widest mb-1">Base Records</span>
+                        <h4 class="text-3xl font-black text-amber-500" id="stat-pre-count">0</h4>
+                    </div>
+                    <div class="card-3d card-edge-blue p-4 flex flex-col justify-center">
+                        <span class="text-[10px] text-blue-500 font-extrabold uppercase tracking-widest mb-1">Compare Records</span>
+                        <h4 class="text-3xl font-black text-blue-500" id="stat-post-count">0</h4>
+                    </div>
+                    <div class="card-3d card-edge-emerald p-4 flex flex-col justify-center bg-emerald-900/5">
+                        <span class="text-[10px] text-emerald-500 font-extrabold uppercase tracking-widest mb-1">Matched Locations</span>
+                        <h4 class="text-3xl font-black text-emerald-500" id="stat-paired-count">0</h4>
+                    </div>
+                    <div class="card-3d card-edge-rose p-4 flex flex-col justify-center bg-rose-900/5">
+                        <span class="text-[10px] text-rose-500 font-extrabold uppercase tracking-widest mb-1">Unpaired/Excluded</span>
+                        <h4 class="text-3xl font-black text-rose-500" id="stat-unpaired-count">0</h4>
+                    </div>
+                </div>
+                <!-- 3D Donut Chart Area -->
+                <div class="w-full lg:w-[300px] h-36 lg:h-auto min-h-[140px] relative card-3d rounded-xl flex items-center justify-center p-2">
+                    <div id="kpi-donut-chart" class="w-full h-full absolute inset-0"></div>
+                </div>
             </div>
 
+            <!-- Tabs & Actions -->
             <div class="flex flex-col md:flex-row justify-between items-center p-4 border-b border-white/5 bg-black/10 gap-4">
                 <div class="flex flex-wrap gap-3">
                     <button onclick="switchTab('tab-general')" id="btn-tab-general" class="tab-3d active px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-chart-pie mr-1"></i>General Summary</button>
@@ -234,17 +307,20 @@
                 </div>
             </div>
 
+            <!-- Tab 1: General Summary -->
             <div id="tab-general" class="tab-content block p-4">
                 <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg">
                     <table class="report-table" id="report-table">
                         <thead id="report-thead">
-                            </thead>
+                            <!-- Injected dynamically -->
+                        </thead>
                         <tbody id="report-tbody"></tbody>
                         <tfoot id="report-tfoot"></tfoot>
                     </table>
                 </div>
             </div>
 
+            <!-- Tab 2: Permissible Limits -->
             <div id="tab-perm" class="tab-content hidden p-4">
                 <div id="no-perm-msg" class="p-10 text-center text-muted font-bold glass-card hidden">
                     <i class="fa-solid fa-info-circle text-3xl mb-3 text-blue-500"></i>
@@ -253,13 +329,15 @@
                 <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg" id="perm-table-container">
                     <table class="report-table" id="perm-table">
                         <thead id="perm-thead">
-                           </thead>
+                           <!-- Injected dynamically -->
+                        </thead>
                         <tbody id="perm-tbody"></tbody>
                         <tfoot id="perm-tfoot"></tfoot>
                     </table>
                 </div>
             </div>
 
+            <!-- Tab 3: Detailed Matrix -->
             <div id="tab-detailed" class="tab-content hidden p-4">
                 <div id="detailed-warning" class="bg-blue-900/40 border border-blue-500/30 text-blue-200 text-xs font-bold p-3 rounded-lg mb-4 hidden">
                     <i class="fa-solid fa-triangle-exclamation text-orange-400 mr-2"></i> Large Dataset Detected. Displaying the first 1,000 rows to maintain browser performance. <strong class="text-white">Use "Export Active Tab" to download all records perfectly to Excel.</strong>
@@ -268,7 +346,8 @@
                     <table class="report-table relative" id="detailed-table">
                         <thead class="sticky top-0 z-30 shadow-md">
                             <tr id="detailed-header-row-1">
-                                </tr>
+                                <!-- Injected dynamically -->
+                            </tr>
                             <tr id="detailed-header-row-2"></tr>
                         </thead>
                         <tbody id="detailed-tbody" class="z-10"></tbody>
@@ -276,32 +355,38 @@
                 </div>
             </div>
             
+            <!-- Tab 4: Advanced Geospatial Map -->
             <div id="tab-map" class="tab-content hidden p-4 space-y-4">
-                <div class="flex flex-col xl:flex-row justify-between gap-4 p-4 glass-card rounded-lg">
-                    <div class="flex flex-wrap items-center gap-3 text-xs font-bold text-muted">
-                        <strong class="text-blue-500 uppercase tracking-wide"><i class="fa-solid fa-palette mr-1"></i> Status Legend:</strong>
-                        <label class="flex items-center gap-1.5 bg-black/20 p-1.5 rounded cursor-pointer border border-white/10">Imp >20% <input type="color" id="col-imp-gt" value="#059669" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
-                        <label class="flex items-center gap-1.5 bg-black/20 p-1.5 rounded cursor-pointer border border-white/10">Imp &le;20% <input type="color" id="col-imp-lt" value="#34d399" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
-                        <label class="flex items-center gap-1.5 bg-black/20 p-1.5 rounded cursor-pointer border border-white/10">Det >20% <input type="color" id="col-det-gt" value="#dc2626" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
-                        <label class="flex items-center gap-1.5 bg-black/20 p-1.5 rounded cursor-pointer border border-white/10">Det &le;20% <input type="color" id="col-det-lt" value="#f87171" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
-                        <label class="flex items-center gap-1.5 bg-black/20 p-1.5 rounded cursor-pointer border border-white/10">Unchanged <input type="color" id="col-unc" value="#64748b" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
+                <div class="flex flex-col xl:flex-row justify-between gap-4 p-4 card-3d rounded-lg">
+                    <!-- Color Picker Panel -->
+                    <div class="flex flex-wrap items-center gap-3 text-[10px] font-bold text-muted">
+                        <strong class="text-blue-500 uppercase tracking-wide"><i class="fa-solid fa-palette mr-1"></i> Legend:</strong>
+                        <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Improved <input type="color" id="col-imp" value="#10b981" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
+                        <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Deteriorated <input type="color" id="col-det" value="#ef4444" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
+                        <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Unchanged <input type="color" id="col-unc" value="#64748b" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
                     </div>
 
+                    <!-- Size & Advanced Tools -->
                     <div class="flex flex-wrap items-center gap-3">
                         <div class="flex items-center gap-3 mr-2">
                             <label class="map-toggle-label"><input type="checkbox" id="show-basemap" checked onchange="toggleLayers()" class="accent-blue-500"> Base Map</label>
                             <label class="map-toggle-label"><input type="checkbox" id="show-points" checked onchange="toggleLayers()" class="accent-blue-500"> Data Points</label>
                         </div>
                         
-                        <div class="flex items-center gap-2 bg-black/20 p-1 rounded-lg border border-white/10 text-muted">
+                        <div class="flex items-center gap-2 bg-black/5 dark:bg-black/20 p-1 rounded-lg border border-black/10 dark:border-white/10 text-muted">
                             <span class="text-[10px] uppercase font-bold ml-2">Point Size</span>
-                            <button onclick="changeRadius(-1)" class="w-6 h-6 flex items-center justify-center bg-white/10 rounded hover:bg-white/20 font-bold transition text-sm">-</button>
+                            <button onclick="changeRadius(-1)" class="w-6 h-6 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-sm">-</button>
                             <span id="radius-val" class="w-4 text-center text-xs font-bold">6</span>
-                            <button onclick="changeRadius(1)" class="w-6 h-6 flex items-center justify-center bg-white/10 rounded hover:bg-white/20 font-bold transition text-sm">+</button>
+                            <button onclick="changeRadius(1)" class="w-6 h-6 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-sm">+</button>
                         </div>
                         
-                        <label class="flex items-center gap-2 bg-indigo-900/40 p-2 rounded-lg border border-indigo-500/50 cursor-pointer text-xs font-bold text-indigo-200 hover:bg-indigo-900/60 transition" title="Applies Fast HD Grid Search IDW">
-                            <input type="checkbox" id="enable-idw" onchange="updateMapVisuals()" class="accent-indigo-500"> Generate HD IDW Surface
+                        <label class="flex items-center gap-2 bg-indigo-100 dark:bg-indigo-900/40 p-2 rounded-lg border border-indigo-300 dark:border-indigo-500/50 cursor-pointer text-xs font-bold text-indigo-700 dark:text-indigo-200 transition" title="Applies Fast HD Grid Search IDW">
+                            <input type="checkbox" id="enable-idw" onchange="updateMapVisuals()" class="accent-indigo-500"> Generate HD IDW
+                        </label>
+
+                        <label class="flex items-center gap-2 bg-emerald-900/10 p-1.5 rounded-lg border border-emerald-500/30">
+                            <span class="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-500">Map Parameter</span>
+                            <select id="map-parameter-select" class="glass-input text-xs p-1 rounded font-bold text-emerald-700 dark:text-emerald-400 bg-transparent border-none outline-none" onchange="syncParamSelect(this.value)"></select>
                         </label>
 
                         <label class="text-xs font-black bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg cursor-pointer transition shadow-lg">
@@ -314,10 +399,11 @@
                 
                 <div id="idw-loading-status" class="hidden absolute z-50 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-900/90 text-white px-6 py-4 rounded-xl shadow-2xl font-bold border border-blue-500/50 flex flex-col items-center">
                     <i class="fa-solid fa-spinner fa-spin text-3xl mb-2"></i>
-                    <span>Processing High Density Spatial Grid...</span>
+                    <span>Rendering HD Surface...</span>
                 </div>
                 
-                <div id="map-container" class="w-full h-[550px] rounded-xl border border-white/20 shadow-2xl z-0 bg-black/30 flex items-center justify-center text-muted relative">
+                <!-- Map Container - dynamically turns pure white when basemap is hidden -->
+                <div id="map-container" class="w-full h-[650px] rounded-xl border border-black/10 dark:border-white/20 shadow-2xl z-0 bg-gray-100 dark:bg-black/30 flex items-center justify-center text-muted relative transition-colors duration-300">
                     <span id="map-empty-msg" class="font-bold text-lg"><i class="fa-solid fa-map text-4xl mb-3 block text-center text-blue-500/50"></i> Waiting for matched geographical data...</span>
                 </div>
             </div>
@@ -368,7 +454,7 @@
         let currentDataFormat = 'standard'; 
         let wideParamPairs = {}; 
 
-        // Maps
+        // Maps & Charts
         let leafletMap = null;
         let baseMapLayer = null;
         let mapMarkersLayer = null;
@@ -377,6 +463,12 @@
         let currentShapefileGeoJSON = null;
         let currentPointRadius = 6;
         let detailedTableLimit = 1000;
+        let echartInstance = null;
+
+        function syncParamSelect(val) {
+            document.getElementById('parameter-select').value = val;
+            runAnalysis();
+        }
 
         // HELPER: Generates the full parameter label
         function getParamLabel(p) {
@@ -408,8 +500,14 @@
             const isLight = document.body.classList.contains('light-theme');
             const icon = document.getElementById('theme-icon');
             icon.className = isLight ? "fa-solid fa-sun text-lg" : "fa-solid fa-moon text-lg";
+            
             if (baseMapLayer) {
                 baseMapLayer.setUrl(`https://{s}.basemaps.cartocdn.com/${isLight ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`);
+            }
+            
+            // Re-render chart for dark/light text color adjustments
+            if (echartInstance && globalAggregatedDataCache) {
+                updateDonutChart(globalAggregatedDataCache.data.pCount, globalAggregatedDataCache.data.uCount);
             }
         }
         
@@ -457,12 +555,21 @@
             if(!leafletMap) return;
             const showBase = document.getElementById('show-basemap').checked;
             const showPts = document.getElementById('show-points').checked;
+            const mapContainer = document.getElementById('map-container');
             
-            if(showBase && !leafletMap.hasLayer(baseMapLayer)) leafletMap.addLayer(baseMapLayer);
-            else if(!showBase && leafletMap.hasLayer(baseMapLayer)) leafletMap.removeLayer(baseMapLayer);
+            if(showBase) {
+                if(!leafletMap.hasLayer(baseMapLayer)) leafletMap.addLayer(baseMapLayer);
+                mapContainer.style.backgroundColor = ''; // Restore default
+            } else {
+                if(leafletMap.hasLayer(baseMapLayer)) leafletMap.removeLayer(baseMapLayer);
+                mapContainer.style.backgroundColor = '#ffffff'; // Force pure white when disabled
+            }
             
-            if(showPts && !leafletMap.hasLayer(mapMarkersLayer)) leafletMap.addLayer(mapMarkersLayer);
-            else if(!showPts && leafletMap.hasLayer(mapMarkersLayer)) leafletMap.removeLayer(mapMarkersLayer);
+            if(showPts) {
+                if(!leafletMap.hasLayer(mapMarkersLayer)) leafletMap.addLayer(mapMarkersLayer);
+            } else {
+                if(leafletMap.hasLayer(mapMarkersLayer)) leafletMap.removeLayer(mapMarkersLayer);
+            }
         }
 
         function changeRadius(delta) {
@@ -502,7 +609,7 @@
                     
                     rawData = [];
                     ws.eachRow((row, rowNumber) => {
-                        if (rowNumber === 1) return; // skip header row
+                        if (rowNumber === 1) return; 
                         let rowObj = {};
                         headers.forEach((header, colNumber) => {
                             if(!header) return;
@@ -616,7 +723,7 @@
                         let compNameRaw = headers.find(x => x.toUpperCase() === baseNameRaw.toUpperCase() + 'POM');
                         if (compNameRaw) {
                             let baseUpper = baseNameRaw.toUpperCase();
-                            if(baseUpper !== 'PH') { // Explicitly block pH
+                            if(baseUpper !== 'PH') { 
                                 wideParamPairs[baseNameRaw] = { base: h, comp: compNameRaw };
                             }
                         }
@@ -626,7 +733,13 @@
                 if (activeParametersInFile.length === 0) alert("No PRM/POM column pairs detected! Please check your dataset or select 'Standard' format.");
             }
 
-            activeParametersInFile.forEach(p => pSel.appendChild(new Option(getParamLabel(p), p)));
+            const mapPSel = document.getElementById('map-parameter-select');
+            mapPSel.innerHTML = '';
+            
+            activeParametersInFile.forEach(p => {
+                pSel.appendChild(new Option(getParamLabel(p), p));
+                mapPSel.appendChild(new Option(getParamLabel(p), p));
+            });
 
             setupDetailedHeaders();
             runAnalysis();
@@ -682,7 +795,6 @@
             let pairedData = {};
             let pCount = 0, uCount = 0;
 
-            // Loop optimization: Only extract what is absolutely needed
             for(let idx = 0; idx < rawData.length; idx++) {
                 let row = rawData[idx];
                 let wid = "";
@@ -690,7 +802,6 @@
                 else wid = `${row[columnMapping.state]}-${row[columnMapping.district]}-${row[columnMapping.block]}-${row[columnMapping.location]}`.toUpperCase();
 
                 if (currentDataFormat === 'wide') {
-                    // Prevent large wide files from overwriting duplicate row locations by adding _W_{idx}
                     let uniqueWid = (wid || "UID") + "_W_" + idx;
                     uBase.add(uniqueWid);
                     uComp.add(uniqueWid);
@@ -724,7 +835,6 @@
             const perm = cfg.b2;
             let stats = {}, permStats = {}, rows = [];
             
-            // Loop over paired objects
             let keys = Object.keys(pairedData);
             for(let i=0; i<keys.length; i++) {
                 let loc = pairedData[keys[i]];
@@ -753,13 +863,10 @@
                         let stat = 'Unchanged', pct = 0;
                         if(!isNaN(vb) && !isNaN(vc)) {
                             let isRSC = p.toUpperCase().includes('RSC');
-                            
-                            // Safe math: non-RSC shouldn't be negative in real-world logic, clamping to 0 if data has anomalies
                             if(!isRSC) { vb = Math.max(vb,0); vc = Math.max(vc,0); } 
                             
                             if(vc < vb) stat = 'Improved'; else if(vc > vb) stat = 'Deteriorated';
                             
-                            // Absolute baseline in division handles negative RSC baselines correctly
                             if(vb !== 0) pct = ((vc - vb) / Math.abs(vb)) * 100;
                             else if(vb === 0 && vc !== 0) pct = vc > 0 ? 100 : -100; 
                         }
@@ -777,7 +884,7 @@
 
                         if(perm !== null) {
                             let ps = permStats[aggKey]; 
-                            ps.s++; // Track total samples for this aggregation group
+                            ps.s++; 
                             
                             if(cur.b > perm) {
                                 ps.a_b++;
@@ -796,6 +903,45 @@
 
         function calculatePctStr(part, total) { return total === 0 ? "0.0%" : ((part / total) * 100).toFixed(1) + "%"; }
 
+        function initDonutChart() {
+            if(!echartInstance) {
+                echartInstance = echarts.init(document.getElementById('kpi-donut-chart'));
+                window.addEventListener('resize', () => { echartInstance.resize(); });
+            }
+        }
+
+        function updateDonutChart(matched, unpaired) {
+            if(!echartInstance) return;
+            const isLight = document.body.classList.contains('light-theme');
+            const textColor = isLight ? '#475569' : '#f8fafc';
+            
+            const option = {
+                tooltip: { trigger: 'item', backgroundColor: isLight ? '#fff' : '#1e293b', borderColor: isLight ? '#e5e7eb' : '#334155', textStyle: { color: textColor } },
+                legend: { top: '5%', left: 'center', textStyle: { color: textColor, fontWeight: 'bold' } },
+                series: [
+                    {
+                        name: 'Pairing Status', type: 'pie',
+                        radius: ['45%', '75%'], center: ['50%', '60%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: {
+                            borderRadius: 8, borderColor: isLight ? '#fff' : '#1e293b', borderWidth: 2,
+                            shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)', shadowOffsetX: 2, shadowOffsetY: 2
+                        },
+                        label: { show: false, position: 'center' },
+                        emphasis: {
+                            label: { show: true, fontSize: 16, fontWeight: 'bold', color: textColor }
+                        },
+                        labelLine: { show: false },
+                        data: [
+                            { value: matched, name: 'Matched', itemStyle: { color: '#10b981' } },
+                            { value: unpaired, name: 'Unpaired', itemStyle: { color: '#f43f5e' } }
+                        ]
+                    }
+                ]
+            };
+            echartInstance.setOption(option);
+        }
+
         function runAnalysis() {
             const bp = document.getElementById('base-period').value;
             const cp = document.getElementById('compare-period').value;
@@ -804,7 +950,9 @@
             const param = document.getElementById('parameter-select').value;
             if(!param) return;
 
-            // Defer execution slightly to let UI catch up (e.g., if a spinner is added)
+            const mapSel = document.getElementById('map-parameter-select');
+            if(mapSel && mapSel.value !== param) mapSel.value = param;
+
             setTimeout(() => {
                 const data = generateDataArrays(param, agg, bp, cp, ms);
                 globalAggregatedDataCache = { param, agg, data };
@@ -814,14 +962,15 @@
                 document.getElementById('stat-paired-count').innerText = data.pCount;
                 document.getElementById('stat-unpaired-count').innerText = data.uCount;
 
+                updateDonutChart(data.pCount, data.uCount);
+
                 document.getElementById('perm-table-container').classList.toggle('hidden', data.permLimit === null);
                 document.getElementById('no-perm-msg').classList.toggle('hidden', data.permLimit !== null);
 
                 renderGeneralDOM(data.stats, agg);
                 if(data.permLimit !== null) renderPermDOM(data.permStats, agg);
-                renderDetailedDOM(data.rows); // This now handles limits internally
+                renderDetailedDOM(data.rows);
                 
-                // Only update visuals if the map tab is active or just setup data
                 updateMapVisuals();
             }, 10);
         }
@@ -959,14 +1108,9 @@
                 return; 
             }
 
-            // High Performance DOM creation - Limit UI array size to prevent browser freeze
             let renderRows = rows.length > detailedTableLimit ? rows.slice(0, detailedTableLimit) : rows;
-            
-            if(rows.length > detailedTableLimit) {
-                warning.classList.remove('hidden');
-            } else {
-                warning.classList.add('hidden');
-            }
+            if(rows.length > detailedTableLimit) { warning.classList.remove('hidden'); } 
+            else { warning.classList.add('hidden'); }
 
             let htmlArr = [];
             for(let i=0; i<renderRows.length; i++) {
@@ -985,51 +1129,89 @@
             tb.innerHTML = htmlArr.join('');
         }
 
-        // Generate Colors for Map based on legend
         function hexToRgb(hex) {
             let r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
             return [r,g,b];
         }
 
-        function getColorForIDW(val) {
-            if(val <= -20) return hexToRgb(document.getElementById('col-imp-gt').value);
-            if(val <= 0) return hexToRgb(document.getElementById('col-imp-lt').value);
-            if(val <= 20) return hexToRgb(document.getElementById('col-det-lt').value);
-            return hexToRgb(document.getElementById('col-det-gt').value);
+        function interpolateColor(c1, c2, factor) {
+            return [
+                Math.round(c1[0] + (c2[0] - c1[0]) * factor),
+                Math.round(c1[1] + (c2[1] - c1[1]) * factor),
+                Math.round(c1[2] + (c2[2] - c1[2]) * factor)
+            ];
         }
 
-        // Ultra-Fast HD Spatial Grid Search IDW Engine
+        function getColorForIDW(val) {
+            let impCol = hexToRgb(document.getElementById('col-imp').value);
+            let detCol = hexToRgb(document.getElementById('col-det').value);
+            let uncCol = hexToRgb(document.getElementById('col-unc').value);
+
+            if (val < 0) {
+                let factor = Math.min(Math.abs(val) / 25, 1.0); // Smooth gradient up to 25% improvement
+                return interpolateColor(uncCol, impCol, factor);
+            } else if (val > 0) {
+                let factor = Math.min(val / 25, 1.0); // Smooth gradient up to 25% deterioration
+                return interpolateColor(uncCol, detCol, factor);
+            }
+            return uncCol;
+        }
+
+        // Ultra-Fast HD Spatial Grid Search IDW Engine - FULLY REBUILT FOR NATURAL GLOSS AND PROJECTION ALIGNMENT
         function drawFastHDIDWLayer(pts, minLat, maxLat, minLon, maxLon) {
             if(idwOverlay) leafletMap.removeLayer(idwOverlay);
             if(!document.getElementById('enable-idw').checked || pts.length === 0) return;
 
             document.getElementById('idw-loading-status').classList.remove('hidden');
 
-            // Wrap in setTimeout to let UI render the loading message
             setTimeout(() => {
-                let latPad = (maxLat - minLat) * 0.05 || 0.1;
-                let lonPad = (maxLon - minLon) * 0.05 || 0.1;
+                let bLatMin = minLat, bLatMax = maxLat, bLonMin = minLon, bLonMax = maxLon;
+
+                // CRITICAL STRETCH FIX: If shapefile exists, stretch IDW bounds completely to its edges
+                if (currentShapefileGeoJSON) {
+                    const shpLayerTemp = L.geoJSON(currentShapefileGeoJSON);
+                    const shpBbox = shpLayerTemp.getBounds();
+                    bLatMin = shpBbox.getSouth();
+                    bLatMax = shpBbox.getNorth();
+                    bLonMin = shpBbox.getWest();
+                    bLonMax = shpBbox.getEast();
+                }
+
+                let latPad = (bLatMax - bLatMin) * 0.05 || 0.1;
+                let lonPad = (bLonMax - bLonMin) * 0.05 || 0.1;
                 
-                let imgMinLat = minLat - latPad, imgMaxLat = maxLat + latPad;
-                let imgMinLon = minLon - lonPad, imgMaxLon = maxLon + lonPad;
+                let imgMinLat = bLatMin - latPad, imgMaxLat = bLatMax + latPad;
+                let imgMinLon = bLonMin - lonPad, imgMaxLon = bLonMax + lonPad;
                 let bounds = [[imgMinLat, imgMinLon], [imgMaxLat, imgMaxLon]];
                 
-                // High Definition Canvas Map (up to 500px resolution)
+                // INCREASE RESOLUTION FOR REAL GLOSS (1200px width fixes blurriness natively)
                 let canvas = document.createElement('canvas');
-                canvas.width = 500; 
-                canvas.height = Math.floor(500 * ((imgMaxLat - imgMinLat) / (imgMaxLon - imgMinLon))) || 500;
+                canvas.width = 1200; 
+                
+                // PROJECTION FIX: Leaflet overlays stretch non-linearly (Web Mercator).
+                // We MUST project canvas Y linearly over the mathematical Mercator domain, not raw Latitudes.
+                let lat2y = (lat) => Math.log(Math.tan((90 + lat) * Math.PI / 360));
+                let imgMinY = lat2y(imgMinLat);
+                let imgMaxY = lat2y(imgMaxLat);
+                
+                // Accurately set height proportional to Mercator space to preserve aspect ratio
+                let widthMercator = (imgMaxLon - imgMinLon) * Math.PI / 180;
+                let heightMercator = imgMaxY - imgMinY;
+                canvas.height = Math.floor(canvas.width * (heightMercator / widthMercator)) || 1200;
+                
                 let ctx = canvas.getContext('2d');
                 
+                // Proper Web Mercator coordinates mapping
                 let ll2xy = (lat, lon) => {
                     let x = ((lon - imgMinLon) / (imgMaxLon - imgMinLon)) * canvas.width;
-                    let y = (1 - ((lat - imgMinLat) / (imgMaxLat - imgMinLat))) * canvas.height;
+                    let y = (1 - ((lat2y(lat) - imgMinY) / (imgMaxY - imgMinY))) * canvas.height;
                     return {x, y};
                 };
                 
                 let cpts = pts.map(p => { let xy = ll2xy(p.lat, p.lon); return {x: xy.x, y: xy.y, v: p.val}; });
                 
-                // Spatial Indexing (50x50 Grid) - Supercharge performance 100x+
-                const GRID_SIZE = 50;
+                // Spatial Indexing adjusted for higher resolution map
+                const GRID_SIZE = 120;
                 let grid = new Array(GRID_SIZE * GRID_SIZE).fill().map(() => []);
                 let cellW = canvas.width / GRID_SIZE;
                 let cellH = canvas.height / GRID_SIZE;
@@ -1041,18 +1223,21 @@
                     grid[gy * GRID_SIZE + gx].push(p);
                 }
                 
-                let imgData = ctx.createImageData(canvas.width, canvas.height);
+                // Offscreen canvas for raw IDW pixel generation
+                let rawCanvas = document.createElement('canvas');
+                rawCanvas.width = canvas.width; rawCanvas.height = canvas.height;
+                let rawCtx = rawCanvas.getContext('2d');
+
+                let imgData = rawCtx.createImageData(canvas.width, canvas.height);
                 let data = imgData.data;
 
-                // IDW Execution over pixels utilizing the localized grid search
+                // High-Definition IDW Execution Loop
                 for(let py = 0; py < canvas.height; py++) {
                     let gy = Math.floor(py / cellH);
                     for(let px = 0; px < canvas.width; px++) {
                         let gx = Math.floor(px / cellW);
                         let num = 0, den = 0;
-                        
-                        // Search 5x5 localized cell neighborhood (search radius = 2 cells)
-                        let searchRad = 2;
+                        let searchRad = 6; // Sufficient footprint for beautiful, natural blending
                         
                         for(let sy = Math.max(0, gy - searchRad); sy <= Math.min(GRID_SIZE - 1, gy + searchRad); sy++) {
                             for(let sx = Math.max(0, gx - searchRad); sx <= Math.min(GRID_SIZE - 1, gx + searchRad); sx++) {
@@ -1061,10 +1246,8 @@
                                     let cp = cellPts[i];
                                     let dx = px - cp.x, dy = py - cp.y;
                                     let d2 = dx*dx + dy*dy;
-                                    if(d2 < 0.001) d2 = 0.001; 
-                                    
-                                    // Power 2.5 for HD Natural Neighbor look
-                                    let w = 1.0 / Math.pow(d2, 1.25); 
+                                    if(d2 < 0.1) d2 = 0.1; // Prevent div by 0 artifact points
+                                    let w = 1.0 / Math.pow(d2, 1.15); // Glossy decay factor for wide interpolation
                                     num += w * cp.v;
                                     den += w;
                                 }
@@ -1078,43 +1261,37 @@
                             data[idx] = rgb[0];
                             data[idx+1] = rgb[1];
                             data[idx+2] = rgb[2];
-                            data[idx+3] = 190; // Alpha Opacity
+                            data[idx+3] = 255; // Solid inside map bounds
                         }
                     }
                 }
-                ctx.putImageData(imgData, 0, 0);
+                rawCtx.putImageData(imgData, 0, 0);
 
-                // Shapefile Clipping Engine via HTML5 Canvas Composting
+                // Precise Shapefile Clipping Engine via standard Canvas Clipping path
                 if (currentShapefileGeoJSON) {
-                    let maskCanvas = document.createElement('canvas');
-                    maskCanvas.width = canvas.width; maskCanvas.height = canvas.height;
-                    let mctx = maskCanvas.getContext('2d');
-                    mctx.fillStyle = 'black';
-
+                    ctx.beginPath();
                     turf.flatten(currentShapefileGeoJSON).features.forEach(f => {
                         if(f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon')) {
-                            mctx.beginPath();
-                            f.geometry.coordinates.forEach((ring, i) => {
+                            f.geometry.coordinates.forEach((ring) => {
                                 ring.forEach((coord, j) => {
                                     let xy = ll2xy(coord[1], coord[0]);
-                                    if(j === 0) mctx.moveTo(xy.x, xy.y);
-                                    else mctx.lineTo(xy.x, xy.y);
+                                    if(j === 0) ctx.moveTo(xy.x, xy.y);
+                                    else ctx.lineTo(xy.x, xy.y);
                                 });
                             });
-                            mctx.fill('evenodd');
                         }
                     });
-
-                    ctx.globalCompositeOperation = 'destination-in';
-                    ctx.drawImage(maskCanvas, 0, 0);
-                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.clip('evenodd'); // Perfectly masks out anything beyond boundaries
                 }
 
+                // Draw the interpolated surface directly onto the clipped context
+                ctx.drawImage(rawCanvas, 0, 0);
+
                 let dataUrl = canvas.toDataURL();
-                idwOverlay = L.imageOverlay(dataUrl, bounds, { opacity: 0.85 }).addTo(leafletMap);
+                idwOverlay = L.imageOverlay(dataUrl, bounds, { opacity: 0.90 }).addTo(leafletMap);
 
                 document.getElementById('idw-loading-status').classList.add('hidden');
-            }, 50); // Yield thread
+            }, 50); 
         }
 
         function updateMapVisuals() {
@@ -1122,14 +1299,14 @@
             initMap(); 
             mapMarkersLayer.clearLayers();
             const cols = {
-                i_gt: document.getElementById('col-imp-gt').value, i_lt: document.getElementById('col-imp-lt').value,
-                d_gt: document.getElementById('col-det-gt').value, d_lt: document.getElementById('col-det-lt').value, u: document.getElementById('col-unc').value
+                i: document.getElementById('col-imp').value,
+                d: document.getElementById('col-det').value, 
+                u: document.getElementById('col-unc').value
             };
             
             let bounds = [];
             let validPoints = [];
 
-            // Draw Markers
             let rows = globalAggregatedDataCache.data.rows;
             for(let i=0; i<rows.length; i++) {
                 let r = rows[i];
@@ -1137,8 +1314,8 @@
                 if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
                     let c = r.chem[globalAggregatedDataCache.param]; if(!c) continue;
                     let mCol = cols.u;
-                    if(c.s === 'Improved') mCol = (c.p >= -20) ? cols.i_lt : cols.i_gt;
-                    else if(c.s === 'Deteriorated') mCol = (c.p <= 20) ? cols.d_lt : cols.d_gt;
+                    if(c.s === 'Improved') mCol = cols.i;
+                    else if(c.s === 'Deteriorated') mCol = cols.d;
                     
                     let mrk = L.circleMarker([lat, lon], { radius: currentPointRadius, fillColor: mCol, color: '#fff', weight: 1, fillOpacity: 0.9, shadowColor: '#000', shadowBlur: 3 });
                     mrk.bindPopup(`<div style="font-family:inherit;font-size:12px;color:#333"><b style="color:#2563eb">${r.id}</b><br>${r.loc}, ${r.state}<hr style="margin:5px 0"><b>${getParamLabel(globalAggregatedDataCache.param)}</b>: ${c.b} &rarr; ${c.c}<br><span style="display:inline-block;background:${mCol};color:#fff;padding:3px 6px;border-radius:4px;margin-top:4px;font-weight:bold;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4)">${c.s}</span></div>`);
@@ -1172,9 +1349,10 @@
                 shp(e.target.result).then(function(geojson) {
                     currentShapefileGeoJSON = geojson;
                     shpLayer.clearLayers();
-                    L.geoJSON(geojson, { style: { color: "#3b82f6", weight: 2, fillOpacity: 0.05 } }).addTo(shpLayer);
+                    // Sharp glossy blue highlight for bounds as shown in reference image
+                    L.geoJSON(geojson, { style: { color: "#3b82f6", weight: 3, fillOpacity: 0.0, opacity: 1 } }).addTo(shpLayer);
                     if(geojson.bbox) leafletMap.fitBounds([[geojson.bbox[1], geojson.bbox[0]], [geojson.bbox[3], geojson.bbox[2]]]);
-                    updateMapVisuals(); // Regenerates Map + IDW clip
+                    updateMapVisuals();
                 }).catch(err => alert("Error parsing shapefile: " + err));
             };
             reader.readAsArrayBuffer(file);
@@ -1246,9 +1424,7 @@
                     row.eachCell({ includeEmpty: true }, (cell, c) => {
                         cell.alignment = { horizontal: (c >= 2 && c <= H+2) ? 'left' : 'center' };
                         cell.border = { top: {style:'thin', color:{argb:'FFEEEEEE'}}, bottom: {style:'thin', color:{argb:'FFEEEEEE'}} };
-                        
                         if(s.s === 0) cell.font = { color: { argb: 'FF94A3B8'} };
-
                         if(c >= H+4 && c <= H+9) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
                         else if(c >= H+10 && c <= H+15) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
                         else if(c >= H+16 && c <= H+17) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
@@ -1364,7 +1540,6 @@
             }
             r += 2;
 
-            // This perfectly safely loops all 5000+ rows because ExcelJS doesn't use the DOM thread
             for(let i=0; i<rows.length; i++) {
                 let rowData = rows[i];
                 let rv = [i+1, rowData.id, rowData.state, rowData.district, rowData.block, rowData.loc];
@@ -1443,7 +1618,6 @@
             saveAs(new Blob([buffer]), `Groundwater_Full_Report_All_Params.xlsx`);
         }
 
-        // Initialize Empty App State on Load
         function initEmptyState() {
             setupDetailedHeadersEmpty();
             renderGeneralDOM({}, 'State');
@@ -1452,6 +1626,9 @@
             ['base-period', 'compare-period', 'parameter-select'].forEach(id => {
                 document.getElementById(id).innerHTML = '<option>-- Pending Upload --</option>';
             });
+            
+            initDonutChart();
+            updateDonutChart(0, 0); // initialize empty chart
         }
         
         window.onload = initEmptyState;
