@@ -405,8 +405,8 @@
                     <!-- Color Picker Panel -->
                     <div class="flex flex-wrap items-center gap-3 text-[10px] font-bold text-muted">
                         <strong class="text-blue-500 uppercase tracking-wide"><i class="fa-solid fa-palette mr-1"></i> Legend:</strong>
-                        <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Improved <input type="color" id="col-imp" value="#10b981" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
-                        <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Deteriorated <input type="color" id="col-det" value="#ef4444" class="w-5 h-5 rounded border-0 cursor-pointer" onchange="updateMapVisuals()"></label>
+                        <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Improved <input type="color" id="col-imp" value="#10b981" class="w-5 h-5 rounded border-0 cursor-pointer bg-transparent" onchange="updateMapVisuals()"></label>
+                        <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Deteriorated <input type="color" id="col-det" value="#ef4444" class="w-5 h-5 rounded border-0 cursor-pointer bg-transparent" onchange="updateMapVisuals()"></label>
                     </div>
 
                     <!-- Size & Advanced Tools -->
@@ -418,9 +418,9 @@
                         
                         <div class="flex items-center gap-2 bg-black/5 dark:bg-black/20 p-1 rounded-lg border border-black/10 dark:border-white/10 text-muted">
                             <span class="text-[10px] uppercase font-bold ml-2">Point Size</span>
-                            <button onclick="changeRadius(-1)" class="w-6 h-6 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-sm">-</button>
-                            <span id="radius-val" class="w-4 text-center text-xs font-bold">6</span>
-                            <button onclick="changeRadius(1)" class="w-6 h-6 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-sm">+</button>
+                            <button onclick="changeRadius(-1)" class="w-5 h-5 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-xs">-</button>
+                            <span id="radius-val" class="w-3 text-center text-[10px] font-bold">6</span>
+                            <button onclick="changeRadius(1)" class="w-5 h-5 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-xs">+</button>
                         </div>
                         
                         <label class="flex items-center gap-2 bg-indigo-100 dark:bg-indigo-900/40 p-2 rounded-lg border border-indigo-300 dark:border-indigo-500/50 cursor-pointer text-xs font-bold text-indigo-700 dark:text-indigo-200 transition" title="Applies Fast HD Grid Search IDW">
@@ -432,7 +432,7 @@
                             <select id="map-parameter-select" class="glass-input text-xs p-1 rounded font-bold text-emerald-700 dark:text-emerald-400 bg-transparent border-none outline-none" onchange="syncParamSelect(this.value)"></select>
                         </label>
 
-                        <div class="flex items-center gap-2 bg-blue-900/10 p-1.5 rounded-lg border border-blue-500/30">
+                        <div class="flex flex-wrap items-center gap-2 bg-blue-900/10 p-1.5 rounded-lg border border-blue-500/30">
                             <label class="text-xs font-black bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg cursor-pointer transition shadow-lg">
                                 <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Boundary (.zip)
                                 <input type="file" id="shp-upload" accept=".zip" class="hidden" onchange="handleShapefile(event)">
@@ -444,6 +444,19 @@
                                 <span class="text-[10px] uppercase font-bold text-blue-500">Filter Boundary:</span>
                                 <select id="shp-prop-select" class="glass-input text-xs p-1 rounded font-bold text-blue-400 bg-transparent border-none outline-none" onchange="updateShpValues()"></select>
                                 <select id="shp-val-select" class="glass-input text-xs p-1 rounded font-bold text-blue-400 bg-transparent border-none outline-none max-w-[150px]" onchange="updateMapVisuals()"></select>
+                            </div>
+                            
+                            <!-- Boundary Style Controls -->
+                            <div id="shp-style-container" class="hidden items-center gap-2 ml-2 pl-2 border-l border-blue-500/30">
+                                 <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1 rounded cursor-pointer border border-black/10 dark:border-white/10 text-[10px] font-bold text-blue-500 uppercase">
+                                     Color <input type="color" id="shp-color" value="#3b82f6" class="w-4 h-4 rounded border-0 cursor-pointer bg-transparent" onchange="updateBoundaryStyle()">
+                                 </label>
+                                 <div class="flex items-center gap-1 bg-black/5 dark:bg-black/20 p-1 rounded border border-black/10 dark:border-white/10 text-muted">
+                                     <span class="text-[10px] uppercase font-bold text-blue-500 ml-1">Thickness</span>
+                                     <button onclick="changeShpWeight(-1)" class="w-4 h-4 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-xs">-</button>
+                                     <span id="shp-weight-val" class="w-3 text-center text-[10px] font-bold">3</span>
+                                     <button onclick="changeShpWeight(1)" class="w-4 h-4 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-xs">+</button>
+                                 </div>
                             </div>
                         </div>
                     </div>
@@ -575,6 +588,27 @@
         let currentPointRadius = 6;
         let detailedTableLimit = 1000;
         let echartInstance = null;
+
+        let currentShpWeight = 3;
+
+        function changeShpWeight(delta) {
+            currentShpWeight = Math.max(1, Math.min(10, currentShpWeight + delta));
+            document.getElementById('shp-weight-val').innerText = currentShpWeight;
+            updateBoundaryStyle();
+        }
+
+        function updateBoundaryStyle() {
+            if (!shpLayer || !currentShapefileGeoJSON) return;
+            const colorInput = document.getElementById('shp-color');
+            const color = colorInput ? colorInput.value : "#3b82f6";
+            let features = getFeaturesToClip();
+            
+            shpLayer.clearLayers();
+            L.geoJSON(features.length > 0 ? features : currentShapefileGeoJSON, { 
+                style: { color: color, weight: currentShpWeight, fillOpacity: 0.0, opacity: 1 },
+                interactive: false 
+            }).addTo(shpLayer);
+        }
 
         function syncParamSelect(val) {
             document.getElementById('parameter-select').value = val;
@@ -1648,8 +1682,10 @@
         }
 
         function updateMapVisuals() {
-            if(!globalAggregatedDataCache) return;
             initMap(); 
+            updateBoundaryStyle(); // Ensure shapefile boundary matches filters and selected styles
+            
+            if(!globalAggregatedDataCache) return;
             mapMarkersLayer.clearLayers();
             const cols = {
                 i: document.getElementById('col-imp').value,
@@ -1725,12 +1761,17 @@
                         Array.from(props).sort().forEach(p => propSel.add(new Option(p, p)));
                         document.getElementById('shp-val-select').innerHTML = '<option value="All">All Regions</option>';
                         
-                        let container = document.getElementById('shp-filter-container');
-                        container.classList.remove('hidden');
-                        container.classList.add('flex');
+                        let filterContainer = document.getElementById('shp-filter-container');
+                        filterContainer.classList.remove('hidden');
+                        filterContainer.classList.add('flex');
+                        
+                        let styleContainer = document.getElementById('shp-style-container');
+                        styleContainer.classList.remove('hidden');
+                        styleContainer.classList.add('flex');
                     }
 
-                    updateMapVisuals(); // Centralized drawing function handles clipping
+                    if(geojson.bbox) leafletMap.fitBounds([[geojson.bbox[1], geojson.bbox[0]], [geojson.bbox[3], geojson.bbox[2]]]);
+                    updateMapVisuals(); // Centralized drawing function handles clipping and rendering
                 }).catch(err => alert("Error parsing shapefile: " + err));
             };
             reader.readAsArrayBuffer(file);
@@ -1739,11 +1780,22 @@
         function clearShapefiles() { 
             if(shpLayer) shpLayer.clearLayers(); 
             currentShapefileGeoJSON = null; 
-            let container = document.getElementById('shp-filter-container');
-            if(container) {
-                container.classList.add('hidden');
-                container.classList.remove('flex');
+            
+            let filterContainer = document.getElementById('shp-filter-container');
+            if(filterContainer) {
+                filterContainer.classList.add('hidden');
+                filterContainer.classList.remove('flex');
             }
+            
+            let styleContainer = document.getElementById('shp-style-container');
+            if(styleContainer) {
+                styleContainer.classList.add('hidden');
+                styleContainer.classList.remove('flex');
+            }
+            
+            let shpUploadInput = document.getElementById('shp-upload');
+            if(shpUploadInput) shpUploadInput.value = '';
+
             updateMapVisuals(); 
         }
 
@@ -1964,7 +2016,7 @@
                 buildUnifiedPermSheet(wsPerm, [{param, data}], agg);
             }
 
-            const wsMatrix = wb.addWorksheet("Matrix");
+            const wsMatrix = ws.addWorksheet("Matrix");
             buildMatrixSheetRows(wsMatrix, data.rows);
 
             const buffer = await wb.xlsx.writeBuffer();
