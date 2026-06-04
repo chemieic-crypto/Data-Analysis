@@ -20,6 +20,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
     <!-- Apache ECharts for 3D Donut Chart -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <!-- jStat for Statistical Hypothesis Testing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -321,6 +323,7 @@
                 <div class="flex flex-wrap gap-3">
                     <button onclick="switchTab('tab-general')" id="btn-tab-general" class="tab-3d active px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-chart-pie mr-1"></i>General Summary</button>
                     <button onclick="switchTab('tab-perm')" id="btn-tab-perm" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i>Permissible Limits</button>
+                    <button onclick="switchTab('tab-stats')" id="btn-tab-stats" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-calculator mr-1"></i>Hypothesis Testing</button>
                     <button onclick="switchTab('tab-availability')" id="btn-tab-availability" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-database mr-1"></i>Data Availability</button>
                     <button onclick="switchTab('tab-detailed')" id="btn-tab-detailed" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-table-list mr-1"></i>Detailed Matrix</button>
                     <button onclick="switchTab('tab-map')" id="btn-tab-map" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-map-location-dot mr-1"></i>Advanced Map</button>
@@ -362,7 +365,53 @@
                 </div>
             </div>
 
-            <!-- Tab 3: Data Availability -->
+            <!-- Tab 3: Hypothesis Testing (Stats) -->
+            <div id="tab-stats" class="tab-content hidden p-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10 gap-4">
+                    <div class="flex items-center gap-3">
+                        <h3 class="font-bold text-sm text-blue-600 dark:text-blue-400"><i class="fa-solid fa-microscope mr-2"></i>Paired T-Test & Wilcoxon Signed-Rank Test</h3>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <label class="text-[11px] font-extrabold text-muted uppercase tracking-wider">Confidence Level:</label>
+                        <select id="confidence-level" class="glass-input rounded-md p-1.5 text-sm" onchange="if(globalAggregatedDataCache) renderStatsDOM(globalAggregatedDataCache.data.rows)">
+                            <option value="0.90">90% (α=0.10)</option>
+                            <option value="0.95" selected>95% (α=0.05)</option>
+                            <option value="0.99">99% (α=0.01)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg relative max-h-[500px]">
+                    <table class="report-table relative" id="stats-table">
+                        <thead class="sticky top-0 z-30 shadow-md">
+                            <tr>
+                                <th rowspan="2" class="frozen-col" style="left:0;">Parameter</th>
+                                <th rowspan="2">Valid Pairs (n)</th>
+                                <th colspan="2" class="bg-blue-600/30">Mean Values</th>
+                                <th colspan="6" class="bg-indigo-600/40">Student's Paired T-Test</th>
+                                <th colspan="3" class="bg-emerald-600/30">Wilcoxon Signed-Rank</th>
+                            </tr>
+                            <tr>
+                                <th class="bg-blue-600/20">Base</th>
+                                <th class="bg-blue-600/20">Compare</th>
+                                <th class="bg-indigo-600/20">DF</th>
+                                <th class="bg-indigo-600/20">Mean Diff</th>
+                                <th class="bg-indigo-600/20">T-Calc</th>
+                                <th class="bg-indigo-600/20">T-Crit</th>
+                                <th class="bg-indigo-600/20">P-Value</th>
+                                <th class="bg-indigo-600/20">Significant?</th>
+                                <th class="bg-emerald-600/20">W-Stat</th>
+                                <th class="bg-emerald-600/20">P-Val</th>
+                                <th class="bg-emerald-600/20">Significant?</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stats-tbody" class="z-10">
+                            <tr><td colspan="15" class="py-10 text-center text-muted font-bold">Please upload and map a dataset to view statistical analysis.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 4: Data Availability -->
             <div id="tab-availability" class="tab-content hidden p-4">
                 <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg">
                     <table class="report-table" id="availability-table">
@@ -1190,6 +1239,7 @@
                 renderGeneralDOM(data.stats, agg);
                 if(data.permLimit !== null) renderPermDOM(data.permStats, agg);
                 renderDetailedDOM(data.rows);
+                renderStatsDOM(data.rows);
                 
                 generateAvailabilitySummary(bp, cp, ms);
                 updateMapVisuals();
@@ -1800,6 +1850,114 @@
         }
 
         // =========================================================================
+        // STATISTICAL HYPOTHESIS TESTING (T-TEST & WILCOXON)
+        // =========================================================================
+
+        function normalCDF(x) {
+            const t = 1 / (1 + 0.2316419 * Math.abs(x));
+            const d = 0.3989423 * Math.exp(-x * x / 2);
+            const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+            return x > 0 ? 1 - p : p;
+        }
+
+        function runPairedTTest(pre, post, conf) {
+            const n = pre.length;
+            if (n < 2) return { t: 0, p: 1, tab: 0, meanDiff: 0, df: 0 };
+            const diffs = pre.map((v, i) => v - post[i]);
+            const meanDiff = jStat.mean(diffs);
+            const stdDiff = jStat.stdev(diffs, true);
+            const sem = stdDiff / Math.sqrt(n);
+            const t = meanDiff / sem;
+            const df = n - 1;
+            const p = 2 * (1 - jStat.studentt.cdf(Math.abs(t), df));
+            const tab = jStat.studentt.inv(1 - (1 - conf) / 2, df);
+            return { t: isFinite(t)?t:0, p: isFinite(p)?p:1, tab: isFinite(tab)?tab:0, meanDiff, df };
+        }
+
+        function runWilcoxon(a, b) {
+            let diffs = a.map((v, i) => v - b[i]).filter(d => d !== 0);
+            const n = diffs.length;
+            if (n < 5) return { w: 0, p: 1.0 };
+            let sorted = diffs.map(d => ({ d, abs: Math.abs(d) })).sort((x, y) => x.abs - y.abs);
+            for (let i = 0, rank = 1; i < n; ) {
+                let j = i; while (j < n && sorted[j].abs === sorted[i].abs) j++;
+                let avgRank = (i + 1 + j) / 2;
+                for (let k = i; k < j; k++) sorted[k].rank = avgRank;
+                i = j;
+            }
+            let wPlus = 0; sorted.forEach(o => { if (o.d > 0) wPlus += o.rank; });
+            const expected = n * (n + 1) / 4;
+            const sigma = Math.sqrt(n * (n + 1) * (2 * n + 1) / 24);
+            const z = (wPlus - expected) / sigma;
+            const p = 2 * (1 - normalCDF(Math.abs(z)));
+            return { w: wPlus, p: isFinite(p) ? p : 1 };
+        }
+
+        function getStatsData(rows, conf) {
+            let statsData = [];
+            activeParametersInFile.forEach(p => {
+                let preVals = [], postVals = [];
+                rows.forEach(r => {
+                    let vb = r.chem[p].b, vc = r.chem[p].c;
+                    if (vb !== '--' && vc !== '--') { 
+                        preVals.push(parseFloat(vb)); 
+                        postVals.push(parseFloat(vc)); 
+                    }
+                });
+                if (preVals.length < 2) return;
+                
+                const pTest = runPairedTTest(preVals, postVals, conf);
+                const wxTest = runWilcoxon(preVals, postVals);
+                
+                statsData.push({
+                    param: getParamLabel(p),
+                    n: preVals.length,
+                    meanPre: jStat.mean(preVals),
+                    meanPost: jStat.mean(postVals),
+                    pTest, wxTest
+                });
+            });
+            return statsData;
+        }
+
+        function renderStatsDOM(rows) {
+            const confStr = document.getElementById('confidence-level').value;
+            const conf = parseFloat(confStr);
+            const alpha = 1 - conf;
+            const tbody = document.getElementById('stats-tbody');
+            
+            const statsData = getStatsData(rows, conf);
+            
+            if (statsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="15" class="py-10 text-center text-muted font-bold">Insufficient paired data (n < 2) for statistical testing.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            statsData.forEach((s, i) => {
+                let tSig = s.pTest.p < alpha;
+                let wSig = s.wxTest.p < alpha;
+                
+                html += `<tr>
+                    <td class="frozen-col font-bold text-blue-500 dark:text-blue-400" style="left:0; z-index: 10;">${s.param}</td>
+                    <td class="font-bold bg-black/5 dark:bg-white/5">${s.n}</td>
+                    <td class="font-bold text-amber-500 dark:text-amber-400">${s.meanPre.toFixed(2)}</td>
+                    <td class="font-bold text-blue-500 dark:text-blue-400">${s.meanPost.toFixed(2)}</td>
+                    <td class="text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.df}</td>
+                    <td class="text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.meanDiff.toFixed(3)}</td>
+                    <td class="text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.t.toFixed(3)}</td>
+                    <td class="text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.tab.toFixed(3)}</td>
+                    <td class="text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.p.toFixed(4)}</td>
+                    <td class="bg-indigo-500/10 dark:bg-indigo-900/10"><span class="badge-status ${tSig ? 'badge-improved' : 'badge-deteriorated'}">${tSig ? 'YES' : 'NO'}</span></td>
+                    <td class="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-900/10">${s.wxTest.w.toFixed(1)}</td>
+                    <td class="text-emerald-500 dark:text-emerald-300 bg-emerald-500/10 dark:bg-emerald-900/10">${s.wxTest.p.toFixed(4)}</td>
+                    <td class="bg-emerald-500/10 dark:bg-emerald-900/10"><span class="badge-status ${wSig ? 'badge-improved' : 'badge-deteriorated'}">${wSig ? 'YES' : 'NO'}</span></td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // =========================================================================
         // EXCELJS - TRUE EXCEL UNIFIED TABLE GENERATOR ENGINE 
         // =========================================================================
 
@@ -1982,45 +2140,72 @@
                 
                 for(let j=0; j<activeParametersInFile.length; j++) {
                     let p = activeParametersInFile[j];
-                    let chem = rowData.chem[p]; 
-                    rv.push(chem.b, chem.c, chem.s); styles.push(chem.s);
+                    let c = rowData.chem[p];
+                    rv.push(c.b, c.c, c.s);
+                    styles.push(c.s);
                 }
                 
-                let row = ws.getRow(r); row.values = rv;
-                row.eachCell({ includeEmpty: true }, (cell, c) => {
-                    cell.alignment = { horizontal: 'center' };
-                    cell.border = { top: {style:'thin', color:{argb:'FFEEEEEE'}}, bottom: {style:'thin', color:{argb:'FFEEEEEE'}} };
-                    if (c > 6) {
-                        let status = styles[Math.floor((c - 7) / 3)];
-                        if(status === 'Improved') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
-                        else if(status === 'Deteriorated') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
-                        else if(status === 'Unchanged') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
-                        else if(status === '#NA') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } }; // Gray color for #NA
-                    }
-                });
+                let row = ws.getRow(r);
+                row.values = rv;
+                let cBase = 7;
+                for(let j=0; j<styles.length; j++) {
+                    let stat = styles[j];
+                    let statCell = row.getCell(cBase + 2);
+                    if(stat === 'Improved') { statCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }; statCell.font = { color: { argb: 'FF065F46' }, bold: true }; }
+                    else if(stat === 'Deteriorated') { statCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }; statCell.font = { color: { argb: 'FF991B1B' }, bold: true }; }
+                    else if(stat === 'Unchanged') { statCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; statCell.font = { color: { argb: 'FF475569' }, bold: true }; }
+                    cBase += 3;
+                }
                 r++;
             }
-            ws.columns.forEach(col => { col.width = 15; });
         }
 
         async function exportCurrentToExcel() {
-            if(!globalAggregatedDataCache) return alert("Please generate a report first.");
+            if (!globalAggregatedDataCache) return alert("Please run an analysis first.");
+            
+            const param = globalAggregatedDataCache.param;
+            const data = globalAggregatedDataCache.data;
             const wb = new ExcelJS.Workbook();
-            const { param, agg, data } = globalAggregatedDataCache;
-
-            const wsGen = wb.addWorksheet("General");
-            buildUnifiedGeneralSheet(wsGen, [{param, data}], agg); 
-
-            if(data.permLimit !== null) {
-                const wsPerm = wb.addWorksheet("Limits");
-                buildUnifiedPermSheet(wsPerm, [{param, data}], agg);
-            }
-
-            const wsMatrix = ws.addWorksheet("Matrix");
+            
+            const wsMatrix = wb.addWorksheet("Matrix");
             buildMatrixSheetRows(wsMatrix, data.rows);
+
+            // Export Statistical Data
+            const conf = parseFloat(document.getElementById('confidence-level').value);
+            const statsData = getStatsData(data.rows, conf);
+            if (statsData.length > 0) {
+                const wsStats = wb.addWorksheet("Statistics");
+                buildStatsSheet(wsStats, statsData, conf);
+            }
 
             const buffer = await wb.xlsx.writeBuffer();
             saveAs(new Blob([buffer]), `Groundwater_Report_${sanitizeSheetName(param)}.xlsx`);
+        }
+        
+        function buildStatsSheet(ws, statsData, conf) {
+            let r = 1;
+            ws.getCell(`A${r}`).value = `Paired Statistical Analysis (Confidence Level: ${conf*100}%)`;
+            ws.getCell(`A${r}`).font = { size: 14, bold: true, color: { argb: 'FF1D4ED8' } };
+            r += 2;
+            
+            const h1 = ["Parameter", "Valid Pairs (n)", "Mean Base", "Mean Compare", "T-Test DF", "T-Test Mean Diff", "T-Test T-Calc", "T-Test T-Crit", "T-Test P-Value", "T-Test Significant?", "Wilcoxon W-Stat", "Wilcoxon P-Val", "Wilcoxon Significant?"];
+            ws.getRow(r).values = h1;
+            ws.getRow(r).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            ws.getRow(r).eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } });
+            r++;
+
+            const alpha = 1 - conf;
+            statsData.forEach((s) => {
+                let row = ws.getRow(r);
+                row.values = [
+                    s.param, s.n, parseFloat(s.meanPre.toFixed(2)), parseFloat(s.meanPost.toFixed(2)),
+                    s.pTest.df, parseFloat(s.pTest.meanDiff.toFixed(3)), parseFloat(s.pTest.t.toFixed(3)), 
+                    parseFloat(s.pTest.tab.toFixed(3)), parseFloat(s.pTest.p.toFixed(4)), s.pTest.p < alpha ? "YES" : "NO",
+                    parseFloat(s.wxTest.w.toFixed(1)), parseFloat(s.wxTest.p.toFixed(4)), s.wxTest.p < alpha ? "YES" : "NO"
+                ];
+                r++;
+            });
+            ws.columns.forEach(col => { col.width = 16; });
         }
 
         async function exportAllSummariesToExcel() {
@@ -2058,6 +2243,7 @@
             setupDetailedHeadersEmpty();
             renderGeneralDOM({}, 'State');
             renderPermDOM({}, 'State');
+            document.getElementById('stats-tbody').innerHTML = '<tr><td colspan="15" class="py-10 text-center text-muted font-bold">Please upload and map a dataset to view statistical analysis.</td></tr>';
             
             ['base-period', 'compare-period', 'parameter-select'].forEach(id => {
                 document.getElementById(id).innerHTML = '<option>-- Pending Upload --</option>';
