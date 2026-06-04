@@ -75,7 +75,9 @@
             --card-3d-shadow: 0 6px 12px -2px rgba(0,0,0,0.15), inset 0 -3px 0 rgba(0,0,0,0.05), inset 0 2px 0 rgba(255,255,255,1);
         }
 
-        body { background: radial-gradient(circle at top left, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%); color: var(--text-main); transition: background 0.4s ease, color 0.4s ease; overflow-x: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, button, input, select, textarea, th, td, .report-table, span, div { font-family: 'Times New Roman', Times, serif !important; }
+        .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important; }
+        body { background: radial-gradient(circle at top left, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%); color: var(--text-main); transition: background 0.4s ease, color 0.4s ease; overflow-x: hidden; }
         .glass-card { background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 1rem; }
         .glass-input { background-color: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-main); font-weight: 600;}
         
@@ -127,7 +129,17 @@
         .tab-3d { background: linear-gradient(180deg, #475569 0%, #334155 100%); border: 1px solid #1e293b; color: #f8fafc; box-shadow: 0 4px 0 #1e293b, 0 4px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1); transition: all 0.15s; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.5); transform: translateY(0px);}
         .tab-3d:hover { background: linear-gradient(180deg, #64748b 0%, #475569 100%); }
         .tab-3d:active { transform: translateY(4px); box-shadow: 0 0 0 #1e293b, inset 0 2px 4px rgba(0,0,0,0.3); }
-        .tab-3d.active { background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%); border: 1px solid #1e3a8a; box-shadow: 0 3px 0 #1e3a8a, inset 0 1px 0 rgba(255,255,255,0.3); transform: translateY(1px); color: white; }
+        
+        /* Colored Tab Highlights */
+        .tab-3d.active { transform: translateY(1px); color: white; }
+        #btn-tab-general.active { background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%); border-color: #1e3a8a; box-shadow: 0 3px 0 #1e3a8a, inset 0 1px 0 rgba(255,255,255,0.3); }
+        #btn-tab-perm.active { background: linear-gradient(180deg, #f43f5e 0%, #be123c 100%); border-color: #881337; box-shadow: 0 3px 0 #881337, inset 0 1px 0 rgba(255,255,255,0.3); }
+        #btn-tab-param-summary.active { background: linear-gradient(180deg, #f59e0b 0%, #b45309 100%); border-color: #78350f; box-shadow: 0 3px 0 #78350f, inset 0 1px 0 rgba(255,255,255,0.3); }
+        #btn-tab-stats.active { background: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%); border-color: #4c1d95; box-shadow: 0 3px 0 #4c1d95, inset 0 1px 0 rgba(255,255,255,0.3); }
+        #btn-tab-availability.active { background: linear-gradient(180deg, #10b981 0%, #047857 100%); border-color: #064e3b; box-shadow: 0 3px 0 #064e3b, inset 0 1px 0 rgba(255,255,255,0.3); }
+        #btn-tab-detailed.active { background: linear-gradient(180deg, #64748b 0%, #334155 100%); border-color: #0f172a; box-shadow: 0 3px 0 #0f172a, inset 0 1px 0 rgba(255,255,255,0.3); }
+        #btn-tab-map.active { background: linear-gradient(180deg, #06b6d4 0%, #0369a1 100%); border-color: #0c4a6e; box-shadow: 0 3px 0 #0c4a6e, inset 0 1px 0 rgba(255,255,255,0.3); }
+        #btn-tab-methodology.active { background: linear-gradient(180deg, #ec4899 0%, #be185d 100%); border-color: #831843; box-shadow: 0 3px 0 #831843, inset 0 1px 0 rgba(255,255,255,0.3); }
 
         .report-table { border-collapse: separate; border-spacing: 0; border-radius: 0.5rem; width: 100%; text-align: center; border: 1px solid var(--table-td-border); }
         .report-table th { background: var(--table-th-bg); color: #ffffff; border-bottom: 2px solid var(--table-th-border); border-right: 1px solid rgba(0,0,0,0.2); padding: 0.65rem 0.5rem; font-size: 0.8rem; font-weight: 700; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
@@ -1335,6 +1347,7 @@
                 document.getElementById('perm-table-container').classList.toggle('hidden', data.permLimit === null);
                 document.getElementById('no-perm-msg').classList.toggle('hidden', data.permLimit !== null);
 
+                setupDetailedHeaders(baseLabel, compLabel); // Ensures Detailed Matrix headers match active periods
                 renderGeneralDOM(data.stats, agg);
                 if(data.permLimit !== null) renderPermDOM(data.permStats, agg, baseLabel, compLabel);
                 renderParamSummaryDOM(data.rows, baseLabel, compLabel, agg);
@@ -1525,7 +1538,7 @@
                 wx_html = `<p class="text-rose-500 mt-2">No non-zero differences available to rank.</p>`;
             } else {
                 let sorted = nonZeroDiffs.map(d => ({ d, abs: Math.abs(d) })).sort((x, y) => x.abs - y.abs);
-                for (let i = 0, rank = 1; i < sorted.length; ) {
+                for (let i = 0; i < sorted.length; ) {
                     let j = i; while (j < sorted.length && sorted[j].abs === sorted[i].abs) j++;
                     let avgRank = (i + 1 + j) / 2;
                     for (let k = i; k < j; k++) sorted[k].rank = avgRank;
@@ -2148,7 +2161,7 @@
             if (n < 2) return { t: 0, p: 1, tab: 0, meanDiff: 0, df: 0 };
             const diffs = pre.map((v, i) => v - post[i]);
             const meanDiff = jStat.mean(diffs);
-            const stdDiff = jStat.stdev(diffs, true);
+            const stdDiff = jStat.stdev(diffs, true); // Sample standard deviation
             const sem = stdDiff / Math.sqrt(n);
             const df = n - 1;
             const tab = jStat.studentt.inv(1 - (1 - conf) / 2, df);
@@ -2167,22 +2180,45 @@
         }
 
         function runWilcoxon(a, b) {
-            let diffs = a.map((v, i) => v - b[i]).filter(d => d !== 0);
+            let diffs = a.map((v, i) => v - b[i]).filter(d => d !== 0); // Exclude zero differences natively
             const n = diffs.length;
-            if (n < 5) return { w: 0, p: 1.0 };
+            if (n < 5) return { w: 0, p: 1.0, n_eff: n }; // Fallback for extremely small samples
+            
             let sorted = diffs.map(d => ({ d, abs: Math.abs(d) })).sort((x, y) => x.abs - y.abs);
-            for (let i = 0, rank = 1; i < n; ) {
-                let j = i; while (j < n && sorted[j].abs === sorted[i].abs) j++;
-                let avgRank = (i + 1 + j) / 2;
+            let tieSum = 0;
+            
+            // Assign ranks handling tied absolute values securely
+            for (let i = 0; i < n; ) {
+                let j = i; 
+                while (j < n && sorted[j].abs === sorted[i].abs) j++;
+                let t = j - i; // Count of tied items
+                if (t > 1) {
+                    tieSum += (Math.pow(t, 3) - t);
+                }
+                let avgRank = (i + 1 + j) / 2; // Arithmetically identical to averaging the actual ranks
                 for (let k = i; k < j; k++) sorted[k].rank = avgRank;
                 i = j;
             }
-            let wPlus = 0; sorted.forEach(o => { if (o.d > 0) wPlus += o.rank; });
+            
+            let wPlus = 0; 
+            sorted.forEach(o => { if (o.d > 0) wPlus += o.rank; });
+            
             const expected = n * (n + 1) / 4;
-            const sigma = Math.sqrt(n * (n + 1) * (2 * n + 1) / 24);
-            const z = (wPlus - expected) / sigma;
+            // Apply required tie-correction algorithm to the variance formula to prevent p-value inflation
+            const variance = (n * (n + 1) * (2 * n + 1) / 24) - (tieSum / 48);
+            const sigma = Math.sqrt(Math.max(variance, 0.0001)); 
+            
+            // Apply Continuity Correction for normal approximation (makes p-value highly accurate)
+            let z = 0;
+            if (wPlus > expected) {
+                z = (wPlus - 0.5 - expected) / sigma;
+            } else if (wPlus < expected) {
+                z = (wPlus + 0.5 - expected) / sigma;
+            }
+            
             const p = 2 * (1 - normalCDF(Math.abs(z)));
-            return { w: wPlus, p: isFinite(p) ? p : 1 };
+            
+            return { w: wPlus, p: isFinite(p) ? p : 1, n_eff: n };
         }
 
         function getStatsData(rows, conf) {
@@ -2233,7 +2269,8 @@
                 // Logic Fix: Distinguish between Significant Improvement vs Significant Deterioration
                 let tBadge = tSig ? (s.meanPre > s.meanPost ? '<span class="badge-status badge-improved">YES (Improved)</span>' : '<span class="badge-status badge-deteriorated">YES (Deteriorated)</span>') : '<span class="badge-status badge-unchanged">NO</span>';
                 
-                let expectedW = s.n * (s.n + 1) / 4;
+                // Logic Fix: Use Effective N (non-zero pairs) for Expected W
+                let expectedW = s.wxTest.n_eff * (s.wxTest.n_eff + 1) / 4;
                 let wBadge = wSig ? (s.wxTest.w > expectedW ? '<span class="badge-status badge-improved">YES (Improved)</span>' : '<span class="badge-status badge-deteriorated">YES (Deteriorated)</span>') : '<span class="badge-status badge-unchanged">NO</span>';
 
                 html += `<tr>
@@ -2375,7 +2412,7 @@
             ws.columns.forEach(col => { col.width = 15; });
         }
 
-        function buildUnifiedPermSheet(ws, allParamsDataArr, aggLevel, baseLabel) {
+        function buildUnifiedPermSheet(ws, allParamsDataArr, aggLevel, baseLabel, compLabel) {
             let hierCols = getHierarchyColumns(aggLevel);
             let H = hierCols.length;
             let r = 1;
@@ -2454,31 +2491,36 @@
             ws.columns.forEach(col => { col.width = 17; });
         }
 
-        function buildParamSummarySheet(ws, allParamsDataArr, baseLabel, compLabel) {
+        function buildParamSummarySheet(ws, allParamsDataArr, baseLabel, compLabel, aggLevel) {
+            let hierCols = getHierarchyColumns(aggLevel);
+            let H = hierCols.length;
+
             let r = 1;
             ws.getCell(`A${r}`).value = `Parameter Contamination Summary`;
             ws.getCell(`A${r}`).font = { size: 14, bold: true, color: { argb: 'FF1D4ED8' } };
-            ws.mergeCells(r, 1, r, 11);
+            ws.mergeCells(r, 1, r, H + 10);
             r++;
 
-            const h1 = ["S.No.", "Parameter", "Valid Paired Samples", `${baseLabel} > Permissible`, "", `${compLabel} > Permissible`, "", `Newly Contaminated (${baseLabel}<=Lim & ${compLabel}>Lim)`, "", `Remediated / Cleaned (${baseLabel}>Lim & ${compLabel}<=Lim)`, ""];
-            const h2 = ["", "", "", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)"];
+            const h1 = ["S.No.", ...hierCols, "Parameter", "Valid Paired Samples", `${baseLabel} > Permissible`, "", `${compLabel} > Permissible`, "", `Newly Contaminated (${baseLabel}<=Lim & ${compLabel}>Lim)`, "", `Remediated / Cleaned (${baseLabel}>Lim & ${compLabel}<=Lim)`, ""];
+            const h2 = ["", ...hierCols.map(()=>""), "", "", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)"];
             
             ws.getRow(r).values = h1;
             ws.getRow(r+1).values = h2;
             
-            ws.mergeCells(r, 1, r+1, 1); ws.mergeCells(r, 2, r+1, 2); ws.mergeCells(r, 3, r+1, 3);
-            ws.mergeCells(r, 4, r, 5); ws.mergeCells(r, 6, r, 7); ws.mergeCells(r, 8, r, 9); ws.mergeCells(r, 10, r, 11);
+            ws.mergeCells(r, 1, r+1, 1);
+            for(let i=1; i<=H; i++) ws.mergeCells(r, 1+i, r+1, 1+i); 
+            ws.mergeCells(r, H+2, r+1, H+2); ws.mergeCells(r, H+3, r+1, H+3);
+            ws.mergeCells(r, H+4, r, H+5); ws.mergeCells(r, H+6, r, H+7); ws.mergeCells(r, H+8, r, H+9); ws.mergeCells(r, H+10, r, H+11);
 
             for(let i=0; i<2; i++) {
                 ws.getRow(r+i).eachCell((cell, c) => {
                     cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
                     cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                     let bg = 'FF1E3A8A';
-                    if (c===4 || c===5) bg = 'FFBE123C'; // Rose
-                    if (c===6 || c===7) bg = 'FFE11D48'; // Lighter Rose
-                    if (c===8 || c===9) bg = 'FF9F1239'; // Darker Rose
-                    if (c===10 || c===11) bg = 'FF059669'; // Emerald
+                    if (c===H+4 || c===H+5) bg = 'FFBE123C'; // Rose
+                    if (c===H+6 || c===H+7) bg = 'FFE11D48'; // Lighter Rose
+                    if (c===H+8 || c===H+9) bg = 'FF9F1239'; // Darker Rose
+                    if (c===H+10 || c===H+11) bg = 'FF059669'; // Emerald
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                 });
@@ -2487,58 +2529,74 @@
 
             if (allParamsDataArr.length === 0 || allParamsDataArr[0].data.rows.length === 0) return;
             
+            // Group rows by Aggregation Level
+            let grouped = {};
             let rows = allParamsDataArr[0].data.rows; 
+            
+            rows.forEach(rObj => {
+                let keyStr = hierCols.map(col => rObj[col.toLowerCase()] || 'Unknown').join('|');
+                if (!grouped[keyStr]) {
+                    grouped[keyStr] = { keys: hierCols.map(col => rObj[col.toLowerCase()] || 'Unknown'), rows: [] };
+                }
+                grouped[keyStr].rows.push(rObj);
+            });
+
+            let sortedGroups = Object.keys(grouped).sort();
             let idx = 1;
 
-            activeParametersInFile.forEach(p => {
-                const cfg = getParamConfig(p);
-                const limit = cfg.b2;
-                let validPairs = 0, preAbove = 0, postAbove = 0, contaminated = 0, remediated = 0;
-
-                rows.forEach(row => {
-                    let b = row.chem[p].b, c = row.chem[p].c;
-                    if(b !== '--' && c !== '--') {
-                        validPairs++;
-                        if (limit !== null) {
-                            if (b > limit) preAbove++;
-                            if (c > limit) postAbove++;
-                            if (b <= limit && c > limit) contaminated++;
-                            if (b > limit && c <= limit) remediated++;
-                        }
-                    }
-                });
-
-                if(validPairs === 0) return;
+            sortedGroups.forEach(gKey => {
+                let group = grouped[gKey];
                 
-                let rowObj = ws.getRow(r);
-                if (limit === null) {
-                    rowObj.values = [idx++, getParamLabel(p), validPairs, "No permissible limit defined in database", "", "", "", "", "", "", ""];
-                    ws.mergeCells(r, 4, r, 11);
-                    rowObj.getCell(4).alignment = { horizontal: 'center' };
-                    rowObj.getCell(4).font = { italic: true, color: { argb: 'FF94A3B8' } };
-                } else {
-                    rowObj.values = [
-                        idx++, `${getParamLabel(p)} (Limit: ${limit})`, validPairs,
-                        preAbove, calculatePctStr(preAbove, validPairs),
-                        postAbove, calculatePctStr(postAbove, validPairs),
-                        contaminated, calculatePctStr(contaminated, validPairs),
-                        remediated, calculatePctStr(remediated, validPairs)
-                    ];
-                }
-                rowObj.eachCell((cell, c) => {
-                    cell.border = { bottom: {style:'thin', color:{argb:'FFEEEEEE'}} };
-                    cell.alignment = { horizontal: c === 2 ? 'left' : 'center' };
-                    if (c===4 || c===5 || c===6 || c===7 || c===8 || c===9) {
-                        if (limit !== null) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                activeParametersInFile.forEach(p => {
+                    const cfg = getParamConfig(p);
+                    const limit = cfg.b2;
+                    let validPairs = 0, preAbove = 0, postAbove = 0, contaminated = 0, remediated = 0;
+
+                    group.rows.forEach(row => {
+                        let b = row.chem[p].b, c = row.chem[p].c;
+                        if(b !== '--' && c !== '--') {
+                            validPairs++;
+                            if (limit !== null) {
+                                if (b > limit) preAbove++;
+                                if (c > limit) postAbove++;
+                                if (b <= limit && c > limit) contaminated++;
+                                if (b > limit && c <= limit) remediated++;
+                            }
+                        }
+                    });
+
+                    if(validPairs === 0) return;
+                    
+                    let rowObj = ws.getRow(r);
+                    if (limit === null) {
+                        rowObj.values = [idx++, ...group.keys, getParamLabel(p), validPairs, "No permissible limit defined in database", "", "", "", "", "", "", ""];
+                        ws.mergeCells(r, H+4, r, H+11);
+                        rowObj.getCell(H+4).alignment = { horizontal: 'center' };
+                        rowObj.getCell(H+4).font = { italic: true, color: { argb: 'FF94A3B8' } };
+                    } else {
+                        rowObj.values = [
+                            idx++, ...group.keys, `${getParamLabel(p)} (Limit: ${limit})`, validPairs,
+                            preAbove, calculatePctStr(preAbove, validPairs),
+                            postAbove, calculatePctStr(postAbove, validPairs),
+                            contaminated, calculatePctStr(contaminated, validPairs),
+                            remediated, calculatePctStr(remediated, validPairs)
+                        ];
                     }
-                    if (c===10 || c===11) {
-                        if (limit !== null) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
-                    }
+                    rowObj.eachCell((cell, c) => {
+                        cell.border = { bottom: {style:'thin', color:{argb:'FFEEEEEE'}} };
+                        cell.alignment = { horizontal: c <= H+2 ? 'left' : 'center' };
+                        if (c===H+4 || c===H+5 || c===H+6 || c===H+7 || c===H+8 || c===H+9) {
+                            if (limit !== null) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                        }
+                        if (c===H+10 || c===H+11) {
+                            if (limit !== null) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+                        }
+                    });
+                    r++;
                 });
-                r++;
             });
             ws.columns.forEach(col => { col.width = 16; });
-            ws.getColumn(2).width = 30; // Better width for parameter labels
+            ws.getColumn(H+2).width = 30; // Better width for parameter labels
         }
 
         function buildMatrixSheetRows(ws, rows, baseLabel, compLabel) {
@@ -2698,12 +2756,21 @@
 
             const alpha = 1 - conf;
             statsData.forEach((s) => {
+                let tSigStr = "NO";
+                if (s.pTest.p < alpha) tSigStr = s.meanPre > s.meanPost ? "YES (Improved)" : "YES (Deteriorated)";
+                
+                let wSigStr = "NO";
+                if (s.wxTest.p < alpha) {
+                    let expectedW = s.wxTest.n_eff * (s.wxTest.n_eff + 1) / 4;
+                    wSigStr = s.wxTest.w > expectedW ? "YES (Improved)" : "YES (Deteriorated)";
+                }
+
                 let row = ws.getRow(r);
                 row.values = [
                     s.param, s.n, parseFloat(s.meanPre.toFixed(2)), parseFloat(s.meanPost.toFixed(2)),
                     s.pTest.df, parseFloat(s.pTest.meanDiff.toFixed(3)), parseFloat(s.pTest.t.toFixed(3)), 
-                    parseFloat(s.pTest.tab.toFixed(3)), parseFloat(s.pTest.p.toFixed(4)), s.pTest.p < alpha ? "YES" : "NO",
-                    parseFloat(s.wxTest.w.toFixed(1)), parseFloat(s.wxTest.p.toFixed(4)), s.wxTest.p < alpha ? "YES" : "NO"
+                    parseFloat(s.pTest.tab.toFixed(3)), parseFloat(s.pTest.p.toFixed(4)), tSigStr,
+                    parseFloat(s.wxTest.w.toFixed(1)), parseFloat(s.wxTest.p.toFixed(4)), wSigStr
                 ];
                 r++;
             });
