@@ -176,6 +176,9 @@
                 </div>
                 
                 <div class="flex items-center gap-3">
+                    <button onclick="downloadDataTemplate()" class="btn-3d px-4 py-2.5 rounded-lg text-sm font-black shadow-lg" title="Download Standard Data Template">
+                        <i class="fa-solid fa-download mr-1"></i> Template
+                    </button>
                     <label for="dataset-file" class="btn-orange-3d px-5 py-2.5 rounded-lg text-sm font-black shadow-lg cursor-pointer">
                         <i class="fa-solid fa-file-excel mr-2"></i> Upload Dataset
                         <input id="dataset-file" type="file" accept=".csv, .xlsx" class="hidden" onchange="handleFileUpload(event)" />
@@ -323,6 +326,7 @@
                 <div class="flex flex-wrap gap-3">
                     <button onclick="switchTab('tab-general')" id="btn-tab-general" class="tab-3d active px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-chart-pie mr-1"></i>General Summary</button>
                     <button onclick="switchTab('tab-perm')" id="btn-tab-perm" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i>Permissible Limits</button>
+                    <button onclick="switchTab('tab-param-summary')" id="btn-tab-param-summary" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-list-check mr-1"></i>Contamination Report</button>
                     <button onclick="switchTab('tab-stats')" id="btn-tab-stats" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-calculator mr-1"></i>Hypothesis Testing</button>
                     <button onclick="switchTab('tab-availability')" id="btn-tab-availability" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-database mr-1"></i>Data Availability</button>
                     <button onclick="switchTab('tab-detailed')" id="btn-tab-detailed" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-table-list mr-1"></i>Detailed Matrix</button>
@@ -365,6 +369,20 @@
                 </div>
             </div>
 
+            <!-- Tab: Parameter Contamination Summary -->
+            <div id="tab-param-summary" class="tab-content hidden p-4">
+                <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg relative max-h-[600px]">
+                    <table class="report-table relative" id="param-summary-table">
+                        <thead class="sticky top-0 z-30 shadow-md" id="param-summary-thead">
+                            <!-- Injected dynamically based on Aggregation Level -->
+                        </thead>
+                        <tbody id="param-summary-tbody" class="z-10">
+                            <tr><td colspan="15" class="py-10 text-center text-muted font-bold">Please upload and map a dataset to view the contamination report.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Tab 3: Hypothesis Testing (Stats) -->
             <div id="tab-stats" class="tab-content hidden p-4">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10 gap-4">
@@ -373,7 +391,7 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <label class="text-[11px] font-extrabold text-muted uppercase tracking-wider">Confidence Level:</label>
-                        <select id="confidence-level" class="glass-input rounded-md p-1.5 text-sm" onchange="if(globalAggregatedDataCache) renderStatsDOM(globalAggregatedDataCache.data.rows)">
+                        <select id="confidence-level" class="glass-input rounded-md p-1.5 text-sm" onchange="if(globalAggregatedDataCache) renderStatsDOM(globalAggregatedDataCache.data.rows, globalAggregatedDataCache.baseLabel, globalAggregatedDataCache.compLabel)">
                             <option value="0.90">90% (α=0.10)</option>
                             <option value="0.95" selected>95% (α=0.05)</option>
                             <option value="0.99">99% (α=0.01)</option>
@@ -391,8 +409,8 @@
                                 <th colspan="3" class="bg-emerald-600/30">Wilcoxon Signed-Rank</th>
                             </tr>
                             <tr>
-                                <th class="bg-blue-600/20">Base</th>
-                                <th class="bg-blue-600/20">Compare</th>
+                                <th id="th-stat-base" class="bg-blue-600/20">Base</th>
+                                <th id="th-stat-comp" class="bg-blue-600/20">Compare</th>
                                 <th class="bg-indigo-600/20">DF</th>
                                 <th class="bg-indigo-600/20">Mean Diff</th>
                                 <th class="bg-indigo-600/20">T-Calc</th>
@@ -420,8 +438,8 @@
                                 <th>S.No.</th>
                                 <th class="text-left">Parameter</th>
                                 <th>Total Locations</th>
-                                <th>Valid Base Data</th>
-                                <th>Valid Compare Data</th>
+                                <th id="th-avail-base">Valid Base Data</th>
+                                <th id="th-avail-comp">Valid Compare Data</th>
                                 <th>Valid Paired Data</th>
                             </tr>
                         </thead>
@@ -527,37 +545,95 @@
                 <div class="glass-card p-6">
                     <h3 class="text-2xl font-black text-blue-400 mb-4 border-b border-blue-500/30 pb-2">Tool Methodology & Overview</h3>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Data Templates -->
-                        <div class="bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10">
+                        <div class="bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10 flex flex-col">
                             <h4 class="text-lg font-bold text-orange-500 dark:text-orange-400 mb-2"><i class="fa-solid fa-file-csv mr-2"></i>1. Accepted Data Templates</h4>
-                            <p class="text-sm text-muted mb-3">This analyzer dynamically processes two distinct data architectures:</p>
-                            <ul class="text-sm space-y-2 text-muted">
+                            <p class="text-sm text-muted mb-3">This analyzer dynamically processes two distinct data architectures. <strong class="text-blue-500 dark:text-blue-400">For Hypothesis Testing to work, data must be pairable by Well ID or Location across two periods.</strong></p>
+                            <ul class="text-sm space-y-2 text-muted mb-4 flex-1">
                                 <li><strong class="text-gray-800 dark:text-white">Standard Format (Long):</strong> Data is organized by rows. Each row represents a location at a specific time (e.g., Pre-monsoon 2022). Requires <code>Year</code> and <code>Season</code> columns to group and compare periods.</li>
-                                <li><strong class="text-gray-800 dark:text-white">Wide Format:</strong> Data is organized by columns. A single row contains all periods for a location. The tool automatically detects column pairs ending in <code>PRM</code> (Pre-monsoon) and <code>POM</code> (Post-monsoon).</li>
+                                <li><strong class="text-gray-800 dark:text-white">Wide Format:</strong> Data is organized by columns. A single row contains all periods for a location. Detects column pairs like <code>ECPRM</code> and <code>ECPOM</code>.</li>
                             </ul>
+                            <div class="bg-white/5 dark:bg-black/40 p-3 rounded border border-black/10 dark:border-white/10 overflow-x-auto">
+                                <strong class="text-[11px] text-blue-600 dark:text-blue-400 mb-2 block uppercase tracking-wider">Example: Standard Format (CSV/Excel)</strong>
+                                <table class="w-full text-xs text-left text-muted border-collapse">
+                                    <thead><tr class="border-b border-black/20 dark:border-white/20 text-gray-800 dark:text-gray-200">
+                                        <th class="pb-1 pr-2">Well_ID</th><th class="pb-1 pr-2">Year</th><th class="pb-1 pr-2">Season</th><th class="pb-1 pr-2">TDS</th><th class="pb-1 pr-2">NO3</th>
+                                    </tr></thead>
+                                    <tbody class="font-mono text-[10px]">
+                                        <tr><td class="pt-1 pr-2 text-blue-500">W001</td><td class="pt-1 pr-2">2023</td><td class="pt-1 pr-2">Pre-Monsoon</td><td class="pt-1 pr-2">550</td><td class="pt-1 pr-2">42</td></tr>
+                                        <tr><td class="pr-2 text-blue-500">W001</td><td class="pr-2">2023</td><td class="pr-2 text-emerald-500">Post-Monsoon</td><td class="pr-2">480</td><td class="pr-2">38</td></tr>
+                                        <tr><td class="pr-2 text-blue-500">W002</td><td class="pr-2">2023</td><td class="pr-2">Pre-Monsoon</td><td class="pr-2">1200</td><td class="pr-2">55</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
                         <!-- Capabilities -->
-                        <div class="bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10">
+                        <div class="bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10 flex flex-col">
                             <h4 class="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2"><i class="fa-solid fa-microchip mr-2"></i>2. Core Capabilities</h4>
-                            <ul class="text-sm space-y-2 text-muted">
-                                <li><strong class="text-gray-800 dark:text-white">Trend Analysis:</strong> Automatically computes % change between Base and Compare periods. Classifies as <em>Improved</em>, <em>Deteriorated</em>, or <em>Unchanged</em>.</li>
-                                <li><strong class="text-gray-800 dark:text-white">Permissible Limit Flagging:</strong> Cross-references concentrations against WHO/BIS limits (e.g., TDS &gt; 2000, F &gt; 1.5) to highlight critical deterioration.</li>
-                                <li><strong class="text-gray-800 dark:text-white">HD IDW Geospatial Interpolation:</strong> Uses Inverse Distance Weighting to create continuous, glossy heatmaps constrained perfectly to shapefile administrative boundaries.</li>
+                            <ul class="text-sm space-y-3 text-muted">
+                                <li><strong class="text-gray-800 dark:text-white block mb-1">Trend Analysis:</strong> Automatically computes % change between Base and Compare periods. Classifies locations as <em>Improved</em>, <em>Deteriorated</em>, or <em>Unchanged</em>.</li>
+                                <li><strong class="text-gray-800 dark:text-white block mb-1">Permissible Limit Flagging:</strong> Cross-references concentrations against WHO/BIS limits (e.g., TDS &gt; 2000, F &gt; 1.5) to highlight critical deterioration.</li>
+                                <li><strong class="text-gray-800 dark:text-white block mb-1">Statistical Hypothesis Testing:</strong> Runs Paired T-Tests and Wilcoxon Signed-Rank tests on matched wells to mathematically prove if the seasonal shift is statistically significant.</li>
+                                <li><strong class="text-gray-800 dark:text-white block mb-1">HD IDW Geospatial Interpolation:</strong> Uses Inverse Distance Weighting to create continuous, glossy heatmaps constrained perfectly to shapefile boundaries.</li>
                             </ul>
+                        </div>
+                    </div>
+
+                    <!-- Hypothesis Testing Example Section -->
+                    <div class="mt-6 bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10">
+                        <h4 class="text-lg font-bold text-purple-600 dark:text-purple-400 mb-2"><i class="fa-solid fa-microscope mr-2"></i>3. Hypothesis Testing Explained</h4>
+                        <p class="text-sm text-muted mb-3">To confidently claim that the monsoon significantly impacted groundwater quality, we must prove the change isn't due to random chance. We use paired statistical tests because we are measuring the <em>same wells</em> twice (Base vs Compare).</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted mb-4">
+                            <div class="p-4 bg-indigo-900/10 rounded-lg border border-indigo-500/20">
+                                <strong class="text-indigo-600 dark:text-indigo-400 block mb-2 text-base">Student's Paired T-Test (Parametric)</strong>
+                                <p class="mb-3">Best for normally distributed data. It measures the mean difference relative to the standard error.</p>
+                                <div class="bg-black/30 p-3 rounded font-mono text-sm mb-3 text-center text-indigo-300 font-bold border border-indigo-500/30 shadow-inner">
+                                    t = d&#772; / ( s_d / &radic;n )
+                                </div>
+                                <ul class="text-xs space-y-1 opacity-80">
+                                    <li><strong>d&#772;</strong> = Mean of the differences (Base - Compare)</li>
+                                    <li><strong>s_d</strong> = Sample standard deviation of differences</li>
+                                    <li><strong>n</strong> = Number of valid paired locations</li>
+                                </ul>
+                            </div>
+                            <div class="p-4 bg-emerald-900/10 rounded-lg border border-emerald-500/20">
+                                <strong class="text-emerald-600 dark:text-emerald-400 block mb-2 text-base">Wilcoxon Signed-Rank (Non-Parametric)</strong>
+                                <p class="mb-3">Best for real-world environmental data (resists outliers). Ranks absolute differences to find significance.</p>
+                                <div class="bg-black/30 p-3 rounded font-mono text-sm mb-3 text-center text-emerald-300 font-bold border border-emerald-500/30 shadow-inner">
+                                    W = &Sigma; R<sup>(+)</sup>
+                                </div>
+                                <ul class="text-xs space-y-1 opacity-80">
+                                    <li><strong>R<sup>(+)</sup></strong> = Sum of ranks for positive differences</li>
+                                    <li><strong>Ranks</strong> are assigned to absolute non-zero differences.</li>
+                                    <li>Zeros are excluded from <strong>n</strong>.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-amber-900/10 rounded border border-amber-500/30 text-sm">
+                            <strong class="text-amber-600 dark:text-amber-400"><i class="fa-solid fa-lightbulb mr-1"></i> Interpreting P-Values & Significance:</strong><br>
+                            <span class="text-muted leading-relaxed">
+                            <span class="inline-block mt-1">• If <strong>P-Value &lt; 0.05</strong> (at 95% Confidence), it outputs <span class="badge-status badge-improved mx-1">YES</span> or <span class="badge-status badge-deteriorated mx-1">YES</span> depending on the direction. There is less than a 5% probability of observing a difference this large assuming the monsoon actually had no effect. The impact is significant.</span><br>
+                            <span class="inline-block mt-1">• If <strong>P-Value &gt; 0.05</strong>, it outputs <span class="badge-status badge-unchanged mx-1">NO</span>. The change is considered statistically insignificant noise.</span></span>
                         </div>
                     </div>
 
                     <!-- Tab Explanations -->
                     <div class="mt-6 bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10">
-                        <h4 class="text-lg font-bold text-indigo-600 dark:text-indigo-400 mb-2"><i class="fa-solid fa-layer-group mr-2"></i>3. Analytical Tabs Explained</h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-sm text-muted">
+                        <h4 class="text-lg font-bold text-indigo-600 dark:text-indigo-400 mb-2"><i class="fa-solid fa-layer-group mr-2"></i>4. Analytical Tabs Explained</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-muted">
                             <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
                                 <strong class="text-blue-600 dark:text-blue-300 block mb-1">General Summary</strong> Aggregates locations (State/Dist/Block) showing the Count (N) and Percentage (%) of improving vs deteriorating wells.
                             </div>
                             <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
                                 <strong class="text-rose-600 dark:text-rose-300 block mb-1">Permissible Limits</strong> Isolates critical locations. Shows wells that were already beyond limits and deteriorated further.
+                            </div>
+                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
+                                <strong class="text-orange-600 dark:text-orange-400 block mb-1">Contamination Report</strong> Evaluates all parameters side-by-side to show newly contaminated and remediated samples.
+                            </div>
+                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
+                                <strong class="text-purple-600 dark:text-purple-300 block mb-1">Hypothesis Testing</strong> Validates statistical significance of the shift between periods using Paired T-Test and Wilcoxon tests.
                             </div>
                             <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
                                 <strong class="text-amber-600 dark:text-amber-300 block mb-1">Data Availability</strong> Validates data completeness. Shows exactly how many records had valid numbers for both base and compare periods.
@@ -573,7 +649,7 @@
 
                     <!-- Live Example Section -->
                     <div class="mt-6 border-t border-black/10 dark:border-white/10 pt-6">
-                        <h4 class="text-lg font-bold text-blue-600 dark:text-blue-400 mb-4"><i class="fa-solid fa-bolt mr-2"></i>4. Live Data Example (<span id="live-example-status" class="text-orange-500 dark:text-orange-400">Awaiting Data</span>)</h4>
+                        <h4 class="text-lg font-bold text-blue-600 dark:text-blue-400 mb-4"><i class="fa-solid fa-bolt mr-2"></i>5. Live Data Example (<span id="live-example-status" class="text-orange-500 dark:text-orange-400">Awaiting Data</span>)</h4>
                         <div id="live-example-container" class="overflow-x-auto rounded-lg border border-black/10 dark:border-white/10 shadow-lg bg-black/5 dark:bg-black/20 p-4 text-center text-muted text-sm font-bold">
                             Upload and map your dataset to see a live sample of how the algorithm interprets your rows!
                         </div>
@@ -585,35 +661,45 @@
     </div>
 
     <script>
-        // High Precision Parameter database (EXCLUDED pH)
+        // High Precision Parameter database
         const limits = {
-            'TDS': { b1: 500, b2: 2000, unit: 'mg/l', name: 'Total Dissolved Solids', keywords: ['tds', 'total dissolved solids'] },
+            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH', keywords: ['ph'] },
+            'TDS': { b1: 500, b2: 2000, unit: 'mg/L', name: 'Total Dissolved Solids', keywords: ['tds', 'total dissolved solids'] },
             'Turbidity': { b1: 1, b2: 5, unit: 'NTU', name: 'Turbidity', keywords: ['turbidity'] },
-            'Alkalinity': { b1: 200, b2: 600, unit: 'mg/l', name: 'Total Alkalinity', keywords: ['alkalinity', 'total alkalinity'] },
-            'TH': { b1: 200, b2: 600, unit: 'mg/l as CaCO3', name: 'Total Hardness', keywords: ['th', 'total hardness', 'hardness'] },
+            'Alkalinity': { b1: 200, b2: 600, unit: 'mg/L', name: 'Total Alkalinity', keywords: ['alkalinity', 'total alkalinity'] },
+            'TH': { b1: 200, b2: 600, unit: 'mg/L', name: 'Total Hardness', keywords: ['th', 'total hardness', 'hardness'] },
             'EC': { b1: 750, b2: 3000, unit: 'µS/cm at 25°C', name: 'Electrical Conductivity', keywords: ['ec', 'cond', 'conductivity', 'electrical conductivity'] },
-            'Cl': { b1: 250, b2: 1000, unit: 'mg/l', name: 'Chloride', keywords: ['cl', 'chloride'] },
-            'NO3': { b1: 45, b2: 45, unit: 'mg/l', name: 'Nitrate', keywords: ['no3', 'nitrate'] },
-            'F': { b1: 1.0, b2: 1.5, unit: 'mg/l', name: 'Fluoride', keywords: ['f', 'fluoride'] },
-            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/l', name: 'Iron', keywords: ['fe', 'iron', 'total iron'] },
+            'CO3': { b1: null, b2: null, unit: 'mg/L', name: 'Carbonate', keywords: ['co3', 'carbonate'] },
+            'HCO3': { b1: null, b2: null, unit: 'mg/L', name: 'Bicarbonate', keywords: ['hco3', 'bicarbonate'] },
+            'Cl': { b1: 250, b2: 1000, unit: 'mg/L', name: 'Chloride', keywords: ['cl', 'chloride'] },
+            'F': { b1: 1.0, b2: 1.5, unit: 'mg/L', name: 'Fluoride', keywords: ['f', 'fluoride'] },
+            'SO4': { b1: 200, b2: 400, unit: 'mg/L', name: 'Sulphate', keywords: ['so4', 'sulphate', 'sulfate'] },
+            'NO3': { b1: 45, b2: 45, unit: 'mg/L', name: 'Nitrate', keywords: ['no3', 'nitrate'] },
+            'Ca': { b1: 75, b2: 200, unit: 'mg/L', name: 'Calcium', keywords: ['ca', 'calcium'] },
+            'Mg': { b1: 30, b2: 100, unit: 'mg/L', name: 'Magnesium', keywords: ['mg', 'magnesium'] },
+            'Na': { b1: 200, b2: 200, unit: 'mg/L', name: 'Sodium', keywords: ['na', 'sodium'] },
+            'K': { b1: null, b2: null, unit: 'mg/L', name: 'Potassium', keywords: ['k', 'potassium'] },
+            'SiO2': { b1: null, b2: null, unit: 'mg/L', name: 'Silicate', keywords: ['sio2', 'silica'] },
+            'PO4': { b1: null, b2: null, unit: 'mg/L', name: 'Phosphate', keywords: ['po4', 'phosphate'] },
+            'Li': { b1: null, b2: null, unit: 'mg/L', name: 'Lithium', keywords: ['li', 'lithium'] },
+            'B': { b1: 0.5, b2: 2.4, unit: 'mg/L', name: 'Boron', keywords: ['b', 'boran', 'boron'] },
+            'Al': { b1: 0.03, b2: 0.2, unit: 'mg/L', name: 'Aluminium', keywords: ['al', 'alluminium', 'aluminium'] },
+            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/L', name: 'Chromium', keywords: ['cr', 'chromium'] },
+            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/L', name: 'Manganese', keywords: ['mn', 'manganese'] },
+            'Fe': { b1: 1.0, b2: 1.0, unit: 'mg/L', name: 'Iron', keywords: ['fe', 'iron', 'total iron'] },
+            'Co': { b1: null, b2: null, unit: 'mg/L', name: 'Cobalt', keywords: ['co', 'cobalt'] },
+            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/L', name: 'Nickel', keywords: ['ni', 'nickel'] },
+            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/L', name: 'Copper', keywords: ['cu', 'copper'] },
+            'Zn': { b1: 5, b2: 15, unit: 'mg/L', name: 'Zinc', keywords: ['zn', 'zinc'] },
+            'Se': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Selenium', keywords: ['se', 'selenium'] },
+            'Sr': { b1: null, b2: null, unit: 'mg/L', name: 'Strontium', keywords: ['sr', 'strontium'] },
+            'Cd': { b1: 0.003, b2: 0.003, unit: 'mg/L', name: 'Cadmium', keywords: ['cd', 'cadmium'] },
+            'Ba': { b1: 0.7, b2: 0.7, unit: 'mg/L', name: 'Barium', keywords: ['ba', 'barium'] },
+            'Hg': { b1: 0.001, b2: 0.001, unit: 'mg/L', name: 'Mercury', keywords: ['hg', 'mercury'] },
+            'Pb': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Lead', keywords: ['pb', 'lead'] },
             'As': { b1: 10, b2: 10, unit: 'ppb', name: 'Arsenic', keywords: ['as', 'arsenic'] },
             'U': { b1: 30, b2: 30, unit: 'ppb', name: 'Uranium', keywords: ['u', 'uranium'] },
-            'Zn': { b1: 5, b2: 15, unit: 'mg/l', name: 'Zinc', keywords: ['zn', 'zinc'] },
-            'Cu': { b1: 0.05, b2: 1.5, unit: 'mg/l', name: 'Copper', keywords: ['cu', 'copper'] },
-            'Pb': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Lead', keywords: ['Pb', 'lead'] },
-            'Cd': { b1: 0.003, b2: 0.003, unit: 'mg/L', name: 'Cadmium', keywords: ['cd', 'cadmium'] },
-            'Cr': { b1: 0.05, b2: 0.05, unit: 'mg/l', name: 'Chromium', keywords: ['cr', 'chromium'] },
-            'Hg': { b1: 0.001, b2: 0.001, unit: 'mg/L', name: 'Mercury', keywords: ['hg', 'mercury'] },
-            'Ni': { b1: 0.02, b2: 0.02, unit: 'mg/l', name: 'Nickel', keywords: ['ni', 'nickel'] },
-            'Se': { b1: 0.01, b2: 0.01, unit: 'mg/L', name: 'Selenium', keywords: ['se', 'selenium'] },
-            'Ca': { b1: 75, b2: 200, unit: 'mg/l', name: 'Calcium', keywords: ['ca', 'calcium'] },
-            'Mg': { b1: 30, b2: 100, unit: 'mg/l', name: 'Magnesium', keywords: ['mg', 'magnesium'] },
-            'SO4': { b1: 200, b2: 400, unit: 'mg/l', name: 'Sulphate', keywords: ['so4', 'sulphate', 'sulfate'] },
-            'Mn': { b1: 0.1, b2: 0.3, unit: 'mg/l', name: 'Manganese', keywords: ['Mn', 'Manganese'] },
-            'Al': { b1: 0.03, b2: 0.2, unit: 'mg/l', name: 'Alluminium', keywords: ['Al', 'Alluminium'] },
-            'Ba': { b1: 0.7, b2: 0.7, unit: 'mg/l', name: 'Barium', keywords: ['Ba', 'Barium'] },
-            'B': { b1: 0.5, b2: 2.4, unit: 'mg/l', name: 'Boran', keywords: ['B', 'Boran'] },
-            'Mo': { b1: 0.05, b2: 0.07, unit: 'mg/l', name: 'Boran', keywords: ['Mo', 'Molybdnum'] },
+            'Mo': { b1: 0.05, b2: 0.07, unit: 'mg/L', name: 'Molybdenum', keywords: ['mo', 'molybdnum'] },
             'RSC': { b1: 1.25, b2: 2.5, unit: 'meq/L', name: 'RSC', keywords: ['rsc'] }
         };
 
@@ -846,11 +932,20 @@
                 headers.forEach(h => sel.appendChild(new Option(h, h)));
             });
 
+            // Enhanced matching specifically for the CGWB standard template
             const exactHeaders = {
-                'map-year': ['Year', 'year'], 'map-season': ['Season', 'season'], 'map-wellid': ['Well_ID', 'well id', 'site', 'uid'],
-                'map-state': ['State/UT', 'state'], 'map-district': ['District', 'district name'], 'map-block': ['Block', 'taluka'],
-                'map-location': ['Location', 'village'], 'map-lat': ['Latitude', 'lat'], 'map-lon': ['Longitude', 'lon'],
-                'map-gp': ['Gram Panchayat', 'gp'], 'map-welltype': ['Well Type', 'source type'], 'map-aquifer': ['Aquifer']
+                'map-year': ['Year', 'year'], 
+                'map-season': ['Season', 'season'], 
+                'map-wellid': ['Well ID', 'Well_ID', 'well id', 'site', 'uid'],
+                'map-state': ['State/UT', 'State', 'state'], 
+                'map-district': ['District', 'district name'], 
+                'map-block': ['Block', 'taluka'],
+                'map-location': ['Location', 'village'], 
+                'map-lat': ['Latitude', 'lat'], 
+                'map-lon': ['Longitude', 'lon'],
+                'map-gp': ['Gram Panchayat', 'gp'], 
+                'map-welltype': ['Well_Type', 'Well Type', 'source type'], 
+                'map-aquifer': ['Aquifer Tapped', 'Aquifer']
             };
             for(let key in exactHeaders) {
                 let matched = headers.find(h => exactHeaders[key].some(kw => h.toLowerCase().includes(kw.toLowerCase())));
@@ -948,7 +1043,6 @@
                 updateDistrictFilter();
             }
 
-            setupDetailedHeaders();
             runAnalysis();
             
             document.getElementById('controls-section').scrollIntoView({ behavior: 'smooth' });
@@ -1024,7 +1118,7 @@
             document.getElementById('detailed-tbody').innerHTML = '<tr><td colspan="100" class="py-10 text-center text-muted font-bold">Please upload and map a dataset to view detailed matrix.</td></tr>';
         }
 
-        function setupDetailedHeaders() {
+        function setupDetailedHeaders(baseLabel = 'Base', compLabel = 'Compare') {
             const h1 = document.getElementById('detailed-header-row-1');
             const h2 = document.getElementById('detailed-header-row-2');
             h1.querySelectorAll('.dyn').forEach(e=>e.remove()); h2.querySelectorAll('.dyn').forEach(e=>e.remove());
@@ -1041,7 +1135,7 @@
 
             activeParametersInFile.forEach(p => {
                 h1.innerHTML += `<th colspan="3" class="dyn border-l border-white/20">${getParamLabel(p)}</th>`;
-                h2.innerHTML += `<th class="dyn border-l border-white/10">Base</th><th class="dyn">Compare</th><th class="dyn border-r border-white/10">Status</th>`;
+                h2.innerHTML += `<th class="dyn border-l border-white/10">${baseLabel}</th><th class="dyn">${compLabel}</th><th class="dyn border-r border-white/10">Status</th>`;
             });
         }
 
@@ -1219,12 +1313,17 @@
             const param = document.getElementById('parameter-select').value;
             if(!param) return;
 
+            let baseLabel = currentDataFormat === 'standard' ? bp : 'Base (PRM)';
+            let compLabel = currentDataFormat === 'standard' ? cp : 'Compare (POM)';
+            if(!baseLabel || baseLabel === '-- Pending Upload --') baseLabel = 'Base';
+            if(!compLabel || compLabel === '-- Pending Upload --') compLabel = 'Compare';
+
             const mapSel = document.getElementById('map-parameter-select');
             if(mapSel && mapSel.value !== param) mapSel.value = param;
 
             setTimeout(() => {
                 const data = generateDataArrays(param, agg, bp, cp, ms);
-                globalAggregatedDataCache = { param, agg, data };
+                globalAggregatedDataCache = { param, agg, data, baseLabel, compLabel };
 
                 document.getElementById('stat-pre-count').innerText = data.uBaseCnt;
                 document.getElementById('stat-post-count').innerText = data.uCompCnt;
@@ -1237,17 +1336,18 @@
                 document.getElementById('no-perm-msg').classList.toggle('hidden', data.permLimit !== null);
 
                 renderGeneralDOM(data.stats, agg);
-                if(data.permLimit !== null) renderPermDOM(data.permStats, agg);
-                renderDetailedDOM(data.rows);
-                renderStatsDOM(data.rows);
+                if(data.permLimit !== null) renderPermDOM(data.permStats, agg, baseLabel, compLabel);
+                renderParamSummaryDOM(data.rows, baseLabel, compLabel, agg);
+                renderDetailedDOM(data.rows, baseLabel, compLabel);
+                renderStatsDOM(data.rows, baseLabel, compLabel);
                 
-                generateAvailabilitySummary(bp, cp, ms);
+                generateAvailabilitySummary(bp, cp, ms, baseLabel, compLabel);
                 updateMapVisuals();
-                updateMethodologyLiveExample();
+                updateMethodologyLiveExample(baseLabel, compLabel);
             }, 10);
         }
 
-        function generateAvailabilitySummary(basePeriod, compPeriod, matchStrategy) {
+        function generateAvailabilitySummary(basePeriod, compPeriod, matchStrategy, baseLabel, compLabel) {
             let fState = document.getElementById('filter-state') ? document.getElementById('filter-state').value : 'All';
             let fDist = document.getElementById('filter-district') ? document.getElementById('filter-district').value : 'All';
             let fBlock = document.getElementById('filter-block') ? document.getElementById('filter-block').value : 'All';
@@ -1330,7 +1430,7 @@
             tbody.innerHTML = html;
         }
 
-        function updateMethodologyLiveExample() {
+        function updateMethodologyLiveExample(baseLabel = 'Base', compLabel = 'Compare') {
             const container = document.getElementById('live-example-container');
             const status = document.getElementById('live-example-status');
             
@@ -1340,47 +1440,125 @@
                 return;
             }
 
+            let param = globalAggregatedDataCache.param;
+            let validRows = globalAggregatedDataCache.data.rows.filter(r => r.chem[param].b !== '--' && r.chem[param].c !== '--');
+
+            if (validRows.length < 2) {
+                status.innerText = "Insufficient Pairs";
+                status.className = "text-rose-500";
+                container.innerHTML = "<p class='text-rose-400'>Not enough valid paired data for a statistical trace (Need &ge; 2 pairs).</p>";
+                return;
+            }
+
             status.innerText = "Active - Using Filtered Data";
             status.className = "text-emerald-500 dark:text-emerald-400";
 
-            let sampleRows = globalAggregatedDataCache.data.rows.slice(0, 4); // show up to 4 rows
-            let param = globalAggregatedDataCache.param;
+            let sampleSize = Math.min(validRows.length, 5); // show up to 5 rows for math clarity
+            let sampleRows = validRows.slice(0, sampleSize);
+
+            let d_vals = [], preVals = [], postVals = [];
+            sampleRows.forEach(r => {
+                let pre = parseFloat(r.chem[param].b);
+                let post = parseFloat(r.chem[param].c);
+                preVals.push(pre); postVals.push(post);
+                d_vals.push(pre - post); // Base - Compare match with logic
+            });
+
+            let meanDiff = jStat.mean(d_vals);
+            let stdDiff = jStat.stdev(d_vals, true) || 0;
+            let t_calc = stdDiff > 0 ? (meanDiff / (stdDiff / Math.sqrt(sampleSize))) : 0;
 
             let html = `
-                <p class="text-left text-xs mb-3 text-blue-600 dark:text-blue-300">Here is how the system is currently calculating <strong>${getParamLabel(param)}</strong> for your actual locations:</p>
-                <div class="overflow-x-auto rounded border border-black/10 dark:border-white/10 shadow bg-white dark:bg-black/30">
+                <p class="text-left text-xs mb-3 text-blue-600 dark:text-blue-300">Tracking calculation for <strong>${getParamLabel(param)}</strong> across the first ${sampleSize} paired locations:</p>
+                <div class="overflow-x-auto rounded border border-black/10 dark:border-white/10 shadow bg-white dark:bg-black/30 mb-5">
                 <table class="report-table w-full text-sm">
                     <thead>
                         <tr>
                             <th>Well ID</th>
                             <th class="text-left">Location Detail</th>
-                            <th>Base Value</th>
-                            <th>Compare Value</th>
-                            <th>Change (%)</th>
-                            <th>Algorithm Status</th>
+                            <th>${baseLabel} Value</th>
+                            <th>${compLabel} Value</th>
+                            <th class="bg-indigo-900/20 text-indigo-400">Diff (${baseLabel} - ${compLabel})</th>
                         </tr>
                     </thead>
                     <tbody>
             `;
 
-            sampleRows.forEach(r => {
+            sampleRows.forEach((r, idx) => {
                 let c = r.chem[param];
-                let bCls = c.s==='Improved' ? 'badge-improved' : (c.s==='Deteriorated' ? 'badge-deteriorated' : (c.s==='#NA' ? 'badge-na' : 'badge-unchanged'));
-                let pctStr = (c.p !== 0 && c.s !== '#NA') ? (c.p > 0 ? '+' : '') + c.p.toFixed(1) + '%' : '--';
-
+                let d = d_vals[idx].toFixed(2);
                 html += `
                     <tr>
                         <td class="font-mono text-blue-500 dark:text-blue-400">${r.id}</td>
-                        <td class="text-left">${r.loc} (${r.district}, ${r.state})</td>
-                        <td class="font-bold">${c.b}</td>
-                        <td class="font-bold">${c.c}</td>
-                        <td class="text-muted">${pctStr}</td>
-                        <td><span class="badge-status ${bCls}">${c.s}</span></td>
+                        <td class="text-left">${r.loc} (${r.district})</td>
+                        <td class="font-bold text-amber-600 dark:text-amber-400">${c.b}</td>
+                        <td class="font-bold text-blue-600 dark:text-blue-400">${c.c}</td>
+                        <td class="font-mono font-bold bg-indigo-900/10 ${d_vals[idx] > 0 ? 'text-emerald-500' : (d_vals[idx] < 0 ? 'text-rose-500' : 'text-slate-400')}">${d}</td>
                     </tr>
                 `;
             });
 
             html += `</tbody></table></div>`;
+
+            // T-Test Trace
+            html += `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                <div class="bg-indigo-900/10 p-4 rounded-lg border border-indigo-500/30 text-sm text-muted">
+                    <h6 class="font-bold text-indigo-400 mb-3 border-b border-indigo-500/20 pb-2"><i class="fa-solid fa-calculator mr-1"></i> T-Test Live Math Trace</h6>
+                    <div class="space-y-2 font-mono text-[11px]">
+                        <p class="flex justify-between"><span>Differences (d):</span> <span class="text-white">[${d_vals.map(v => v.toFixed(2)).join(', ')}]</span></p>
+                        <p class="flex justify-between"><span>Mean (d&#772;):</span> <span class="text-white">${meanDiff.toFixed(3)}</span></p>
+                        <p class="flex justify-between"><span>StdDev (s_d):</span> <span class="text-white">${stdDiff.toFixed(3)}</span></p>
+                        <p class="flex justify-between"><span>Count (n):</span> <span class="text-white">${sampleSize}</span></p>
+                        <div class="mt-3 pt-3 border-t border-indigo-500/30 text-indigo-300">
+                            <p class="mb-1">t = ${meanDiff.toFixed(3)} / (${stdDiff.toFixed(3)} / &radic;${sampleSize})</p>
+                            <p class="text-sm text-white">t = <span class="bg-indigo-600 px-2 py-0.5 rounded">${t_calc.toFixed(4)}</span></p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Wilcoxon Trace Math
+            let nonZeroDiffs = d_vals.filter(d => d !== 0);
+            let wx_html = "";
+            if (nonZeroDiffs.length === 0) {
+                wx_html = `<p class="text-rose-500 mt-2">No non-zero differences available to rank.</p>`;
+            } else {
+                let sorted = nonZeroDiffs.map(d => ({ d, abs: Math.abs(d) })).sort((x, y) => x.abs - y.abs);
+                for (let i = 0, rank = 1; i < sorted.length; ) {
+                    let j = i; while (j < sorted.length && sorted[j].abs === sorted[i].abs) j++;
+                    let avgRank = (i + 1 + j) / 2;
+                    for (let k = i; k < j; k++) sorted[k].rank = avgRank;
+                    i = j;
+                }
+                let wPlus = 0, wMinus = 0;
+                let rankTrace = [];
+                sorted.forEach(o => {
+                    if (o.d > 0) wPlus += o.rank;
+                    else wMinus += o.rank;
+                    rankTrace.push(`|${o.d.toFixed(1)}|&rarr;R:${o.rank}`);
+                });
+
+                wx_html = `
+                    <p class="flex justify-between"><span>Non-Zero Pairs (n):</span> <span class="text-white">${nonZeroDiffs.length}</span></p>
+                    <p class="flex justify-between"><span>Assigned Ranks:</span> <span class="text-white">[${rankTrace.join(', ')}]</span></p>
+                    <p class="flex justify-between"><span>Sum of +ve Ranks (W+):</span> <span class="text-emerald-400 font-bold">${wPlus.toFixed(1)}</span></p>
+                    <p class="flex justify-between"><span>Sum of -ve Ranks (W-):</span> <span class="text-rose-400 font-bold">${wMinus.toFixed(1)}</span></p>
+                    <div class="mt-3 pt-3 border-t border-emerald-500/30 text-emerald-300">
+                        <p class="text-sm text-white">W = <span class="bg-emerald-600 px-2 py-0.5 rounded">${wPlus.toFixed(1)}</span></p>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div class="bg-emerald-900/10 p-4 rounded-lg border border-emerald-500/30 text-sm text-muted">
+                    <h6 class="font-bold text-emerald-400 mb-3 border-b border-emerald-500/20 pb-2"><i class="fa-solid fa-list-ol mr-1"></i> Wilcoxon Live Math Trace</h6>
+                    <div class="space-y-2 font-mono text-[11px]">
+                        ${wx_html}
+                    </div>
+                </div>
+            </div>`;
+
             container.innerHTML = html;
             container.classList.remove('text-center');
             container.classList.add('text-left');
@@ -1445,7 +1623,7 @@
                 <td>${tot.u}</td><td>${calculatePctStr(tot.u, tot.s)}</td></tr>`;
         }
 
-        function renderPermDOM(stats, agg) {
+        function renderPermDOM(stats, agg, baseLabel = 'Base') {
             const thead = document.getElementById('perm-thead');
             const tbody = document.getElementById('perm-tbody');
             const tfoot = document.getElementById('perm-tfoot');
@@ -1455,7 +1633,7 @@
             
             thead.innerHTML = `<tr>
                 <th rowspan="2">S.No.</th> ${thLocHTML}
-                <th colspan="2" class="bg-rose-600/40">Base > Permissible</th>
+                <th colspan="2" class="bg-rose-600/40">${baseLabel} > Permissible</th>
                 <th colspan="2" class="bg-amber-600/30">Improved but > Perm</th>
                 <th colspan="2" class="bg-emerald-600/40">Improved & &le; Perm</th>
                 <th colspan="2" class="bg-rose-600/20">Total Deteriorated</th>
@@ -1509,7 +1687,112 @@
             </tr>`;
         }
 
-        function renderDetailedDOM(rows) {
+        function renderParamSummaryDOM(rows, baseLabel = 'Base', compLabel = 'Compare', agg) {
+            const thead = document.getElementById('param-summary-thead');
+            const tbody = document.getElementById('param-summary-tbody');
+
+            const hierCols = getHierarchyColumns(agg);
+            let thLocHTML = hierCols.map(col => `<th rowspan="2" class="text-left">${col}</th>`).join("");
+
+            thead.innerHTML = `
+                <tr>
+                    <th rowspan="2" class="frozen-col" style="left:0;">S.No.</th>
+                    ${thLocHTML}
+                    <th rowspan="2">Parameter</th>
+                    <th rowspan="2">Valid Paired Samples</th>
+                    <th colspan="2" class="bg-rose-600/30">${baseLabel} > Permissible Limit</th>
+                    <th colspan="2" class="bg-rose-600/40">${compLabel} > Permissible Limit</th>
+                    <th colspan="2" class="bg-rose-600/60">Newly Contaminated<br><span class="text-[9px] font-normal">(${baseLabel} &le; Limit &amp; ${compLabel} &gt; Limit)</span></th>
+                    <th colspan="2" class="bg-emerald-600/40">Remediated / Cleaned<br><span class="text-[9px] font-normal">(${baseLabel} &gt; Limit &amp; ${compLabel} &le; Limit)</span></th>
+                </tr>
+                <tr>
+                    <th class="bg-rose-600/20">(N)</th><th class="bg-rose-600/20">(%)</th>
+                    <th class="bg-rose-600/30">(N)</th><th class="bg-rose-600/30">(%)</th>
+                    <th class="bg-rose-600/50">(N)</th><th class="bg-rose-600/50">(%)</th>
+                    <th class="bg-emerald-600/30">(N)</th><th class="bg-emerald-600/30">(%)</th>
+                </tr>
+            `;
+
+            if(rows.length === 0) { 
+                tbody.innerHTML = `<tr><td colspan="${11 + hierCols.length}" class="py-10 text-center text-muted font-bold">No paired data available.</td></tr>`;
+                return; 
+            }
+
+            // Group rows by Aggregation Level
+            let grouped = {};
+            rows.forEach(r => {
+                let keyStr = hierCols.map(col => r[col.toLowerCase()] || 'Unknown').join('|');
+                if (!grouped[keyStr]) {
+                    grouped[keyStr] = { keys: hierCols.map(col => r[col.toLowerCase()] || 'Unknown'), rows: [] };
+                }
+                grouped[keyStr].rows.push(r);
+            });
+
+            let html = '';
+            let idx = 1;
+            let sortedGroups = Object.keys(grouped).sort();
+
+            sortedGroups.forEach(gKey => {
+                let group = grouped[gKey];
+                let trLocHTML = group.keys.map(val => `<td class="text-left font-bold text-blue-400">${val}</td>`).join("");
+
+                activeParametersInFile.forEach(p => {
+                    const cfg = getParamConfig(p);
+                    const limit = cfg.b2;
+
+                    let validPairs = 0;
+                    let preAbove = 0;
+                    let postAbove = 0;
+                    let contaminated = 0;
+                    let remediated = 0;
+
+                    group.rows.forEach(r => {
+                        let b = r.chem[p].b;
+                        let c = r.chem[p].c;
+                        if(b !== '--' && c !== '--') {
+                            validPairs++;
+                            if (limit !== null) {
+                                if (b > limit) preAbove++;
+                                if (c > limit) postAbove++;
+                                if (b <= limit && c > limit) contaminated++;
+                                if (b > limit && c <= limit) remediated++;
+                            }
+                        }
+                    });
+
+                    if (validPairs === 0) return; // Skip if no valid paired data
+
+                    let pLabel = getParamLabel(p);
+                    if (limit === null) {
+                        html += `<tr class="empty-row-faded">
+                            <td class="frozen-col" style="left:0; z-index:10;">${idx++}</td>
+                            ${trLocHTML}
+                            <td class="text-left font-bold text-slate-400">${pLabel}</td>
+                            <td class="font-bold bg-white/5">${validPairs}</td>
+                            <td colspan="8" class="text-muted italic bg-black/10">No permissible limit defined in database</td>
+                        </tr>`;
+                    } else {
+                        html += `<tr>
+                            <td class="frozen-col" style="left:0; z-index:10;">${idx++}</td>
+                            ${trLocHTML}
+                            <td class="text-left font-bold text-blue-500 dark:text-blue-400">${pLabel} <span class="text-[10px] text-muted block">(Limit: ${limit})</span></td>
+                            <td class="font-bold bg-black/5 dark:bg-white/5">${validPairs}</td>
+                            <td class="text-rose-400">${preAbove}</td><td class="text-xs text-muted">${calculatePctStr(preAbove, validPairs)}</td>
+                            <td class="text-rose-500 font-bold">${postAbove}</td><td class="text-xs text-muted">${calculatePctStr(postAbove, validPairs)}</td>
+                            <td class="text-rose-600 font-bold bg-rose-900/10">${contaminated}</td><td class="text-xs text-rose-400 bg-rose-900/10">${calculatePctStr(contaminated, validPairs)}</td>
+                            <td class="text-emerald-500 font-bold bg-emerald-900/10">${remediated}</td><td class="text-xs text-emerald-400 bg-emerald-900/10">${calculatePctStr(remediated, validPairs)}</td>
+                        </tr>`;
+                    }
+                });
+            });
+            
+            if (html === '') {
+                 html = `<tr><td colspan="${11 + hierCols.length}" class="py-10 text-center text-muted font-bold">No paired data matching limits available.</td></tr>`;
+            }
+            tbody.innerHTML = html;
+        }
+
+        function renderDetailedDOM(rows, baseLabel = 'Base', compLabel = 'Compare') {
             const tb = document.getElementById('detailed-tbody'); tb.innerHTML = '';
             const warning = document.getElementById('detailed-warning');
             
@@ -1867,10 +2150,19 @@
             const meanDiff = jStat.mean(diffs);
             const stdDiff = jStat.stdev(diffs, true);
             const sem = stdDiff / Math.sqrt(n);
-            const t = meanDiff / sem;
             const df = n - 1;
-            const p = 2 * (1 - jStat.studentt.cdf(Math.abs(t), df));
             const tab = jStat.studentt.inv(1 - (1 - conf) / 2, df);
+            
+            let t, p;
+            if (sem === 0) {
+                // Edge case: All differences are identical. Highly significant if non-zero.
+                t = meanDiff === 0 ? 0 : (meanDiff > 0 ? Infinity : -Infinity);
+                p = meanDiff === 0 ? 1 : 0;
+            } else {
+                t = meanDiff / sem;
+                p = 2 * (1 - jStat.studentt.cdf(Math.abs(t), df));
+            }
+            
             return { t: isFinite(t)?t:0, p: isFinite(p)?p:1, tab: isFinite(tab)?tab:0, meanDiff, df };
         }
 
@@ -1920,7 +2212,7 @@
             return statsData;
         }
 
-        function renderStatsDOM(rows) {
+        function renderStatsDOM(rows, baseLabel = 'Base', compLabel = 'Compare') {
             const confStr = document.getElementById('confidence-level').value;
             const conf = parseFloat(confStr);
             const alpha = 1 - conf;
@@ -1938,6 +2230,12 @@
                 let tSig = s.pTest.p < alpha;
                 let wSig = s.wxTest.p < alpha;
                 
+                // Logic Fix: Distinguish between Significant Improvement vs Significant Deterioration
+                let tBadge = tSig ? (s.meanPre > s.meanPost ? '<span class="badge-status badge-improved">YES (Improved)</span>' : '<span class="badge-status badge-deteriorated">YES (Deteriorated)</span>') : '<span class="badge-status badge-unchanged">NO</span>';
+                
+                let expectedW = s.n * (s.n + 1) / 4;
+                let wBadge = wSig ? (s.wxTest.w > expectedW ? '<span class="badge-status badge-improved">YES (Improved)</span>' : '<span class="badge-status badge-deteriorated">YES (Deteriorated)</span>') : '<span class="badge-status badge-unchanged">NO</span>';
+
                 html += `<tr>
                     <td class="frozen-col font-bold text-blue-500 dark:text-blue-400" style="left:0; z-index: 10;">${s.param}</td>
                     <td class="font-bold bg-black/5 dark:bg-white/5">${s.n}</td>
@@ -1948,18 +2246,67 @@
                     <td class="text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.t.toFixed(3)}</td>
                     <td class="text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.tab.toFixed(3)}</td>
                     <td class="text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.p.toFixed(4)}</td>
-                    <td class="bg-indigo-500/10 dark:bg-indigo-900/10"><span class="badge-status ${tSig ? 'badge-improved' : 'badge-deteriorated'}">${tSig ? 'YES' : 'NO'}</span></td>
+                    <td class="bg-indigo-500/10 dark:bg-indigo-900/10">${tBadge}</td>
                     <td class="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-900/10">${s.wxTest.w.toFixed(1)}</td>
                     <td class="text-emerald-500 dark:text-emerald-300 bg-emerald-500/10 dark:bg-emerald-900/10">${s.wxTest.p.toFixed(4)}</td>
-                    <td class="bg-emerald-500/10 dark:bg-emerald-900/10"><span class="badge-status ${wSig ? 'badge-improved' : 'badge-deteriorated'}">${wSig ? 'YES' : 'NO'}</span></td>
+                    <td class="bg-emerald-500/10 dark:bg-emerald-900/10">${wBadge}</td>
                 </tr>`;
             });
             tbody.innerHTML = html;
         }
 
         // =========================================================================
-        // EXCELJS - TRUE EXCEL UNIFIED TABLE GENERATOR ENGINE 
+        // EXCELJS - TRUE EXCEL UNIFIED TABLE GENERATOR ENGINE & TEMPLATES
         // =========================================================================
+
+        async function downloadDataTemplate() {
+            try {
+                const wb = new ExcelJS.Workbook();
+                const ws = wb.addWorksheet("Standard_Data_Template");
+                
+                // Generate exact required columns alongside standard chemicals based on the standard CGWB format
+                const headers = [
+                    "CHQ Sl. No.", "S. No.", "Year", "Season", "Well ID", "State", "District", "Block", 
+                    "Gram Panchayat", "Village Name", "Location", "Location_Details", "Latitude", "Longitude", 
+                    "Well_Type (Dug Well/Bore Well/Tube Well/Dug-cum-Bore Well/Spring)", 
+                    "Well_Sub_Type (If Well type is Dug Well or Spring, then left Blank otherwise Piezometer/Exploratory)", 
+                    "Well_Utilisation (Irrigation/Drinking/Irrigation+Drinking)", "Depth_of_Well (in meter)", 
+                    "Aquifer Tapped", "Well Use (WQ Monitoring/Both WL + WQ Monitoring)", 
+                    "Water level (mbgl) at the time of sample collection, if available", 
+                    "Date of Sample Collection (DD/MM/YYYY)", "Date of Sample Analysis (DD/MM/YYYY)", 
+                    "pH", "EC", "CO3", "HCO3", "Cl", "F", "SO4", "NO3", "TH", "Ca", "Mg", "Na", "K", 
+                    "SiO2", "PO4", "Li", "B", "Al", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Se", "Sr", 
+                    "Cd", "Ba", "Hg", "Pb", "As", "U"
+                ];
+                
+                const units = [
+                    "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", 
+                    "", "µS/cm at 25°C", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", 
+                    "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", 
+                    "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "ppb", "ppb"
+                ];
+                
+                ws.addRow(headers);
+                ws.addRow(units);
+
+                // Add some formatting to guide users
+                ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+                ws.getRow(2).font = { italic: true, color: { argb: 'FF475569' } };
+                ws.getRow(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+
+                // Fix: explicit assignment loop since columns aren't initialized yet
+                for(let i = 1; i <= headers.length; i++) {
+                    ws.getColumn(i).width = 20;
+                }
+
+                const buffer = await wb.xlsx.writeBuffer();
+                saveAs(new Blob([buffer]), "GWQ_Analysis_Data_Template.xlsx");
+            } catch (error) {
+                console.error("Template export failed:", error);
+                alert("Failed to export template. See console for details.");
+            }
+        }
 
         function sanitizeSheetName(name) { return name.replace(/[\\\/\?\*\[\]\:]/g, '_').substring(0, 31); }
 
@@ -2028,7 +2375,7 @@
             ws.columns.forEach(col => { col.width = 15; });
         }
 
-        function buildUnifiedPermSheet(ws, allParamsDataArr, aggLevel) {
+        function buildUnifiedPermSheet(ws, allParamsDataArr, aggLevel, baseLabel) {
             let hierCols = getHierarchyColumns(aggLevel);
             let H = hierCols.length;
             let r = 1;
@@ -2038,7 +2385,7 @@
             ws.mergeCells(r, 1, r, H + 14);
             r++;
 
-            const h1 = ["S.No.", ...hierCols, "Parameter", "Base > Permissible", "", "Improved but > Perm", "", "Improved & <= Perm", "", "Total Deteriorated", "", "Deteriorated & > Perm", "", "Unchanged & > Perm", ""];
+            const h1 = ["S.No.", ...hierCols, "Parameter", `${baseLabel} > Permissible`, "", "Improved but > Perm", "", "Improved & <= Perm", "", "Total Deteriorated", "", "Deteriorated & > Perm", "", "Unchanged & > Perm", ""];
             const h2 = ["", ...hierCols.map(()=>""), "", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)"];
             
             ws.getRow(r).values = h1;
@@ -2107,14 +2454,101 @@
             ws.columns.forEach(col => { col.width = 17; });
         }
 
-        function buildMatrixSheetRows(ws, rows) {
+        function buildParamSummarySheet(ws, allParamsDataArr, baseLabel, compLabel) {
+            let r = 1;
+            ws.getCell(`A${r}`).value = `Parameter Contamination Summary`;
+            ws.getCell(`A${r}`).font = { size: 14, bold: true, color: { argb: 'FF1D4ED8' } };
+            ws.mergeCells(r, 1, r, 11);
+            r++;
+
+            const h1 = ["S.No.", "Parameter", "Valid Paired Samples", `${baseLabel} > Permissible`, "", `${compLabel} > Permissible`, "", `Newly Contaminated (${baseLabel}<=Lim & ${compLabel}>Lim)`, "", `Remediated / Cleaned (${baseLabel}>Lim & ${compLabel}<=Lim)`, ""];
+            const h2 = ["", "", "", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)"];
+            
+            ws.getRow(r).values = h1;
+            ws.getRow(r+1).values = h2;
+            
+            ws.mergeCells(r, 1, r+1, 1); ws.mergeCells(r, 2, r+1, 2); ws.mergeCells(r, 3, r+1, 3);
+            ws.mergeCells(r, 4, r, 5); ws.mergeCells(r, 6, r, 7); ws.mergeCells(r, 8, r, 9); ws.mergeCells(r, 10, r, 11);
+
+            for(let i=0; i<2; i++) {
+                ws.getRow(r+i).eachCell((cell, c) => {
+                    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    let bg = 'FF1E3A8A';
+                    if (c===4 || c===5) bg = 'FFBE123C'; // Rose
+                    if (c===6 || c===7) bg = 'FFE11D48'; // Lighter Rose
+                    if (c===8 || c===9) bg = 'FF9F1239'; // Darker Rose
+                    if (c===10 || c===11) bg = 'FF059669'; // Emerald
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                });
+            }
+            r+=2;
+
+            if (allParamsDataArr.length === 0 || allParamsDataArr[0].data.rows.length === 0) return;
+            
+            let rows = allParamsDataArr[0].data.rows; 
+            let idx = 1;
+
+            activeParametersInFile.forEach(p => {
+                const cfg = getParamConfig(p);
+                const limit = cfg.b2;
+                let validPairs = 0, preAbove = 0, postAbove = 0, contaminated = 0, remediated = 0;
+
+                rows.forEach(row => {
+                    let b = row.chem[p].b, c = row.chem[p].c;
+                    if(b !== '--' && c !== '--') {
+                        validPairs++;
+                        if (limit !== null) {
+                            if (b > limit) preAbove++;
+                            if (c > limit) postAbove++;
+                            if (b <= limit && c > limit) contaminated++;
+                            if (b > limit && c <= limit) remediated++;
+                        }
+                    }
+                });
+
+                if(validPairs === 0) return;
+                
+                let rowObj = ws.getRow(r);
+                if (limit === null) {
+                    rowObj.values = [idx++, getParamLabel(p), validPairs, "No permissible limit defined in database", "", "", "", "", "", "", ""];
+                    ws.mergeCells(r, 4, r, 11);
+                    rowObj.getCell(4).alignment = { horizontal: 'center' };
+                    rowObj.getCell(4).font = { italic: true, color: { argb: 'FF94A3B8' } };
+                } else {
+                    rowObj.values = [
+                        idx++, `${getParamLabel(p)} (Limit: ${limit})`, validPairs,
+                        preAbove, calculatePctStr(preAbove, validPairs),
+                        postAbove, calculatePctStr(postAbove, validPairs),
+                        contaminated, calculatePctStr(contaminated, validPairs),
+                        remediated, calculatePctStr(remediated, validPairs)
+                    ];
+                }
+                rowObj.eachCell((cell, c) => {
+                    cell.border = { bottom: {style:'thin', color:{argb:'FFEEEEEE'}} };
+                    cell.alignment = { horizontal: c === 2 ? 'left' : 'center' };
+                    if (c===4 || c===5 || c===6 || c===7 || c===8 || c===9) {
+                        if (limit !== null) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                    }
+                    if (c===10 || c===11) {
+                        if (limit !== null) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+                    }
+                });
+                r++;
+            });
+            ws.columns.forEach(col => { col.width = 16; });
+            ws.getColumn(2).width = 30; // Better width for parameter labels
+        }
+
+        function buildMatrixSheetRows(ws, rows, baseLabel, compLabel) {
             let r = 1;
             const h1 = ["Sl.", "Well ID", "State", "District", "Block", "Location"];
             const h2 = ["", "", "", "", "", ""];
             let cIdx = 7;
             
             activeParametersInFile.forEach(p => {
-                h1.push(getParamLabel(p), "", ""); h2.push("Base", "Compare", "Status");
+                h1.push(getParamLabel(p), "", ""); h2.push(baseLabel, compLabel, "Status");
                 ws.mergeCells(r, cIdx, r, cIdx+2);
                 cIdx += 3;
             });
@@ -2165,30 +2599,98 @@
             
             const param = globalAggregatedDataCache.param;
             const data = globalAggregatedDataCache.data;
-            const wb = new ExcelJS.Workbook();
+            const agg = globalAggregatedDataCache.agg;
+            const baseLabel = globalAggregatedDataCache.baseLabel;
+            const compLabel = globalAggregatedDataCache.compLabel;
             
-            const wsMatrix = wb.addWorksheet("Matrix");
-            buildMatrixSheetRows(wsMatrix, data.rows);
+            const wb = new ExcelJS.Workbook();
+            let exported = false;
+            let sheetName = "";
 
-            // Export Statistical Data
-            const conf = parseFloat(document.getElementById('confidence-level').value);
-            const statsData = getStatsData(data.rows, conf);
-            if (statsData.length > 0) {
-                const wsStats = wb.addWorksheet("Statistics");
-                buildStatsSheet(wsStats, statsData, conf);
+            if (document.getElementById('btn-tab-general').classList.contains('active')) {
+                sheetName = "General_Summary";
+                const ws = wb.addWorksheet(sheetName);
+                buildUnifiedGeneralSheet(ws, [globalAggregatedDataCache], agg);
+                exported = true;
+            } 
+            else if (document.getElementById('btn-tab-perm').classList.contains('active')) {
+                if (data.permLimit === null) {
+                    alert("No permissible limit defined for this parameter.");
+                    return;
+                }
+                sheetName = "Permissible_Limits";
+                const ws = wb.addWorksheet(sheetName);
+                buildUnifiedPermSheet(ws, [globalAggregatedDataCache], agg, baseLabel, compLabel);
+                exported = true;
+            }
+            else if (document.getElementById('btn-tab-param-summary').classList.contains('active')) {
+                sheetName = "Contamination_Report";
+                const ws = wb.addWorksheet(sheetName);
+                buildParamSummarySheet(ws, [globalAggregatedDataCache], baseLabel, compLabel, agg);
+                exported = true;
+            }
+            else if (document.getElementById('btn-tab-stats').classList.contains('active')) {
+                const conf = parseFloat(document.getElementById('confidence-level').value);
+                const statsData = getStatsData(data.rows, conf);
+                if (statsData.length > 0) {
+                    sheetName = "Statistical_Analysis";
+                    const ws = wb.addWorksheet(sheetName);
+                    buildStatsSheet(ws, statsData, conf, baseLabel, compLabel);
+                    exported = true;
+                } else {
+                    alert("Insufficient data for statistical analysis.");
+                    return;
+                }
+            }
+            else if (document.getElementById('btn-tab-availability').classList.contains('active')) {
+                sheetName = "Data_Availability";
+                const ws = wb.addWorksheet(sheetName);
+                
+                ws.getCell('A1').value = `Data Availability Summary`;
+                ws.getCell('A1').font = { size: 14, bold: true, color: { argb: 'FF1D4ED8' } };
+                
+                const headers = ["S.No.", "Parameter", "Total Locations", `Valid ${baseLabel}`, `Valid ${compLabel}`, "Valid Paired Data"];
+                ws.getRow(3).values = headers;
+                ws.getRow(3).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                ws.getRow(3).eachCell(c => { 
+                    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; 
+                    c.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} }; 
+                });
+                
+                const tbody = document.getElementById('availability-tbody');
+                let r = 4;
+                for(let i=0; i<tbody.rows.length; i++) {
+                    let cells = Array.from(tbody.rows[i].cells).map(c => isNaN(c.innerText) ? c.innerText : Number(c.innerText));
+                    ws.getRow(r).values = cells;
+                    r++;
+                }
+                ws.columns.forEach(col => { col.width = 20; });
+                exported = true;
+            }
+            else if (document.getElementById('btn-tab-detailed').classList.contains('active')) {
+                sheetName = "Detailed_Matrix";
+                const ws = wb.addWorksheet(sheetName);
+                buildMatrixSheetRows(ws, data.rows, baseLabel, compLabel);
+                exported = true;
+            }
+            else {
+                alert("The currently active tab cannot be exported. Please select a valid data table tab.");
+                return;
             }
 
-            const buffer = await wb.xlsx.writeBuffer();
-            saveAs(new Blob([buffer]), `Groundwater_Report_${sanitizeSheetName(param)}.xlsx`);
+            if (exported) {
+                const buffer = await wb.xlsx.writeBuffer();
+                saveAs(new Blob([buffer]), `GWQ_${sheetName}_${sanitizeSheetName(param)}.xlsx`);
+            }
         }
         
-        function buildStatsSheet(ws, statsData, conf) {
+        function buildStatsSheet(ws, statsData, conf, baseLabel, compLabel) {
             let r = 1;
             ws.getCell(`A${r}`).value = `Paired Statistical Analysis (Confidence Level: ${conf*100}%)`;
             ws.getCell(`A${r}`).font = { size: 14, bold: true, color: { argb: 'FF1D4ED8' } };
             r += 2;
             
-            const h1 = ["Parameter", "Valid Pairs (n)", "Mean Base", "Mean Compare", "T-Test DF", "T-Test Mean Diff", "T-Test T-Calc", "T-Test T-Crit", "T-Test P-Value", "T-Test Significant?", "Wilcoxon W-Stat", "Wilcoxon P-Val", "Wilcoxon Significant?"];
+            const h1 = ["Parameter", "Valid Pairs (n)", `Mean ${baseLabel}`, `Mean ${compLabel}`, "T-Test DF", "T-Test Mean Diff", "T-Test T-Calc", "T-Test T-Crit", "T-Test P-Value", "T-Test Significant?", "Wilcoxon W-Stat", "Wilcoxon P-Val", "Wilcoxon Significant?"];
             ws.getRow(r).values = h1;
             ws.getRow(r).font = { bold: true, color: { argb: 'FFFFFFFF' } };
             ws.getRow(r).eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } });
@@ -2205,7 +2707,7 @@
                 ];
                 r++;
             });
-            ws.columns.forEach(col => { col.width = 16; });
+            ws.columns.forEach(col => { col.width = 17; });
         }
 
         async function exportAllSummariesToExcel() {
@@ -2214,11 +2716,15 @@
             const wb = new ExcelJS.Workbook();
             const wsGen = wb.addWorksheet("Unified_General_Summary");
             const wsPerm = wb.addWorksheet("Unified_Perm_Limits");
+            const wsParam = wb.addWorksheet("Contamination_Report");
             
             const agg = document.getElementById('aggregation-level').value;
             const bp = currentDataFormat === 'standard' ? document.getElementById('base-period').value : null;
             const cp = currentDataFormat === 'standard' ? document.getElementById('compare-period').value : null;
             const ms = document.getElementById('match-strategy').value;
+
+            let baseLabel = currentDataFormat === 'standard' ? bp : 'Base (PRM)';
+            let compLabel = currentDataFormat === 'standard' ? cp : 'Compare (POM)';
 
             let allParamsDataArr = [];
             let completeMatrixRows = [];
@@ -2230,10 +2736,11 @@
             });
 
             buildUnifiedGeneralSheet(wsGen, allParamsDataArr, agg);
-            buildUnifiedPermSheet(wsPerm, allParamsDataArr, agg);
+            buildUnifiedPermSheet(wsPerm, allParamsDataArr, agg, baseLabel, compLabel);
+            buildParamSummarySheet(wsParam, allParamsDataArr, baseLabel, compLabel, agg);
 
             const wsMatrix = wb.addWorksheet("Complete_Matrix");
-            buildMatrixSheetRows(wsMatrix, completeMatrixRows);
+            buildMatrixSheetRows(wsMatrix, completeMatrixRows, baseLabel, compLabel);
 
             const buffer = await wb.xlsx.writeBuffer();
             saveAs(new Blob([buffer]), `Groundwater_Full_Report_All_Params.xlsx`);
@@ -2244,6 +2751,7 @@
             renderGeneralDOM({}, 'State');
             renderPermDOM({}, 'State');
             document.getElementById('stats-tbody').innerHTML = '<tr><td colspan="15" class="py-10 text-center text-muted font-bold">Please upload and map a dataset to view statistical analysis.</td></tr>';
+            document.getElementById('param-summary-tbody').innerHTML = '<tr><td colspan="15" class="py-10 text-center text-muted font-bold">Please upload and map a dataset to view the contamination report.</td></tr>';
             
             ['base-period', 'compare-period', 'parameter-select'].forEach(id => {
                 document.getElementById(id).innerHTML = '<option>-- Pending Upload --</option>';
