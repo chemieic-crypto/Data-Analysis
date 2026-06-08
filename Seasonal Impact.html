@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Impact of Monsoon on GWQ </title>
+    <title>Impact of Monsoon on GWQ</title>
     <!-- Tailwind CSS for layout framework -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PapaParse for fast CSV processing -->
@@ -26,32 +26,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* Theme Variables - High Contrast & Compatibility */
+        /* Theme Variables - High Contrast Light Theme Default */
         :root {
-            --bg-grad-1: #0f172a; --bg-grad-2: #020617;
-            --text-main: #f8fafc; --text-muted: #94a3b8;
-            --glass-bg: rgba(30, 41, 59, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --glass-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-            --input-bg: #1e293b; --input-border: #475569;
-            --table-th-bg: linear-gradient(180deg, #1e3a8a 0%, #172554 100%);
-            --table-th-border: #3b82f6;
-            --table-td-bg: rgba(30, 41, 59, 0.7);
-            --table-td-hover: rgba(51, 65, 85, 1);
-            --table-td-border: rgba(255, 255, 255, 0.05);
-            --frozen-bg: #0f172a;
-            --main-panel-glow: rgba(59, 130, 246, 0.2);
-            --btn-text: #ffffff;
-            
-            /* 3D UI Colors */
-            --kpi-container-bg: #334155;
-            --kpi-container-border: #1e293b;
-            --card-3d-bg: #1e293b;
-            --card-3d-border: #334155;
-            --card-3d-shadow: 0 4px 6px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.05);
-        }
-
-        body.light-theme {
             --bg-grad-1: #f1f5f9; --bg-grad-2: #e2e8f0;
             --text-main: #0f172a; --text-muted: #475569;
             --glass-bg: rgba(255, 255, 255, 0.95);
@@ -66,9 +42,9 @@
             --frozen-bg: #f8fafc;
             --main-panel-glow: rgba(59, 130, 246, 0.4);
             --btn-text: #ffffff;
-
+            
             /* 3D UI Colors Light */
-            --kpi-container-bg: #d1d5db; /* Grey container */
+            --kpi-container-bg: #d1d5db;
             --kpi-container-border: #9ca3af;
             --card-3d-bg: #ffffff;
             --card-3d-border: #e5e7eb;
@@ -77,12 +53,11 @@
 
         body, button, input, select, textarea, th, td, .report-table, span, div { font-family: 'Times New Roman', Times, serif !important; }
         .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important; }
-        body { background: radial-gradient(circle at top left, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%); color: var(--text-main); transition: background 0.4s ease, color 0.4s ease; overflow-x: hidden; }
+        body { background: radial-gradient(circle at top left, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%); color: var(--text-main); overflow-x: hidden; }
         .glass-card { background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 1rem; }
         .glass-input { background-color: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-main); font-weight: 600;}
         
-        select option { background-color: #1e293b; color: white; }
-        body.light-theme select option { background-color: #ffffff; color: black; }
+        select option { background-color: #ffffff; color: black; }
 
         /* Modern 3D Settings Panel */
         .panel-3d {
@@ -195,14 +170,11 @@
                         <i class="fa-solid fa-file-excel mr-2"></i> Upload Dataset
                         <input id="dataset-file" type="file" accept=".csv, .xlsx" class="hidden" onchange="handleFileUpload(event)" />
                     </label>
-                    <button onclick="toggleTheme()" class="btn-3d w-10 h-10 rounded-full flex items-center justify-center shadow-lg" title="Toggle Light/Dark Mode">
-                        <i class="fa-solid fa-moon text-lg" id="theme-icon"></i>
-                    </button>
                 </div>
             </div>
 
             <!-- Upload Feedback Banner -->
-            <div id="upload-status" class="mb-5 px-4 py-3 rounded-lg hidden text-sm font-bold bg-black/5 dark:bg-black/20 text-muted border border-black/10 dark:border-white/10"></div>
+            <div id="upload-status" class="mb-5 px-4 py-3 rounded-lg hidden text-sm font-bold bg-black/5 text-muted border border-black/10"></div>
 
             <div class="grid grid-cols-1 md:grid-cols-5 gap-5">
                 <div class="period-control"><label class="block text-[11px] font-extrabold text-muted mb-1.5 uppercase tracking-wider">Base Period</label><select id="base-period" class="w-full glass-input rounded-md p-2.5 text-sm" onchange="runAnalysis()"></select></div>
@@ -223,28 +195,28 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-[11px] font-extrabold text-emerald-500 mb-1.5 uppercase tracking-wider">Chemical Parameter</label>
-                    <select id="parameter-select" class="w-full glass-input rounded-md p-2.5 text-sm font-bold border-emerald-500 bg-emerald-900/10 text-emerald-500" onchange="runAnalysis()"></select>
+                    <label class="block text-[11px] font-extrabold text-emerald-600 mb-1.5 uppercase tracking-wider">Chemical Parameter</label>
+                    <select id="parameter-select" class="w-full glass-input rounded-md p-2.5 text-sm font-bold border-emerald-500 bg-emerald-100 text-emerald-700" onchange="runAnalysis()"></select>
                 </div>
             </div>
             
             <!-- Filters -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5 pt-5 border-t border-slate-700/50">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5 pt-5 border-t border-slate-300">
                 <div>
                     <label class="block text-[11px] font-extrabold text-muted mb-1.5 uppercase tracking-wider"><i class="fa-solid fa-filter mr-1"></i> State Filter</label>
-                    <select id="filter-state" class="w-full glass-input rounded-md p-2.5 text-sm font-bold text-blue-400" onchange="updateDistrictFilter(); runAnalysis()">
+                    <select id="filter-state" class="w-full glass-input rounded-md p-2.5 text-sm font-bold text-blue-600" onchange="updateDistrictFilter(); runAnalysis()">
                         <option value="All">All States</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-[11px] font-extrabold text-muted mb-1.5 uppercase tracking-wider"><i class="fa-solid fa-filter mr-1"></i> District Filter</label>
-                    <select id="filter-district" class="w-full glass-input rounded-md p-2.5 text-sm font-bold text-blue-400" onchange="updateBlockFilter(); runAnalysis()">
+                    <select id="filter-district" class="w-full glass-input rounded-md p-2.5 text-sm font-bold text-blue-600" onchange="updateBlockFilter(); runAnalysis()">
                         <option value="All">All Districts</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-[11px] font-extrabold text-muted mb-1.5 uppercase tracking-wider"><i class="fa-solid fa-filter mr-1"></i> Block Filter</label>
-                    <select id="filter-block" class="w-full glass-input rounded-md p-2.5 text-sm font-bold text-blue-400" onchange="runAnalysis()">
+                    <select id="filter-block" class="w-full glass-input rounded-md p-2.5 text-sm font-bold text-blue-600" onchange="runAnalysis()">
                         <option value="All">All Blocks</option>
                     </select>
                 </div>
@@ -257,8 +229,8 @@
                 <h2 class="text-xl font-extrabold text-orange-500 drop-shadow-md"><i class="fa-solid fa-table-columns mr-2"></i>Map Structural Columns</h2>
                 
                 <!-- Format Toggle -->
-                <div class="bg-black/20 p-2 rounded-lg border-l-4 border-orange-500 flex flex-wrap items-center gap-4 text-sm text-muted">
-                    <strong class="text-blue-400"><i class="fa-solid fa-layer-group mr-1"></i> Data Format Layout:</strong>
+                <div class="bg-black/10 p-2 rounded-lg border-l-4 border-orange-500 flex flex-wrap items-center gap-4 text-sm text-muted">
+                    <strong class="text-blue-600"><i class="fa-solid fa-layer-group mr-1"></i> Data Format Layout:</strong>
                     <label class="cursor-pointer font-bold flex items-center gap-1"><input type="radio" name="dataFormat" value="standard" checked onchange="toggleFormat()"> Standard (Rows by Time)</label>
                     <label class="cursor-pointer font-bold flex items-center gap-1"><input type="radio" name="dataFormat" value="wide" onchange="toggleFormat()"> Wide (Columns e.g. ECPRM/ECPOM)</label>
                 </div>
@@ -266,7 +238,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="p-3 card-3d rounded-lg transition-opacity duration-300" id="time-mapping-box">
-                    <span class="text-xs text-blue-500 font-bold uppercase">Time & ID</span>
+                    <span class="text-xs text-blue-600 font-bold uppercase">Time & ID</span>
                     <div class="mt-2 space-y-2">
                         <div><label class="text-[10px] font-bold text-muted">Year Col *</label><select id="map-year" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
                         <div><label class="text-[10px] font-bold text-muted">Season Col *</label><select id="map-season" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
@@ -274,7 +246,7 @@
                     </div>
                 </div>
                 <div class="p-3 card-3d rounded-lg">
-                    <span class="text-xs text-indigo-500 font-bold uppercase">Admin Boundaries</span>
+                    <span class="text-xs text-indigo-600 font-bold uppercase">Admin Boundaries</span>
                     <div class="mt-2 space-y-2">
                         <div><label class="text-[10px] font-bold text-muted">State Col</label><select id="map-state" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
                         <div><label class="text-[10px] font-bold text-muted">District Col</label><select id="map-district" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
@@ -282,7 +254,7 @@
                     </div>
                 </div>
                 <div class="p-3 card-3d rounded-lg">
-                    <span class="text-xs text-emerald-500 font-bold uppercase">Geography</span>
+                    <span class="text-xs text-emerald-600 font-bold uppercase">Geography</span>
                     <div class="mt-2 space-y-2">
                         <div><label class="text-[10px] font-bold text-muted">Location Name</label><select id="map-location" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
                         <div><label class="text-[10px] font-bold text-muted">Latitude</label><select id="map-lat" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
@@ -290,7 +262,7 @@
                     </div>
                 </div>
                 <div class="p-3 card-3d rounded-lg">
-                    <span class="text-xs text-amber-500 font-bold uppercase">Meta Data</span>
+                    <span class="text-xs text-amber-600 font-bold uppercase">Meta Data</span>
                     <div class="mt-2 space-y-2">
                         <div><label class="text-[10px] font-bold text-muted">Gram Panchayat</label><select id="map-gp" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
                         <div><label class="text-[10px] font-bold text-muted">Well Type</label><select id="map-welltype" class="w-full glass-input text-xs p-1.5 rounded"></select></div>
@@ -311,20 +283,20 @@
                 <!-- Data Cards -->
                 <div class="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="card-3d card-edge-amber p-4 flex flex-col justify-center">
-                        <span class="text-[10px] text-amber-500 font-extrabold uppercase tracking-widest mb-1">Base Records</span>
-                        <h4 class="text-3xl font-black text-amber-500" id="stat-pre-count">0</h4>
+                        <span class="text-[10px] text-amber-600 font-extrabold uppercase tracking-widest mb-1">Base Records</span>
+                        <h4 class="text-3xl font-black text-amber-600" id="stat-pre-count">0</h4>
                     </div>
                     <div class="card-3d card-edge-blue p-4 flex flex-col justify-center">
-                        <span class="text-[10px] text-blue-500 font-extrabold uppercase tracking-widest mb-1">Compare Records</span>
-                        <h4 class="text-3xl font-black text-blue-500" id="stat-post-count">0</h4>
+                        <span class="text-[10px] text-blue-600 font-extrabold uppercase tracking-widest mb-1">Compare Records</span>
+                        <h4 class="text-3xl font-black text-blue-600" id="stat-post-count">0</h4>
                     </div>
-                    <div class="card-3d card-edge-emerald p-4 flex flex-col justify-center bg-emerald-900/5">
-                        <span class="text-[10px] text-emerald-500 font-extrabold uppercase tracking-widest mb-1">Matched Locations</span>
-                        <h4 class="text-3xl font-black text-emerald-500" id="stat-paired-count">0</h4>
+                    <div class="card-3d card-edge-emerald p-4 flex flex-col justify-center bg-emerald-50">
+                        <span class="text-[10px] text-emerald-600 font-extrabold uppercase tracking-widest mb-1">Matched Locations</span>
+                        <h4 class="text-3xl font-black text-emerald-600" id="stat-paired-count">0</h4>
                     </div>
-                    <div class="card-3d card-edge-rose p-4 flex flex-col justify-center bg-rose-900/5">
-                        <span class="text-[10px] text-rose-500 font-extrabold uppercase tracking-widest mb-1">Unpaired/Excluded</span>
-                        <h4 class="text-3xl font-black text-rose-500" id="stat-unpaired-count">0</h4>
+                    <div class="card-3d card-edge-rose p-4 flex flex-col justify-center bg-rose-50">
+                        <span class="text-[10px] text-rose-600 font-extrabold uppercase tracking-widest mb-1">Unpaired/Excluded</span>
+                        <h4 class="text-3xl font-black text-rose-600" id="stat-unpaired-count">0</h4>
                     </div>
                 </div>
                 <!-- 3D Donut Chart Area -->
@@ -334,7 +306,7 @@
             </div>
 
             <!-- Tabs & Actions -->
-            <div class="flex flex-col md:flex-row justify-between items-center p-4 border-b border-white/5 bg-black/10 gap-4">
+            <div class="flex flex-col md:flex-row justify-between items-center p-4 border-b border-gray-200 bg-black/5 gap-4">
                 <div class="flex flex-wrap gap-3">
                     <button onclick="switchTab('tab-general')" id="btn-tab-general" class="tab-3d active px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-chart-pie mr-1"></i>General Summary</button>
                     <button onclick="switchTab('tab-perm')" id="btn-tab-perm" class="tab-3d px-5 py-2.5 rounded-lg text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i>Permissible Limits</button>
@@ -353,7 +325,7 @@
 
             <!-- Tab 1: General Summary -->
             <div id="tab-general" class="tab-content block p-4">
-                <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg">
+                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-lg">
                     <table class="report-table" id="report-table">
                         <thead id="report-thead">
                             <!-- Injected dynamically -->
@@ -367,10 +339,10 @@
             <!-- Tab 2: Permissible Limits -->
             <div id="tab-perm" class="tab-content hidden p-4">
                 <div id="no-perm-msg" class="p-10 text-center text-muted font-bold glass-card hidden">
-                    <i class="fa-solid fa-info-circle text-3xl mb-3 text-blue-500"></i>
+                    <i class="fa-solid fa-info-circle text-3xl mb-3 text-blue-600"></i>
                     <p>No permissible limit configured for this specific parameter in the database.</p>
                 </div>
-                <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg" id="perm-table-container">
+                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-lg" id="perm-table-container">
                     <table class="report-table" id="perm-table">
                         <thead id="perm-thead">
                            <!-- Injected dynamically -->
@@ -383,7 +355,7 @@
 
             <!-- Tab: Parameter Contamination Summary -->
             <div id="tab-param-summary" class="tab-content hidden p-4">
-                <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg relative max-h-[600px]">
+                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-lg relative max-h-[600px]">
                     <table class="report-table relative" id="param-summary-table">
                         <thead class="sticky top-0 z-30 shadow-md" id="param-summary-thead">
                             <!-- Injected dynamically based on Aggregation Level -->
@@ -397,9 +369,9 @@
 
             <!-- Tab 3: Hypothesis Testing (Stats) -->
             <div id="tab-stats" class="tab-content hidden p-4">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10 gap-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 bg-black/5 p-4 rounded-lg border border-black/10 gap-4">
                     <div class="flex items-center gap-3">
-                        <h3 class="font-bold text-sm text-blue-600 dark:text-blue-400"><i class="fa-solid fa-microscope mr-2"></i>Paired T-Test & Wilcoxon Signed-Rank Test</h3>
+                        <h3 class="font-bold text-sm text-blue-600"><i class="fa-solid fa-microscope mr-2"></i>Paired T-Test & Wilcoxon Signed-Rank Test</h3>
                     </div>
                     <div class="flex items-center gap-3">
                         <label class="text-[11px] font-extrabold text-muted uppercase tracking-wider">Confidence Level:</label>
@@ -410,7 +382,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg relative max-h-[500px]">
+                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-lg relative max-h-[500px]">
                     <table class="report-table relative" id="stats-table">
                         <thead class="sticky top-0 z-30 shadow-md">
                             <tr>
@@ -443,7 +415,7 @@
 
             <!-- Tab 4: Data Availability -->
             <div id="tab-availability" class="tab-content hidden p-4">
-                <div class="overflow-x-auto rounded-lg border border-white/10 shadow-lg">
+                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-lg">
                     <table class="report-table" id="availability-table">
                         <thead>
                             <tr>
@@ -462,10 +434,10 @@
 
             <!-- Tab 4: Detailed Matrix -->
             <div id="tab-detailed" class="tab-content hidden p-4">
-                <div id="detailed-warning" class="bg-blue-900/40 border border-blue-500/30 text-blue-200 text-xs font-bold p-3 rounded-lg mb-4 hidden">
-                    <i class="fa-solid fa-triangle-exclamation text-orange-400 mr-2"></i> Large Dataset Detected. Displaying the first 1,000 rows to maintain browser performance. <strong class="text-white">Use "Export Active Tab" to download all records perfectly to Excel.</strong>
+                <div id="detailed-warning" class="bg-blue-100 border border-blue-300 text-blue-800 text-xs font-bold p-3 rounded-lg mb-4 hidden">
+                    <i class="fa-solid fa-triangle-exclamation text-orange-500 mr-2"></i> Large Dataset Detected. Displaying the first 1,000 rows to maintain browser performance. <strong class="text-blue-900">Use "Export Active Tab" to download all records perfectly to Excel.</strong>
                 </div>
-                <div class="overflow-x-auto rounded-lg border border-white/10 max-h-[500px] shadow-lg relative">
+                <div class="overflow-x-auto rounded-lg border border-gray-200 max-h-[500px] shadow-lg relative">
                     <table class="report-table relative" id="detailed-table">
                         <thead class="sticky top-0 z-30 shadow-md">
                             <tr id="detailed-header-row-1">
@@ -480,38 +452,38 @@
             
             <!-- Tab 5: Advanced Geospatial Map -->
             <div id="tab-map" class="tab-content hidden p-4 space-y-4">
-                <div class="flex flex-col xl:flex-row justify-between gap-4 p-4 card-3d rounded-lg">
+                <div class="flex flex-col xl:flex-row justify-between gap-4 p-4 card-3d rounded-lg border-gray-200">
                     <!-- Color Picker Panel -->
                     <div class="flex flex-wrap items-center gap-3 text-[10px] font-bold text-muted">
-                        <strong class="text-blue-500 uppercase tracking-wide"><i class="fa-solid fa-palette mr-1"></i> Legend:</strong>
-                        <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Improved <input type="color" id="col-imp" value="#10b981" class="w-5 h-5 rounded border-0 cursor-pointer bg-transparent" onchange="updateMapVisuals()"></label>
-                        <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1.5 rounded cursor-pointer border border-black/10 dark:border-white/10">Deteriorated <input type="color" id="col-det" value="#ef4444" class="w-5 h-5 rounded border-0 cursor-pointer bg-transparent" onchange="updateMapVisuals()"></label>
+                        <strong class="text-blue-600 uppercase tracking-wide"><i class="fa-solid fa-palette mr-1"></i> Legend:</strong>
+                        <label class="flex items-center gap-1.5 bg-black/5 p-1.5 rounded cursor-pointer border border-black/10">Improved <input type="color" id="col-imp" value="#10b981" class="w-5 h-5 rounded border-0 cursor-pointer bg-transparent" onchange="updateMapVisuals()"></label>
+                        <label class="flex items-center gap-1.5 bg-black/5 p-1.5 rounded cursor-pointer border border-black/10">Deteriorated <input type="color" id="col-det" value="#ef4444" class="w-5 h-5 rounded border-0 cursor-pointer bg-transparent" onchange="updateMapVisuals()"></label>
                     </div>
 
                     <!-- Size & Advanced Tools -->
                     <div class="flex flex-wrap items-center gap-3">
                         <div class="flex items-center gap-3 mr-2">
-                            <label class="map-toggle-label"><input type="checkbox" id="show-basemap" checked onchange="toggleLayers()" class="accent-blue-500"> Base Map</label>
-                            <label class="map-toggle-label"><input type="checkbox" id="show-points" checked onchange="toggleLayers()" class="accent-blue-500"> Data Points</label>
+                            <label class="map-toggle-label"><input type="checkbox" id="show-basemap" checked onchange="toggleLayers()" class="accent-blue-600"> Base Map</label>
+                            <label class="map-toggle-label"><input type="checkbox" id="show-points" checked onchange="toggleLayers()" class="accent-blue-600"> Data Points</label>
                         </div>
                         
-                        <div class="flex items-center gap-2 bg-black/5 dark:bg-black/20 p-1 rounded-lg border border-black/10 dark:border-white/10 text-muted">
+                        <div class="flex items-center gap-2 bg-black/5 p-1 rounded-lg border border-black/10 text-muted">
                             <span class="text-[10px] uppercase font-bold ml-2">Point Size</span>
-                            <button onclick="changeRadius(-1)" class="w-5 h-5 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-xs">-</button>
+                            <button onclick="changeRadius(-1)" class="w-5 h-5 flex items-center justify-center bg-white border border-gray-300 rounded hover:bg-gray-100 font-bold transition text-xs">-</button>
                             <span id="radius-val" class="w-3 text-center text-[10px] font-bold">6</span>
-                            <button onclick="changeRadius(1)" class="w-5 h-5 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-xs">+</button>
+                            <button onclick="changeRadius(1)" class="w-5 h-5 flex items-center justify-center bg-white border border-gray-300 rounded hover:bg-gray-100 font-bold transition text-xs">+</button>
                         </div>
                         
-                        <label class="flex items-center gap-2 bg-indigo-100 dark:bg-indigo-900/40 p-2 rounded-lg border border-indigo-300 dark:border-indigo-500/50 cursor-pointer text-xs font-bold text-indigo-700 dark:text-indigo-200 transition" title="Applies Fast HD Grid Search IDW">
-                            <input type="checkbox" id="enable-idw" onchange="updateMapVisuals()" class="accent-indigo-500"> Generate HD IDW
+                        <label class="flex items-center gap-2 bg-indigo-50 p-2 rounded-lg border border-indigo-200 cursor-pointer text-xs font-bold text-indigo-700 transition" title="Applies Fast HD Grid Search IDW">
+                            <input type="checkbox" id="enable-idw" onchange="updateMapVisuals()" class="accent-indigo-600"> Generate HD IDW
                         </label>
 
-                        <label class="flex items-center gap-2 bg-emerald-900/10 p-1.5 rounded-lg border border-emerald-500/30">
-                            <span class="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-500">Map Parameter</span>
-                            <select id="map-parameter-select" class="glass-input text-xs p-1 rounded font-bold text-emerald-700 dark:text-emerald-400 bg-transparent border-none outline-none" onchange="syncParamSelect(this.value)"></select>
+                        <label class="flex items-center gap-2 bg-emerald-50 p-1.5 rounded-lg border border-emerald-200">
+                            <span class="text-[10px] uppercase font-bold text-emerald-700">Map Parameter</span>
+                            <select id="map-parameter-select" class="glass-input text-xs p-1 rounded font-bold text-emerald-800 bg-transparent border-none outline-none" onchange="syncParamSelect(this.value)"></select>
                         </label>
 
-                        <div class="flex flex-wrap items-center gap-2 bg-blue-900/10 p-1.5 rounded-lg border border-blue-500/30">
+                        <div class="flex flex-wrap items-center gap-2 bg-blue-50 p-1.5 rounded-lg border border-blue-200">
                             <label class="text-xs font-black bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg cursor-pointer transition shadow-lg">
                                 <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Boundary (.zip)
                                 <input type="file" id="shp-upload" accept=".zip" class="hidden" onchange="handleShapefile(event)">
@@ -519,22 +491,22 @@
                             <button onclick="clearShapefiles()" class="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg shadow-lg font-bold" title="Clear Boundaries"><i class="fa-solid fa-trash"></i></button>
                             
                             <!-- Dynamic Shapefile Filters -->
-                            <div id="shp-filter-container" class="hidden items-center gap-2 ml-2 pl-2 border-l border-blue-500/30">
-                                <span class="text-[10px] uppercase font-bold text-blue-500">Filter Boundary:</span>
-                                <select id="shp-prop-select" class="glass-input text-xs p-1 rounded font-bold text-blue-400 bg-transparent border-none outline-none" onchange="updateShpValues()"></select>
-                                <select id="shp-val-select" class="glass-input text-xs p-1 rounded font-bold text-blue-400 bg-transparent border-none outline-none max-w-[150px]" onchange="updateMapVisuals()"></select>
+                            <div id="shp-filter-container" class="hidden items-center gap-2 ml-2 pl-2 border-l border-blue-200">
+                                <span class="text-[10px] uppercase font-bold text-blue-600">Filter Boundary:</span>
+                                <select id="shp-prop-select" class="glass-input text-xs p-1 rounded font-bold text-blue-700 bg-transparent border-none outline-none" onchange="updateShpValues()"></select>
+                                <select id="shp-val-select" class="glass-input text-xs p-1 rounded font-bold text-blue-700 bg-transparent border-none outline-none max-w-[150px]" onchange="updateMapVisuals()"></select>
                             </div>
                             
                             <!-- Boundary Style Controls -->
-                            <div id="shp-style-container" class="hidden items-center gap-2 ml-2 pl-2 border-l border-blue-500/30">
-                                 <label class="flex items-center gap-1.5 bg-black/5 dark:bg-black/20 p-1 rounded cursor-pointer border border-black/10 dark:border-white/10 text-[10px] font-bold text-blue-500 uppercase">
+                            <div id="shp-style-container" class="hidden items-center gap-2 ml-2 pl-2 border-l border-blue-200">
+                                 <label class="flex items-center gap-1.5 bg-white p-1 rounded cursor-pointer border border-gray-300 text-[10px] font-bold text-blue-600 uppercase">
                                      Color <input type="color" id="shp-color" value="#3b82f6" class="w-4 h-4 rounded border-0 cursor-pointer bg-transparent" onchange="updateBoundaryStyle()">
                                  </label>
-                                 <div class="flex items-center gap-1 bg-black/5 dark:bg-black/20 p-1 rounded border border-black/10 dark:border-white/10 text-muted">
-                                     <span class="text-[10px] uppercase font-bold text-blue-500 ml-1">Thickness</span>
-                                     <button onclick="changeShpWeight(-1)" class="w-4 h-4 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-xs">-</button>
+                                 <div class="flex items-center gap-1 bg-white p-1 rounded border border-gray-300 text-muted">
+                                     <span class="text-[10px] uppercase font-bold text-blue-600 ml-1">Thickness</span>
+                                     <button onclick="changeShpWeight(-1)" class="w-4 h-4 flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200 font-bold transition text-xs">-</button>
                                      <span id="shp-weight-val" class="w-3 text-center text-[10px] font-bold">3</span>
-                                     <button onclick="changeShpWeight(1)" class="w-4 h-4 flex items-center justify-center bg-black/10 dark:bg-white/10 rounded hover:bg-black/20 dark:hover:bg-white/20 font-bold transition text-xs">+</button>
+                                     <button onclick="changeShpWeight(1)" class="w-4 h-4 flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200 font-bold transition text-xs">+</button>
                                  </div>
                             </div>
                         </div>
@@ -546,8 +518,8 @@
                     <span>Rendering HD Surface...</span>
                 </div>
                 
-                <!-- Map Container - dynamically turns pure white when basemap is hidden -->
-                <div id="map-container" class="w-full h-[650px] rounded-xl border border-black/10 dark:border-white/20 shadow-2xl z-0 bg-gray-100 dark:bg-black/30 flex items-center justify-center text-muted relative transition-colors duration-300">
+                <!-- Map Container -->
+                <div id="map-container" class="w-full h-[650px] rounded-xl border border-black/10 shadow-2xl z-0 bg-gray-100 flex items-center justify-center text-muted relative transition-colors duration-300">
                     <span id="map-empty-msg" class="font-bold text-lg"><i class="fa-solid fa-map text-4xl mb-3 block text-center text-blue-500/50"></i> Waiting for matched geographical data...</span>
                 </div>
             </div>
@@ -555,53 +527,53 @@
             <!-- Tab 6: Methodology -->
             <div id="tab-methodology" class="tab-content hidden p-4 space-y-6">
                 <div class="glass-card p-6">
-                    <h3 class="text-2xl font-black text-blue-400 mb-4 border-b border-blue-500/30 pb-2">Tool Methodology & Overview</h3>
+                    <h3 class="text-2xl font-black text-blue-600 mb-4 border-b border-blue-200 pb-2">Tool Methodology & Overview</h3>
                     
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Data Templates -->
-                        <div class="bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10 flex flex-col">
-                            <h4 class="text-lg font-bold text-orange-500 dark:text-orange-400 mb-2"><i class="fa-solid fa-file-csv mr-2"></i>1. Accepted Data Templates</h4>
-                            <p class="text-sm text-muted mb-3">This analyzer dynamically processes two distinct data architectures. <strong class="text-blue-500 dark:text-blue-400">For Hypothesis Testing to work, data must be pairable by Well ID or Location across two periods.</strong></p>
+                        <div class="bg-black/5 p-4 rounded-lg border border-black/10 flex flex-col">
+                            <h4 class="text-lg font-bold text-orange-600 mb-2"><i class="fa-solid fa-file-csv mr-2"></i>1. Accepted Data Templates</h4>
+                            <p class="text-sm text-muted mb-3">This analyzer dynamically processes two distinct data architectures. <strong class="text-blue-600">For Hypothesis Testing to work, data must be pairable by Well ID or Location across two periods.</strong></p>
                             <ul class="text-sm space-y-2 text-muted mb-4 flex-1">
-                                <li><strong class="text-gray-800 dark:text-white">Standard Format (Long):</strong> Data is organized by rows. Each row represents a location at a specific time (e.g., Pre-monsoon 2022). Requires <code>Year</code> and <code>Season</code> columns to group and compare periods.</li>
-                                <li><strong class="text-gray-800 dark:text-white">Wide Format:</strong> Data is organized by columns. A single row contains all periods for a location. Detects column pairs like <code>ECPRM</code> and <code>ECPOM</code>.</li>
+                                <li><strong class="text-gray-800">Standard Format (Long):</strong> Data is organized by rows. Each row represents a location at a specific time (e.g., Pre-monsoon 2022). Requires <code>Year</code> and <code>Season</code> columns to group and compare periods.</li>
+                                <li><strong class="text-gray-800">Wide Format:</strong> Data is organized by columns. A single row contains all periods for a location. Detects column pairs like <code>ECPRM</code> and <code>ECPOM</code>.</li>
                             </ul>
-                            <div class="bg-white/5 dark:bg-black/40 p-3 rounded border border-black/10 dark:border-white/10 overflow-x-auto">
-                                <strong class="text-[11px] text-blue-600 dark:text-blue-400 mb-2 block uppercase tracking-wider">Example: Standard Format (CSV/Excel)</strong>
+                            <div class="bg-white p-3 rounded border border-black/10 overflow-x-auto shadow-sm">
+                                <strong class="text-[11px] text-blue-600 mb-2 block uppercase tracking-wider">Example: Standard Format (CSV/Excel)</strong>
                                 <table class="w-full text-xs text-left text-muted border-collapse">
-                                    <thead><tr class="border-b border-black/20 dark:border-white/20 text-gray-800 dark:text-gray-200">
+                                    <thead><tr class="border-b border-black/20 text-gray-800">
                                         <th class="pb-1 pr-2">Well_ID</th><th class="pb-1 pr-2">Year</th><th class="pb-1 pr-2">Season</th><th class="pb-1 pr-2">TDS</th><th class="pb-1 pr-2">NO3</th>
                                     </tr></thead>
                                     <tbody class="font-mono text-[10px]">
-                                        <tr><td class="pt-1 pr-2 text-blue-500">W001</td><td class="pt-1 pr-2">2023</td><td class="pt-1 pr-2">Pre-Monsoon</td><td class="pt-1 pr-2">550</td><td class="pt-1 pr-2">42</td></tr>
-                                        <tr><td class="pr-2 text-blue-500">W001</td><td class="pr-2">2023</td><td class="pr-2 text-emerald-500">Post-Monsoon</td><td class="pr-2">480</td><td class="pr-2">38</td></tr>
-                                        <tr><td class="pr-2 text-blue-500">W002</td><td class="pr-2">2023</td><td class="pr-2">Pre-Monsoon</td><td class="pr-2">1200</td><td class="pr-2">55</td></tr>
+                                        <tr><td class="pt-1 pr-2 text-blue-600">W001</td><td class="pt-1 pr-2">2023</td><td class="pt-1 pr-2">Pre-Monsoon</td><td class="pt-1 pr-2">550</td><td class="pt-1 pr-2">42</td></tr>
+                                        <tr><td class="pr-2 text-blue-600">W001</td><td class="pr-2">2023</td><td class="pr-2 text-emerald-600">Post-Monsoon</td><td class="pr-2">480</td><td class="pr-2">38</td></tr>
+                                        <tr><td class="pr-2 text-blue-600">W002</td><td class="pr-2">2023</td><td class="pr-2">Pre-Monsoon</td><td class="pr-2">1200</td><td class="pr-2">55</td></tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
                         <!-- Capabilities -->
-                        <div class="bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10 flex flex-col">
-                            <h4 class="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2"><i class="fa-solid fa-microchip mr-2"></i>2. Core Capabilities</h4>
+                        <div class="bg-black/5 p-4 rounded-lg border border-black/10 flex flex-col">
+                            <h4 class="text-lg font-bold text-emerald-700 mb-2"><i class="fa-solid fa-microchip mr-2"></i>2. Core Capabilities</h4>
                             <ul class="text-sm space-y-3 text-muted">
-                                <li><strong class="text-gray-800 dark:text-white block mb-1">Trend Analysis:</strong> Automatically computes % change between Base and Compare periods. Classifies locations as <em>Improved</em>, <em>Deteriorated</em>, or <em>Unchanged</em>.</li>
-                                <li><strong class="text-gray-800 dark:text-white block mb-1">Permissible Limit Flagging:</strong> Cross-references concentrations against WHO/BIS limits (e.g., TDS &gt; 2000, F &gt; 1.5) to highlight critical deterioration.</li>
-                                <li><strong class="text-gray-800 dark:text-white block mb-1">Statistical Hypothesis Testing:</strong> Runs Paired T-Tests and Wilcoxon Signed-Rank tests on matched wells to mathematically prove if the seasonal shift is statistically significant.</li>
-                                <li><strong class="text-gray-800 dark:text-white block mb-1">HD IDW Geospatial Interpolation:</strong> Uses Inverse Distance Weighting to create continuous, glossy heatmaps constrained perfectly to shapefile boundaries.</li>
+                                <li><strong class="text-gray-800 block mb-1">Trend Analysis:</strong> Automatically computes % change between Base and Compare periods. Classifies locations as <em>Improved</em> (&gt;20% decrease), <em>Deteriorated</em> (&gt;20% increase), or <em>No Significant Change</em>.</li>
+                                <li><strong class="text-gray-800 block mb-1">Permissible Limit Flagging:</strong> Cross-references concentrations against WHO/BIS limits (e.g., TDS &gt; 2000, F &gt; 1.5) to highlight critical deterioration.</li>
+                                <li><strong class="text-gray-800 block mb-1">Statistical Hypothesis Testing:</strong> Runs Paired T-Tests and Wilcoxon Signed-Rank tests on matched wells to mathematically prove if the seasonal shift is statistically significant.</li>
+                                <li><strong class="text-gray-800 block mb-1">HD IDW Geospatial Interpolation:</strong> Uses Inverse Distance Weighting to create continuous, glossy heatmaps constrained perfectly to shapefile boundaries.</li>
                             </ul>
                         </div>
                     </div>
 
                     <!-- Hypothesis Testing Example Section -->
-                    <div class="mt-6 bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10">
-                        <h4 class="text-lg font-bold text-purple-600 dark:text-purple-400 mb-2"><i class="fa-solid fa-microscope mr-2"></i>3. Hypothesis Testing Explained</h4>
+                    <div class="mt-6 bg-black/5 p-4 rounded-lg border border-black/10">
+                        <h4 class="text-lg font-bold text-purple-700 mb-2"><i class="fa-solid fa-microscope mr-2"></i>3. Hypothesis Testing Explained</h4>
                         <p class="text-sm text-muted mb-3">To confidently claim that the monsoon significantly impacted groundwater quality, we must prove the change isn't due to random chance. We use paired statistical tests because we are measuring the <em>same wells</em> twice (Base vs Compare).</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted mb-4">
-                            <div class="p-4 bg-indigo-900/10 rounded-lg border border-indigo-500/20">
-                                <strong class="text-indigo-600 dark:text-indigo-400 block mb-2 text-base">Student's Paired T-Test (Parametric)</strong>
+                            <div class="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                                <strong class="text-indigo-700 block mb-2 text-base">Student's Paired T-Test (Parametric)</strong>
                                 <p class="mb-3">Best for normally distributed data. It measures the mean difference relative to the standard error.</p>
-                                <div class="bg-black/30 p-3 rounded font-mono text-sm mb-3 text-center text-indigo-300 font-bold border border-indigo-500/30 shadow-inner">
+                                <div class="bg-white p-3 rounded font-mono text-sm mb-3 text-center text-indigo-700 font-bold border border-indigo-200 shadow-sm">
                                     t = d&#772; / ( s_d / &radic;n )
                                 </div>
                                 <ul class="text-xs space-y-1 opacity-80">
@@ -610,10 +582,10 @@
                                     <li><strong>n</strong> = Number of valid paired locations</li>
                                 </ul>
                             </div>
-                            <div class="p-4 bg-emerald-900/10 rounded-lg border border-emerald-500/20">
-                                <strong class="text-emerald-600 dark:text-emerald-400 block mb-2 text-base">Wilcoxon Signed-Rank (Non-Parametric)</strong>
+                            <div class="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                <strong class="text-emerald-700 block mb-2 text-base">Wilcoxon Signed-Rank (Non-Parametric)</strong>
                                 <p class="mb-3">Best for real-world environmental data (resists outliers). Ranks absolute differences to find significance.</p>
-                                <div class="bg-black/30 p-3 rounded font-mono text-sm mb-3 text-center text-emerald-300 font-bold border border-emerald-500/30 shadow-inner">
+                                <div class="bg-white p-3 rounded font-mono text-sm mb-3 text-center text-emerald-700 font-bold border border-emerald-200 shadow-sm">
                                     W = &Sigma; R<sup>(+)</sup>
                                 </div>
                                 <ul class="text-xs space-y-1 opacity-80">
@@ -623,8 +595,8 @@
                                 </ul>
                             </div>
                         </div>
-                        <div class="p-3 bg-amber-900/10 rounded border border-amber-500/30 text-sm">
-                            <strong class="text-amber-600 dark:text-amber-400"><i class="fa-solid fa-lightbulb mr-1"></i> Interpreting P-Values & Significance:</strong><br>
+                        <div class="p-3 bg-amber-50 rounded border border-amber-200 text-sm">
+                            <strong class="text-amber-700"><i class="fa-solid fa-lightbulb mr-1"></i> Interpreting P-Values & Significance:</strong><br>
                             <span class="text-muted leading-relaxed">
                             <span class="inline-block mt-1">• If <strong>P-Value &lt; 0.05</strong> (at 95% Confidence), it outputs <span class="badge-status badge-improved mx-1">YES</span> or <span class="badge-status badge-deteriorated mx-1">YES</span> depending on the direction. There is less than a 5% probability of observing a difference this large assuming the monsoon actually had no effect. The impact is significant.</span><br>
                             <span class="inline-block mt-1">• If <strong>P-Value &gt; 0.05</strong>, it outputs <span class="badge-status badge-unchanged mx-1">NO</span>. The change is considered statistically insignificant noise.</span></span>
@@ -632,37 +604,37 @@
                     </div>
 
                     <!-- Tab Explanations -->
-                    <div class="mt-6 bg-black/5 dark:bg-black/20 p-4 rounded-lg border border-black/10 dark:border-white/10">
-                        <h4 class="text-lg font-bold text-indigo-600 dark:text-indigo-400 mb-2"><i class="fa-solid fa-layer-group mr-2"></i>4. Analytical Tabs Explained</h4>
+                    <div class="mt-6 bg-black/5 p-4 rounded-lg border border-black/10">
+                        <h4 class="text-lg font-bold text-indigo-700 mb-2"><i class="fa-solid fa-layer-group mr-2"></i>4. Analytical Tabs Explained</h4>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-muted">
-                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
-                                <strong class="text-blue-600 dark:text-blue-300 block mb-1">General Summary</strong> Aggregates locations (State/Dist/Block) showing the Count (N) and Percentage (%) of improving vs deteriorating wells.
+                            <div class="p-3 bg-white rounded border border-gray-200 shadow-sm">
+                                <strong class="text-blue-700 block mb-1">General Summary</strong> Aggregates locations (State/Dist/Block) showing the Count (N) and Percentage (%) of improving vs deteriorating wells based on the 20% thresholds.
                             </div>
-                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
-                                <strong class="text-rose-600 dark:text-rose-300 block mb-1">Permissible Limits</strong> Isolates critical locations. Shows wells that were already beyond limits and deteriorated further.
+                            <div class="p-3 bg-white rounded border border-gray-200 shadow-sm">
+                                <strong class="text-rose-700 block mb-1">Permissible Limits</strong> Isolates critical locations. Shows wells that were already beyond limits and deteriorated further.
                             </div>
-                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
-                                <strong class="text-orange-600 dark:text-orange-400 block mb-1">Contamination Report</strong> Evaluates all parameters side-by-side to show newly contaminated and remediated samples.
+                            <div class="p-3 bg-white rounded border border-gray-200 shadow-sm">
+                                <strong class="text-orange-700 block mb-1">Contamination Report</strong> Evaluates all parameters side-by-side to show newly contaminated and remediated samples.
                             </div>
-                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
-                                <strong class="text-purple-600 dark:text-purple-300 block mb-1">Hypothesis Testing</strong> Validates statistical significance of the shift between periods using Paired T-Test and Wilcoxon tests.
+                            <div class="p-3 bg-white rounded border border-gray-200 shadow-sm">
+                                <strong class="text-purple-700 block mb-1">Hypothesis Testing</strong> Validates statistical significance of the shift between periods using Paired T-Test and Wilcoxon tests.
                             </div>
-                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
-                                <strong class="text-amber-600 dark:text-amber-300 block mb-1">Data Availability</strong> Validates data completeness. Shows exactly how many records had valid numbers for both base and compare periods.
+                            <div class="p-3 bg-white rounded border border-gray-200 shadow-sm">
+                                <strong class="text-amber-700 block mb-1">Data Availability</strong> Validates data completeness. Shows exactly how many records had valid numbers for both base and compare periods.
                             </div>
-                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
-                                <strong class="text-emerald-600 dark:text-emerald-300 block mb-1">Detailed Matrix</strong> A complete row-by-row breakdown showing the raw Base value, Compare value, and assigned Status.
+                            <div class="p-3 bg-white rounded border border-gray-200 shadow-sm">
+                                <strong class="text-emerald-700 block mb-1">Detailed Matrix</strong> A complete row-by-row breakdown showing the raw Base value, Compare value, precise % Change, and assigned Status.
                             </div>
-                            <div class="p-3 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/5">
-                                <strong class="text-indigo-600 dark:text-indigo-300 block mb-1">Advanced Map</strong> High-Definition IDW mapping restricted precisely to uploaded administrative shapefile boundaries.
+                            <div class="p-3 bg-white rounded border border-gray-200 shadow-sm">
+                                <strong class="text-indigo-700 block mb-1">Advanced Map</strong> High-Definition IDW mapping restricted precisely to uploaded administrative shapefile boundaries.
                             </div>
                         </div>
                     </div>
 
                     <!-- Live Example Section -->
-                    <div class="mt-6 border-t border-black/10 dark:border-white/10 pt-6">
-                        <h4 class="text-lg font-bold text-blue-600 dark:text-blue-400 mb-4"><i class="fa-solid fa-bolt mr-2"></i>5. Live Data Example (<span id="live-example-status" class="text-orange-500 dark:text-orange-400">Awaiting Data</span>)</h4>
-                        <div id="live-example-container" class="overflow-x-auto rounded-lg border border-black/10 dark:border-white/10 shadow-lg bg-black/5 dark:bg-black/20 p-4 text-center text-muted text-sm font-bold">
+                    <div class="mt-6 border-t border-gray-200 pt-6">
+                        <h4 class="text-lg font-bold text-blue-700 mb-4"><i class="fa-solid fa-bolt mr-2"></i>5. Live Data Example (<span id="live-example-status" class="text-orange-600">Awaiting Data</span>)</h4>
+                        <div id="live-example-container" class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm bg-white p-4 text-center text-muted text-sm font-bold">
                             Upload and map your dataset to see a live sample of how the algorithm interprets your rows!
                         </div>
                     </div>
@@ -673,9 +645,20 @@
     </div>
 
     <script>
-        // High Precision Parameter database
+        // --- CUSTOM TOAST TO REPLACE NATIVE ALERTS ---
+        window.alert = function(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-5 right-5 bg-rose-600 text-white px-6 py-3 rounded shadow-2xl z-[9999] font-bold transition-opacity duration-300 flex items-center gap-2 border border-rose-400/50';
+            toast.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${msg}`;
+            document.body.appendChild(toast);
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                setTimeout(() => toast.remove(), 300); 
+            }, 4000);
+        };
+
+        // High Precision Parameter database (pH Removed per User Request)
         const limits = {
-            'pH': { b1: 6.5, b2: 8.5, unit: '', name: 'pH', keywords: ['ph'] },
             'TDS': { b1: 500, b2: 2000, unit: 'mg/L', name: 'Total Dissolved Solids', keywords: ['tds', 'total dissolved solids'] },
             'Turbidity': { b1: 1, b2: 5, unit: 'NTU', name: 'Turbidity', keywords: ['turbidity'] },
             'Alkalinity': { b1: 200, b2: 600, unit: 'mg/L', name: 'Total Alkalinity', keywords: ['alkalinity', 'total alkalinity'] },
@@ -787,22 +770,6 @@
             return ["Location"];
         }
 
-        function toggleTheme() {
-            document.body.classList.toggle('light-theme');
-            const isLight = document.body.classList.contains('light-theme');
-            const icon = document.getElementById('theme-icon');
-            icon.className = isLight ? "fa-solid fa-sun text-lg" : "fa-solid fa-moon text-lg";
-            
-            if (baseMapLayer) {
-                baseMapLayer.setUrl(`https://{s}.basemaps.cartocdn.com/${isLight ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`);
-            }
-            
-            // Re-render chart for dark/light text color adjustments
-            if (echartInstance && globalAggregatedDataCache) {
-                updateDonutChart(globalAggregatedDataCache.data.pCount, globalAggregatedDataCache.data.uCount);
-            }
-        }
-        
         function toggleFormat() {
             currentDataFormat = document.querySelector('input[name="dataFormat"]:checked').value;
             const timeBox = document.getElementById('time-mapping-box');
@@ -834,9 +801,8 @@
             const container = document.getElementById('map-container');
             container.innerHTML = '';  container.style.display = 'block';
             leafletMap = L.map('map-container').setView([22.5, 78.9], 4);
-            const isLight = document.body.classList.contains('light-theme');
             
-            baseMapLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${isLight ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`, { maxZoom: 20 });
+            baseMapLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 });
             baseMapLayer.addTo(leafletMap);
             
             mapMarkersLayer = L.layerGroup().addTo(leafletMap); 
@@ -1023,14 +989,13 @@
                         let baseNameRaw = h.substring(0, h.length - 3);
                         let compNameRaw = headers.find(x => x.toUpperCase() === baseNameRaw.toUpperCase() + 'POM');
                         if (compNameRaw) {
-                            let baseUpper = baseNameRaw.toUpperCase();
-                            if(baseUpper !== 'PH') { 
-                                wideParamPairs[baseNameRaw] = { base: h, comp: compNameRaw };
-                            }
+                            wideParamPairs[baseNameRaw] = { base: h, comp: compNameRaw };
                         }
                     }
                 });
-                activeParametersInFile = Object.keys(wideParamPairs);
+                activeParametersInFile = Object.keys(wideParamPairs).filter(col => {
+                    const lw = col.toLowerCase(); return Object.values(limits).some(c => c.keywords.some(kw => lw.includes(kw)));
+                });
                 if (activeParametersInFile.length === 0) alert("No PRM/POM column pairs detected! Please check your dataset or select 'Standard' format.");
             }
 
@@ -1121,11 +1086,12 @@
                 <th rowspan="2">District</th>
                 <th rowspan="2">Block</th>
                 <th rowspan="2">Location</th>
-                <th colspan="3" class="dyn border-l border-white/20 text-muted">Awaiting Parameter...</th>`;
+                <th colspan="4" class="dyn border-l border-white/20 text-muted">Awaiting Parameter...</th>`;
             h2.innerHTML = `
                 <th class="dyn border-l border-white/10 text-muted">Base</th>
                 <th class="dyn text-muted">Compare</th>
-                <th class="dyn border-r border-white/10 text-muted">Status</th>`;
+                <th class="dyn border-x border-white/10 text-muted">% Change</th>
+                <th class="dyn border-r border-white/10 text-muted">Impact of Monsoon<br>(Improved /Deteriorated/ No Significant Change)</th>`;
                 
             document.getElementById('detailed-tbody').innerHTML = '<tr><td colspan="100" class="py-10 text-center text-muted font-bold">Please upload and map a dataset to view detailed matrix.</td></tr>';
         }
@@ -1146,8 +1112,8 @@
             h2.innerHTML = '';
 
             activeParametersInFile.forEach(p => {
-                h1.innerHTML += `<th colspan="3" class="dyn border-l border-white/20">${getParamLabel(p)}</th>`;
-                h2.innerHTML += `<th class="dyn border-l border-white/10">${baseLabel}</th><th class="dyn">${compLabel}</th><th class="dyn border-r border-white/10">Status</th>`;
+                h1.innerHTML += `<th colspan="4" class="dyn border-l border-white/20">${getParamLabel(p)}</th>`;
+                h2.innerHTML += `<th class="dyn border-l border-white/10">${baseLabel}</th><th class="dyn">${compLabel}</th><th class="dyn border-x border-white/10">% Change</th><th class="dyn border-r border-white/10">Impact of Monsoon<br>(Improved /Deteriorated/ No Significant Change)</th>`;
             });
         }
 
@@ -1217,7 +1183,7 @@
                 if (loc.base && loc.comp) {
                     let aggKey = loc[aggLevel.toLowerCase()] || 'Unknown';
                     
-                    if (!stats[aggKey]) stats[aggKey] = { s:0, i:0, i_l2:0, i_g2:0, d:0, d_l2:0, d_g2:0, u:0, state: loc.state, district: loc.district, block: loc.block };
+                    if (!stats[aggKey]) stats[aggKey] = { s:0, i:0, d:0, u:0, state: loc.state, district: loc.district, block: loc.block };
                     if (!permStats[aggKey]) permStats[aggKey] = { s:0, a_b:0, i_sa:0, i_sb:0, d_t:0, d_a:0, u_a:0, state: loc.state, district: loc.district, block: loc.block };
 
                     let dr = { id: loc.id, state: loc.state, district: loc.district, block: loc.block, loc: loc.loc, lat: loc.lat, lon: loc.lon, chem: {} };
@@ -1236,14 +1202,15 @@
                         
                         let stat = '#NA', pct = 0;
                         if(!isNaN(vb) && !isNaN(vc)) {
-                            stat = 'Unchanged';
                             let isRSC = p.toUpperCase().includes('RSC');
                             if(!isRSC) { vb = Math.max(vb,0); vc = Math.max(vc,0); } 
                             
-                            if(vc < vb) stat = 'Improved'; else if(vc > vb) stat = 'Deteriorated';
-                            
                             if(vb !== 0) pct = ((vc - vb) / Math.abs(vb)) * 100;
                             else if(vb === 0 && vc !== 0) pct = vc > 0 ? 100 : -100; 
+                            
+                            if (pct < -20) stat = 'Improved';
+                            else if (pct > 20) stat = 'Deteriorated';
+                            else stat = 'No Significant Change';
                         }
                         dr.chem[p] = { b: isNaN(vb)?'--':vb, c: isNaN(vc)?'--':vc, s: stat, p: pct };
                     }
@@ -1253,8 +1220,8 @@
                     if (cur.b !== '--' && cur.c !== '--') {
                         let st = stats[aggKey]; st.s++;
                         
-                        if(cur.s === 'Improved') { st.i++; if(cur.p >= -20) st.i_l2++; else st.i_g2++; }
-                        else if(cur.s === 'Deteriorated') { st.d++; if(cur.p <= 20) st.d_l2++; else st.d_g2++; }
+                        if(cur.s === 'Improved') { st.i++; }
+                        else if(cur.s === 'Deteriorated') { st.d++; }
                         else { st.u++; }
 
                         if(perm !== null) {
@@ -1266,7 +1233,7 @@
                                 if(cur.s==='Improved' && cur.c>perm) ps.i_sa++;
                                 if(cur.s==='Improved' && cur.c<=perm) ps.i_sb++;
                                 if(cur.s==='Deteriorated') { ps.d_t++; if(cur.c>perm) ps.d_a++; }
-                                if(cur.s==='Unchanged') ps.u_a++;
+                                if(cur.s==='No Significant Change') ps.u_a++;
                             }
                         }
                     }
@@ -1287,11 +1254,10 @@
 
         function updateDonutChart(matched, unpaired) {
             if(!echartInstance) return;
-            const isLight = document.body.classList.contains('light-theme');
-            const textColor = isLight ? '#475569' : '#f8fafc';
+            const textColor = '#475569';
             
             const option = {
-                tooltip: { trigger: 'item', backgroundColor: isLight ? '#fff' : '#1e293b', borderColor: isLight ? '#e5e7eb' : '#334155', textStyle: { color: textColor } },
+                tooltip: { trigger: 'item', backgroundColor: '#fff', borderColor: '#e5e7eb', textStyle: { color: textColor } },
                 legend: { top: '5%', left: 'center', textStyle: { color: textColor, fontWeight: 'bold' } },
                 series: [
                     {
@@ -1299,8 +1265,8 @@
                         radius: ['45%', '75%'], center: ['50%', '60%'],
                         avoidLabelOverlap: false,
                         itemStyle: {
-                            borderRadius: 8, borderColor: isLight ? '#fff' : '#1e293b', borderWidth: 2,
-                            shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)', shadowOffsetX: 2, shadowOffsetY: 2
+                            borderRadius: 8, borderColor: '#fff', borderWidth: 2,
+                            shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.15)', shadowOffsetX: 2, shadowOffsetY: 2
                         },
                         label: { show: false, position: 'center' },
                         emphasis: {
@@ -1433,11 +1399,11 @@
                 let s = summary[p];
                 html += `<tr>
                     <td>${idx+1}</td>
-                    <td class="text-left font-bold text-emerald-400">${getParamLabel(p)}</td>
+                    <td class="text-left font-bold text-emerald-600">${getParamLabel(p)}</td>
                     <td class="font-bold bg-white/5">${s.total}</td>
-                    <td class="text-amber-400 font-bold">${s.baseV}</td>
-                    <td class="text-blue-400 font-bold">${s.compV}</td>
-                    <td class="text-emerald-400 font-bold">${s.pairedV}</td>
+                    <td class="text-amber-600 font-bold">${s.baseV}</td>
+                    <td class="text-blue-600 font-bold">${s.compV}</td>
+                    <td class="text-emerald-600 font-bold">${s.pairedV}</td>
                 </tr>`;
             });
             tbody.innerHTML = html;
@@ -1449,7 +1415,7 @@
             
             if (!globalAggregatedDataCache || !globalAggregatedDataCache.data || globalAggregatedDataCache.data.rows.length === 0) {
                 status.innerText = "Awaiting Valid Paired Data";
-                status.className = "text-orange-500 dark:text-orange-400";
+                status.className = "text-orange-600";
                 return;
             }
 
@@ -1458,23 +1424,24 @@
 
             if (validRows.length < 2) {
                 status.innerText = "Insufficient Pairs";
-                status.className = "text-rose-500";
-                container.innerHTML = "<p class='text-rose-400'>Not enough valid paired data for a statistical trace (Need &ge; 2 pairs).</p>";
+                status.className = "text-rose-600";
+                container.innerHTML = "<p class='text-rose-600'>Not enough valid paired data for a statistical trace (Need &ge; 2 pairs).</p>";
                 return;
             }
 
             status.innerText = "Active - Using Filtered Data";
-            status.className = "text-emerald-500 dark:text-emerald-400";
+            status.className = "text-emerald-600";
 
             let sampleSize = Math.min(validRows.length, 5); // show up to 5 rows for math clarity
             let sampleRows = validRows.slice(0, sampleSize);
 
-            let d_vals = [], preVals = [], postVals = [];
+            let d_vals = [], preVals = [], postVals = [], pctVals = [];
             sampleRows.forEach(r => {
                 let pre = parseFloat(r.chem[param].b);
                 let post = parseFloat(r.chem[param].c);
                 preVals.push(pre); postVals.push(post);
-                d_vals.push(pre - post); // Base - Compare match with logic
+                d_vals.push(pre - post); 
+                pctVals.push(r.chem[param].p); // stored percentage
             });
 
             let meanDiff = jStat.mean(d_vals);
@@ -1482,8 +1449,8 @@
             let t_calc = stdDiff > 0 ? (meanDiff / (stdDiff / Math.sqrt(sampleSize))) : 0;
 
             let html = `
-                <p class="text-left text-xs mb-3 text-blue-600 dark:text-blue-300">Tracking calculation for <strong>${getParamLabel(param)}</strong> across the first ${sampleSize} paired locations:</p>
-                <div class="overflow-x-auto rounded border border-black/10 dark:border-white/10 shadow bg-white dark:bg-black/30 mb-5">
+                <p class="text-left text-xs mb-3 text-blue-700">Tracking calculation for <strong>${getParamLabel(param)}</strong> across the first ${sampleSize} paired locations:</p>
+                <div class="overflow-x-auto rounded border border-black/10 shadow bg-white mb-5">
                 <table class="report-table w-full text-sm">
                     <thead>
                         <tr>
@@ -1491,7 +1458,8 @@
                             <th class="text-left">Location Detail</th>
                             <th>${baseLabel} Value</th>
                             <th>${compLabel} Value</th>
-                            <th class="bg-indigo-900/20 text-indigo-400">Diff (${baseLabel} - ${compLabel})</th>
+                            <th class="bg-indigo-100 text-indigo-700">% Change</th>
+                            <th class="bg-indigo-100 text-indigo-700">Diff (${baseLabel} - ${compLabel})</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1500,13 +1468,15 @@
             sampleRows.forEach((r, idx) => {
                 let c = r.chem[param];
                 let d = d_vals[idx].toFixed(2);
+                let pct = pctVals[idx];
                 html += `
                     <tr>
-                        <td class="font-mono text-blue-500 dark:text-blue-400">${r.id}</td>
+                        <td class="font-mono text-blue-600">${r.id}</td>
                         <td class="text-left">${r.loc} (${r.district})</td>
-                        <td class="font-bold text-amber-600 dark:text-amber-400">${c.b}</td>
-                        <td class="font-bold text-blue-600 dark:text-blue-400">${c.c}</td>
-                        <td class="font-mono font-bold bg-indigo-900/10 ${d_vals[idx] > 0 ? 'text-emerald-500' : (d_vals[idx] < 0 ? 'text-rose-500' : 'text-slate-400')}">${d}</td>
+                        <td class="font-bold text-amber-600">${c.b}</td>
+                        <td class="font-bold text-blue-600">${c.c}</td>
+                        <td class="font-mono font-bold bg-indigo-50 ${pct < -20 ? 'text-emerald-600' : (pct > 20 ? 'text-rose-600' : 'text-slate-500')}">${(pct > 0 ? '+' : '') + pct.toFixed(2)}%</td>
+                        <td class="font-mono font-bold bg-indigo-50 ${d_vals[idx] > 0 ? 'text-emerald-600' : (d_vals[idx] < 0 ? 'text-rose-600' : 'text-slate-500')}">${d}</td>
                     </tr>
                 `;
             });
@@ -1516,16 +1486,16 @@
             // T-Test Trace
             html += `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                <div class="bg-indigo-900/10 p-4 rounded-lg border border-indigo-500/30 text-sm text-muted">
-                    <h6 class="font-bold text-indigo-400 mb-3 border-b border-indigo-500/20 pb-2"><i class="fa-solid fa-calculator mr-1"></i> T-Test Live Math Trace</h6>
+                <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200 text-sm text-muted">
+                    <h6 class="font-bold text-indigo-700 mb-3 border-b border-indigo-200 pb-2"><i class="fa-solid fa-calculator mr-1"></i> T-Test Live Math Trace</h6>
                     <div class="space-y-2 font-mono text-[11px]">
-                        <p class="flex justify-between"><span>Differences (d):</span> <span class="text-white">[${d_vals.map(v => v.toFixed(2)).join(', ')}]</span></p>
-                        <p class="flex justify-between"><span>Mean (d&#772;):</span> <span class="text-white">${meanDiff.toFixed(3)}</span></p>
-                        <p class="flex justify-between"><span>StdDev (s_d):</span> <span class="text-white">${stdDiff.toFixed(3)}</span></p>
-                        <p class="flex justify-between"><span>Count (n):</span> <span class="text-white">${sampleSize}</span></p>
-                        <div class="mt-3 pt-3 border-t border-indigo-500/30 text-indigo-300">
+                        <p class="flex justify-between"><span>Differences (d):</span> <span class="text-gray-800">[${d_vals.map(v => v.toFixed(2)).join(', ')}]</span></p>
+                        <p class="flex justify-between"><span>Mean (d&#772;):</span> <span class="text-gray-800">${meanDiff.toFixed(3)}</span></p>
+                        <p class="flex justify-between"><span>StdDev (s_d):</span> <span class="text-gray-800">${stdDiff.toFixed(3)}</span></p>
+                        <p class="flex justify-between"><span>Count (n):</span> <span class="text-gray-800">${sampleSize}</span></p>
+                        <div class="mt-3 pt-3 border-t border-indigo-200 text-indigo-800">
                             <p class="mb-1">t = ${meanDiff.toFixed(3)} / (${stdDiff.toFixed(3)} / &radic;${sampleSize})</p>
-                            <p class="text-sm text-white">t = <span class="bg-indigo-600 px-2 py-0.5 rounded">${t_calc.toFixed(4)}</span></p>
+                            <p class="text-sm text-gray-800">t = <span class="bg-indigo-600 text-white px-2 py-0.5 rounded">${t_calc.toFixed(4)}</span></p>
                         </div>
                     </div>
                 </div>
@@ -1535,7 +1505,7 @@
             let nonZeroDiffs = d_vals.filter(d => d !== 0);
             let wx_html = "";
             if (nonZeroDiffs.length === 0) {
-                wx_html = `<p class="text-rose-500 mt-2">No non-zero differences available to rank.</p>`;
+                wx_html = `<p class="text-rose-600 mt-2">No non-zero differences available to rank.</p>`;
             } else {
                 let sorted = nonZeroDiffs.map(d => ({ d, abs: Math.abs(d) })).sort((x, y) => x.abs - y.abs);
                 for (let i = 0; i < sorted.length; ) {
@@ -1553,19 +1523,19 @@
                 });
 
                 wx_html = `
-                    <p class="flex justify-between"><span>Non-Zero Pairs (n):</span> <span class="text-white">${nonZeroDiffs.length}</span></p>
-                    <p class="flex justify-between"><span>Assigned Ranks:</span> <span class="text-white">[${rankTrace.join(', ')}]</span></p>
-                    <p class="flex justify-between"><span>Sum of +ve Ranks (W+):</span> <span class="text-emerald-400 font-bold">${wPlus.toFixed(1)}</span></p>
-                    <p class="flex justify-between"><span>Sum of -ve Ranks (W-):</span> <span class="text-rose-400 font-bold">${wMinus.toFixed(1)}</span></p>
-                    <div class="mt-3 pt-3 border-t border-emerald-500/30 text-emerald-300">
-                        <p class="text-sm text-white">W = <span class="bg-emerald-600 px-2 py-0.5 rounded">${wPlus.toFixed(1)}</span></p>
+                    <p class="flex justify-between"><span>Non-Zero Pairs (n):</span> <span class="text-gray-800">${nonZeroDiffs.length}</span></p>
+                    <p class="flex justify-between"><span>Assigned Ranks:</span> <span class="text-gray-800">[${rankTrace.join(', ')}]</span></p>
+                    <p class="flex justify-between"><span>Sum of +ve Ranks (W+):</span> <span class="text-emerald-700 font-bold">${wPlus.toFixed(1)}</span></p>
+                    <p class="flex justify-between"><span>Sum of -ve Ranks (W-):</span> <span class="text-rose-700 font-bold">${wMinus.toFixed(1)}</span></p>
+                    <div class="mt-3 pt-3 border-t border-emerald-200 text-emerald-800">
+                        <p class="text-sm text-gray-800">W = <span class="bg-emerald-600 text-white px-2 py-0.5 rounded">${wPlus.toFixed(1)}</span></p>
                     </div>
                 `;
             }
 
             html += `
-                <div class="bg-emerald-900/10 p-4 rounded-lg border border-emerald-500/30 text-sm text-muted">
-                    <h6 class="font-bold text-emerald-400 mb-3 border-b border-emerald-500/20 pb-2"><i class="fa-solid fa-list-ol mr-1"></i> Wilcoxon Live Math Trace</h6>
+                <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-200 text-sm text-muted">
+                    <h6 class="font-bold text-emerald-700 mb-3 border-b border-emerald-200 pb-2"><i class="fa-solid fa-list-ol mr-1"></i> Wilcoxon Live Math Trace</h6>
                     <div class="space-y-2 font-mono text-[11px]">
                         ${wx_html}
                     </div>
@@ -1588,16 +1558,18 @@
             thead.innerHTML = `
                 <tr>
                     <th rowspan="2">S.No.</th> ${thLocHTML} <th rowspan="2">Samples Analyzed</th>
-                    <th colspan="6" class="bg-emerald-600/50">Improved</th><th colspan="6" class="bg-rose-600/50">Deteriorated</th><th colspan="2" class="bg-slate-600/50">Unchanged</th>
+                    <th colspan="2" class="bg-emerald-600/50">Improved (&gt;20% Dec)</th>
+                    <th colspan="2" class="bg-rose-600/50">Deteriorated (&gt;20% Inc)</th>
+                    <th colspan="2" class="bg-slate-500/50">No Significant Change (&plusmn;20%)</th>
                 </tr>
                 <tr>
-                    <th class="bg-emerald-600/20">Total (N)</th><th class="bg-emerald-600/20">(%)</th><th class="bg-emerald-600/20">&le; 20% (N)</th><th class="bg-emerald-600/20">(%)</th><th class="bg-emerald-600/20">&gt; 20% (N)</th><th class="bg-emerald-600/20">(%)</th>
-                    <th class="bg-rose-600/20">Total (N)</th><th class="bg-rose-600/20">(%)</th><th class="bg-rose-600/20">&le; 20% (N)</th><th class="bg-rose-600/20">(%)</th><th class="bg-rose-600/20">&gt; 20% (N)</th><th class="bg-rose-600/20">(%)</th>
-                    <th class="bg-slate-600/20">Total (N)</th><th class="bg-slate-600/20">(%)</th>
+                    <th class="bg-emerald-600/20">Total (N)</th><th class="bg-emerald-600/20">(%)</th>
+                    <th class="bg-rose-600/20">Total (N)</th><th class="bg-rose-600/20">(%)</th>
+                    <th class="bg-slate-500/20">Total (N)</th><th class="bg-slate-500/20">(%)</th>
                 </tr>`;
 
             let tbodyHTML = '';
-            let tot = { s:0, i:0, i_l2:0, i_g2:0, d:0, d_l2:0, d_g2:0, u:0 };
+            let tot = { s:0, i:0, d:0, u:0 };
             let keys = Object.keys(stats).sort();
             
             if(keys.length === 0) { 
@@ -1609,30 +1581,25 @@
             for(let i=0; i<keys.length; i++) {
                 let k = keys[i];
                 let s = stats[k]; 
-                tot.s += s.s; tot.i += s.i; tot.i_l2 += s.i_l2; tot.i_g2 += s.i_g2;
-                tot.d += s.d; tot.d_l2 += s.d_l2; tot.d_g2 += s.d_g2; tot.u += s.u;
+                tot.s += s.s; tot.i += s.i; tot.d += s.d; tot.u += s.u;
                 
-                let trLocHTML = hierCols.map(col => `<td class="text-left font-bold text-blue-400">${s[col.toLowerCase()] || k}</td>`).join("");
+                let trLocHTML = hierCols.map(col => `<td class="text-left font-bold text-blue-600">${s[col.toLowerCase()] || k}</td>`).join("");
                 let trClass = s.s === 0 ? "empty-row-faded" : "";
 
                 tbodyHTML += `<tr class="${trClass}">
                     <td>${i+1}</td> ${trLocHTML}
                     <td class="font-bold bg-white/5">${s.s}</td>
-                    <td class="text-emerald-400 bg-emerald-900/20 font-bold">${s.i}</td><td class="text-emerald-300 text-xs">${calculatePctStr(s.i, s.s)}</td>
-                    <td>${s.i_l2}</td><td class="text-[10px] text-muted">${calculatePctStr(s.i_l2, s.s)}</td>
-                    <td>${s.i_g2}</td><td class="text-[10px] text-muted">${calculatePctStr(s.i_g2, s.s)}</td>
-                    <td class="text-rose-400 bg-rose-900/20 font-bold">${s.d}</td><td class="text-rose-300 text-xs">${calculatePctStr(s.d, s.s)}</td>
-                    <td>${s.d_l2}</td><td class="text-[10px] text-muted">${calculatePctStr(s.d_l2, s.s)}</td>
-                    <td>${s.d_g2}</td><td class="text-[10px] text-muted">${calculatePctStr(s.d_g2, s.s)}</td>
-                    <td class="text-slate-400 bg-slate-800/50 font-bold">${s.u}</td><td class="text-slate-300 text-xs">${calculatePctStr(s.u, s.s)}</td>
+                    <td class="text-emerald-700 bg-emerald-100 font-bold">${s.i}</td><td class="text-emerald-600 text-xs">${calculatePctStr(s.i, s.s)}</td>
+                    <td class="text-rose-700 bg-rose-100 font-bold">${s.d}</td><td class="text-rose-600 text-xs">${calculatePctStr(s.d, s.s)}</td>
+                    <td class="text-slate-700 bg-slate-100 font-bold">${s.u}</td><td class="text-slate-600 text-xs">${calculatePctStr(s.u, s.s)}</td>
                 </tr>`;
             }
             tbody.innerHTML = tbodyHTML;
 
             tfoot.innerHTML = `<tr class="total-row">
                 <td colspan="${1 + hierCols.length}" class="text-left">Overall Totals</td><td>${tot.s}</td>
-                <td>${tot.i}</td><td>${calculatePctStr(tot.i, tot.s)}</td><td>${tot.i_l2}</td><td>${calculatePctStr(tot.i_l2, tot.s)}</td><td>${tot.i_g2}</td><td>${calculatePctStr(tot.i_g2, tot.s)}</td>
-                <td>${tot.d}</td><td>${calculatePctStr(tot.d, tot.s)}</td><td>${tot.d_l2}</td><td>${calculatePctStr(tot.d_l2, tot.s)}</td><td>${tot.d_g2}</td><td>${calculatePctStr(tot.d_g2, tot.s)}</td>
+                <td>${tot.i}</td><td>${calculatePctStr(tot.i, tot.s)}</td>
+                <td>${tot.d}</td><td>${calculatePctStr(tot.d, tot.s)}</td>
                 <td>${tot.u}</td><td>${calculatePctStr(tot.u, tot.s)}</td></tr>`;
         }
 
@@ -1647,19 +1614,19 @@
             thead.innerHTML = `<tr>
                 <th rowspan="2">S.No.</th> ${thLocHTML}
                 <th colspan="2" class="bg-rose-600/40">${baseLabel} > Permissible</th>
-                <th colspan="2" class="bg-amber-600/30">Improved but > Perm</th>
+                <th colspan="2" class="bg-amber-500/30">Improved but > Perm</th>
                 <th colspan="2" class="bg-emerald-600/40">Improved & &le; Perm</th>
                 <th colspan="2" class="bg-rose-600/20">Total Deteriorated</th>
                 <th colspan="2" class="bg-rose-600/60">Deteriorated & > Perm</th>
-                <th colspan="2">Unchanged & > Perm</th>
+                <th colspan="2">No Sig. Change & > Perm</th>
             </tr>
             <tr>
                 <th class="bg-rose-600/20">(N)</th><th class="bg-rose-600/20">(%)</th>
-                <th class="bg-amber-600/20">(N)</th><th class="bg-amber-600/20">(%)</th>
+                <th class="bg-amber-500/20">(N)</th><th class="bg-amber-500/20">(%)</th>
                 <th class="bg-emerald-600/20">(N)</th><th class="bg-emerald-600/20">(%)</th>
                 <th class="bg-rose-600/10">(N)</th><th class="bg-rose-600/10">(%)</th>
                 <th class="bg-rose-600/40">(N)</th><th class="bg-rose-600/40">(%)</th>
-                <th class="bg-slate-600/20">(N)</th><th class="bg-slate-600/20">(%)</th>
+                <th class="bg-slate-500/20">(N)</th><th class="bg-slate-500/20">(%)</th>
             </tr>`;
             
             let tbodyHTML = '';
@@ -1677,15 +1644,15 @@
                 let s = stats[k]; 
                 tot.s += s.s; tot.a_b += s.a_b; tot.i_sa += s.i_sa; tot.i_sb += s.i_sb; tot.d_t += s.d_t; tot.d_a += s.d_a; tot.u_a += s.u_a;
                 
-                let trLocHTML = hierCols.map(col => `<td class="text-left font-bold text-blue-400">${s[col.toLowerCase()] || k}</td>`).join("");
+                let trLocHTML = hierCols.map(col => `<td class="text-left font-bold text-blue-600">${s[col.toLowerCase()] || k}</td>`).join("");
                 let trClass = (s.a_b === 0 && s.d_t === 0) ? "empty-row-faded" : "";
 
                 tbodyHTML += `<tr class="${trClass}"><td>${idx++}</td> ${trLocHTML}
-                    <td class="text-rose-400 bg-rose-900/20 font-bold">${s.a_b}</td><td class="text-xs text-muted">${calculatePctStr(s.a_b, s.s)}</td>
-                    <td class="text-amber-400">${s.i_sa}</td><td class="text-xs text-muted">${calculatePctStr(s.i_sa, s.s)}</td>
-                    <td class="text-emerald-400 font-bold">${s.i_sb}</td><td class="text-xs text-muted">${calculatePctStr(s.i_sb, s.s)}</td>
-                    <td class="text-rose-300">${s.d_t}</td><td class="text-xs text-muted">${calculatePctStr(s.d_t, s.s)}</td>
-                    <td class="text-rose-500 font-bold">${s.d_a}</td><td class="text-xs text-muted">${calculatePctStr(s.d_a, s.s)}</td>
+                    <td class="text-rose-700 bg-rose-100 font-bold">${s.a_b}</td><td class="text-xs text-muted">${calculatePctStr(s.a_b, s.s)}</td>
+                    <td class="text-amber-600">${s.i_sa}</td><td class="text-xs text-muted">${calculatePctStr(s.i_sa, s.s)}</td>
+                    <td class="text-emerald-600 font-bold">${s.i_sb}</td><td class="text-xs text-muted">${calculatePctStr(s.i_sb, s.s)}</td>
+                    <td class="text-rose-500">${s.d_t}</td><td class="text-xs text-muted">${calculatePctStr(s.d_t, s.s)}</td>
+                    <td class="text-rose-700 font-bold">${s.d_a}</td><td class="text-xs text-muted">${calculatePctStr(s.d_a, s.s)}</td>
                     <td>${s.u_a}</td><td class="text-xs text-muted">${calculatePctStr(s.u_a, s.s)}</td></tr>`;
             }
             tbody.innerHTML = tbodyHTML;
@@ -1747,7 +1714,7 @@
 
             sortedGroups.forEach(gKey => {
                 let group = grouped[gKey];
-                let trLocHTML = group.keys.map(val => `<td class="text-left font-bold text-blue-400">${val}</td>`).join("");
+                let trLocHTML = group.keys.map(val => `<td class="text-left font-bold text-blue-600">${val}</td>`).join("");
 
                 activeParametersInFile.forEach(p => {
                     const cfg = getParamConfig(p);
@@ -1780,20 +1747,20 @@
                         html += `<tr class="empty-row-faded">
                             <td class="frozen-col" style="left:0; z-index:10;">${idx++}</td>
                             ${trLocHTML}
-                            <td class="text-left font-bold text-slate-400">${pLabel}</td>
-                            <td class="font-bold bg-white/5">${validPairs}</td>
-                            <td colspan="8" class="text-muted italic bg-black/10">No permissible limit defined in database</td>
+                            <td class="text-left font-bold text-slate-500">${pLabel}</td>
+                            <td class="font-bold bg-gray-50">${validPairs}</td>
+                            <td colspan="8" class="text-muted italic bg-black/5">No permissible limit defined in database</td>
                         </tr>`;
                     } else {
                         html += `<tr>
                             <td class="frozen-col" style="left:0; z-index:10;">${idx++}</td>
                             ${trLocHTML}
-                            <td class="text-left font-bold text-blue-500 dark:text-blue-400">${pLabel} <span class="text-[10px] text-muted block">(Limit: ${limit})</span></td>
-                            <td class="font-bold bg-black/5 dark:bg-white/5">${validPairs}</td>
-                            <td class="text-rose-400">${preAbove}</td><td class="text-xs text-muted">${calculatePctStr(preAbove, validPairs)}</td>
-                            <td class="text-rose-500 font-bold">${postAbove}</td><td class="text-xs text-muted">${calculatePctStr(postAbove, validPairs)}</td>
-                            <td class="text-rose-600 font-bold bg-rose-900/10">${contaminated}</td><td class="text-xs text-rose-400 bg-rose-900/10">${calculatePctStr(contaminated, validPairs)}</td>
-                            <td class="text-emerald-500 font-bold bg-emerald-900/10">${remediated}</td><td class="text-xs text-emerald-400 bg-emerald-900/10">${calculatePctStr(remediated, validPairs)}</td>
+                            <td class="text-left font-bold text-blue-700">${pLabel} <span class="text-[10px] text-muted block">(Limit: ${limit})</span></td>
+                            <td class="font-bold bg-gray-50">${validPairs}</td>
+                            <td class="text-rose-600">${preAbove}</td><td class="text-xs text-muted">${calculatePctStr(preAbove, validPairs)}</td>
+                            <td class="text-rose-700 font-bold">${postAbove}</td><td class="text-xs text-muted">${calculatePctStr(postAbove, validPairs)}</td>
+                            <td class="text-rose-700 font-bold bg-rose-50">${contaminated}</td><td class="text-xs text-rose-500 bg-rose-50">${calculatePctStr(contaminated, validPairs)}</td>
+                            <td class="text-emerald-600 font-bold bg-emerald-50">${remediated}</td><td class="text-xs text-emerald-500 bg-emerald-50">${calculatePctStr(remediated, validPairs)}</td>
                         </tr>`;
                     }
                 });
@@ -1822,13 +1789,25 @@
             let htmlArr = [];
             for(let i=0; i<renderRows.length; i++) {
                 let r = renderRows[i];
-                let rowHtml = `<tr><td class="frozen-col" style="left:0">${i+1}</td><td class="frozen-col-2 font-mono text-[10px] text-blue-400" style="left:50px">${r.id}</td><td class="text-left">${r.state}</td><td class="text-left">${r.district}</td><td class="text-left">${r.block}</td><td class="text-left">${r.loc}</td>`;
+                let rowHtml = `<tr><td class="frozen-col" style="left:0">${i+1}</td><td class="frozen-col-2 font-mono text-[10px] text-blue-600" style="left:50px">${r.id}</td><td class="text-left">${r.state}</td><td class="text-left">${r.district}</td><td class="text-left">${r.block}</td><td class="text-left">${r.loc}</td>`;
                 
                 for(let j=0; j<activeParametersInFile.length; j++) {
                     let p = activeParametersInFile[j];
                     let c = r.chem[p]; 
-                    let bCls = c.s==='Improved' ? 'badge-improved' : (c.s==='Deteriorated' ? 'badge-deteriorated' : (c.s==='#NA' ? 'badge-na' : 'badge-unchanged'));
-                    rowHtml += `<td class="border-l border-white/10">${c.b}</td><td class="font-bold">${c.c}</td><td class="border-r border-white/10"><span class="badge-status ${bCls}">${c.s}</span></td>`;
+                    
+                    let impact = '#NA';
+                    let pctStr = '--';
+                    if(c.b !== '--' && c.c !== '--') {
+                        pctStr = (c.p > 0 ? '+' : '') + c.p.toFixed(2) + '%';
+                        if (c.p < -20) impact = 'Improved';
+                        else if (c.p > 20) impact = 'Deteriorated';
+                        else impact = 'No Significant Change';
+                    }
+                    
+                    let bCls = impact==='Improved' ? 'badge-improved' : (impact==='Deteriorated' ? 'badge-deteriorated' : (impact==='#NA' ? 'badge-na' : 'badge-unchanged'));
+                    let pctCls = c.p < -20 ? 'text-emerald-600' : (c.p > 20 ? 'text-rose-600' : 'text-slate-500');
+
+                    rowHtml += `<td class="border-l border-gray-200">${c.b}</td><td class="font-bold">${c.c}</td><td class="font-mono text-xs ${pctCls}">${pctStr}</td><td class="border-r border-gray-200"><span class="badge-status ${bCls}">${impact}</span></td>`;
                 }
                 rowHtml += '</tr>';
                 htmlArr.push(rowHtml);
@@ -2049,8 +2028,8 @@
                 if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
                     let c = r.chem[globalAggregatedDataCache.param]; 
                     
-                    // Exclude missing (#NA) AND perfectly Unchanged items from both markers and IDW math
-                    if(!c || c.s === '#NA' || c.s === 'Unchanged') continue; 
+                    // Exclude missing (#NA) AND items without Significant Change
+                    if(!c || c.s === '#NA' || c.s === 'No Significant Change') continue; 
                     
                     let mCol = cols.i;
                     if(c.s === 'Improved') mCol = cols.i;
@@ -2118,7 +2097,7 @@
 
                     if(geojson.bbox) leafletMap.fitBounds([[geojson.bbox[1], geojson.bbox[0]], [geojson.bbox[3], geojson.bbox[2]]]);
                     updateMapVisuals(); // Centralized drawing function handles clipping and rendering
-                }).catch(err => alert("Error parsing shapefile: " + err));
+                }).catch(err => window.alert("Error parsing shapefile: " + err));
             };
             reader.readAsArrayBuffer(file);
         }
@@ -2274,19 +2253,19 @@
                 let wBadge = wSig ? (s.wxTest.w > expectedW ? '<span class="badge-status badge-improved">YES (Improved)</span>' : '<span class="badge-status badge-deteriorated">YES (Deteriorated)</span>') : '<span class="badge-status badge-unchanged">NO</span>';
 
                 html += `<tr>
-                    <td class="frozen-col font-bold text-blue-500 dark:text-blue-400" style="left:0; z-index: 10;">${s.param}</td>
-                    <td class="font-bold bg-black/5 dark:bg-white/5">${s.n}</td>
-                    <td class="font-bold text-amber-500 dark:text-amber-400">${s.meanPre.toFixed(2)}</td>
-                    <td class="font-bold text-blue-500 dark:text-blue-400">${s.meanPost.toFixed(2)}</td>
-                    <td class="text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.df}</td>
-                    <td class="text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.meanDiff.toFixed(3)}</td>
-                    <td class="text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.t.toFixed(3)}</td>
-                    <td class="text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.tab.toFixed(3)}</td>
-                    <td class="text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-900/10">${s.pTest.p.toFixed(4)}</td>
-                    <td class="bg-indigo-500/10 dark:bg-indigo-900/10">${tBadge}</td>
-                    <td class="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-900/10">${s.wxTest.w.toFixed(1)}</td>
-                    <td class="text-emerald-500 dark:text-emerald-300 bg-emerald-500/10 dark:bg-emerald-900/10">${s.wxTest.p.toFixed(4)}</td>
-                    <td class="bg-emerald-500/10 dark:bg-emerald-900/10">${wBadge}</td>
+                    <td class="frozen-col font-bold text-blue-700" style="left:0; z-index: 10;">${s.param}</td>
+                    <td class="font-bold bg-gray-50">${s.n}</td>
+                    <td class="font-bold text-amber-600">${s.meanPre.toFixed(2)}</td>
+                    <td class="font-bold text-blue-600">${s.meanPost.toFixed(2)}</td>
+                    <td class="text-indigo-700 bg-indigo-50">${s.pTest.df}</td>
+                    <td class="text-indigo-800 font-bold bg-indigo-50">${s.pTest.meanDiff.toFixed(3)}</td>
+                    <td class="text-indigo-800 font-bold bg-indigo-50">${s.pTest.t.toFixed(3)}</td>
+                    <td class="text-indigo-700 bg-indigo-50">${s.pTest.tab.toFixed(3)}</td>
+                    <td class="text-indigo-700 bg-indigo-50">${s.pTest.p.toFixed(4)}</td>
+                    <td class="bg-indigo-50">${tBadge}</td>
+                    <td class="text-emerald-700 font-bold bg-emerald-50">${s.wxTest.w.toFixed(1)}</td>
+                    <td class="text-emerald-600 bg-emerald-50">${s.wxTest.p.toFixed(4)}</td>
+                    <td class="bg-emerald-50">${wBadge}</td>
                 </tr>`;
             });
             tbody.innerHTML = html;
@@ -2311,14 +2290,14 @@
                     "Aquifer Tapped", "Well Use (WQ Monitoring/Both WL + WQ Monitoring)", 
                     "Water level (mbgl) at the time of sample collection, if available", 
                     "Date of Sample Collection (DD/MM/YYYY)", "Date of Sample Analysis (DD/MM/YYYY)", 
-                    "pH", "EC", "CO3", "HCO3", "Cl", "F", "SO4", "NO3", "TH", "Ca", "Mg", "Na", "K", 
+                    "EC", "CO3", "HCO3", "Cl", "F", "SO4", "NO3", "TH", "Ca", "Mg", "Na", "K", 
                     "SiO2", "PO4", "Li", "B", "Al", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Se", "Sr", 
                     "Cd", "Ba", "Hg", "Pb", "As", "U"
                 ];
                 
                 const units = [
                     "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", 
-                    "", "µS/cm at 25°C", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", 
+                    "µS/cm at 25°C", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", 
                     "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", 
                     "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "mg/L", "ppb", "ppb"
                 ];
@@ -2332,7 +2311,6 @@
                 ws.getRow(2).font = { italic: true, color: { argb: 'FF475569' } };
                 ws.getRow(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
 
-                // Fix: explicit assignment loop since columns aren't initialized yet
                 for(let i = 1; i <= headers.length; i++) {
                     ws.getColumn(i).width = 20;
                 }
@@ -2341,7 +2319,7 @@
                 saveAs(new Blob([buffer]), "GWQ_Analysis_Data_Template.xlsx");
             } catch (error) {
                 console.error("Template export failed:", error);
-                alert("Failed to export template. See console for details.");
+                window.alert("Failed to export template. See console for details.");
             }
         }
 
@@ -2354,11 +2332,11 @@
 
             ws.getCell(`A${r}`).value = `Unified Groundwater Quality Summary (${aggLevel}-wise Matrix)`;
             ws.getCell(`A${r}`).font = { size: 14, bold: true, color: { argb: 'FF1D4ED8' } };
-            ws.mergeCells(r, 1, r, H + 17);
+            ws.mergeCells(r, 1, r, H + 9);
             r++;
 
-            const h1 = ["S.No.", ...hierCols, "Parameter", "Samples Analyzed", "Improved", "", "", "", "", "", "Deteriorated", "", "", "", "", "", "Unchanged", ""];
-            const h2 = ["", ...hierCols.map(()=>""), "", "", "Total (N)", "(%)", "<= 20% (N)", "(%)", "> 20% (N)", "(%)", "Total (N)", "(%)", "<= 20% (N)", "(%)", "> 20% (N)", "(%)", "Total (N)", "(%)"];
+            const h1 = ["S.No.", ...hierCols, "Parameter", "Samples Analyzed", "Improved (>20% Dec)", "", "Deteriorated (>20% Inc)", "", "No Significant Change (±20%)", ""];
+            const h2 = ["", ...hierCols.map(()=>""), "", "", "Total (N)", "(%)", "Total (N)", "(%)", "Total (N)", "(%)"];
             
             ws.getRow(r).values = h1;
             ws.getRow(r+1).values = h2;
@@ -2367,9 +2345,9 @@
             for(let i=1; i<=H; i++) ws.mergeCells(r, 1+i, r+1, 1+i); 
             ws.mergeCells(r, H+2, r+1, H+2); 
             ws.mergeCells(r, H+3, r+1, H+3); 
-            ws.mergeCells(r, H+4, r, H+9); 
-            ws.mergeCells(r, H+10, r, H+15); 
-            ws.mergeCells(r, H+16, r, H+17); 
+            ws.mergeCells(r, H+4, r, H+5); 
+            ws.mergeCells(r, H+6, r, H+7); 
+            ws.mergeCells(r, H+8, r, H+9); 
             
             for(let i=0; i<2; i++){
                 ws.getRow(r+i).eachCell({ includeEmpty: true }, (cell, c) => {
@@ -2377,9 +2355,9 @@
                     cell.alignment = { horizontal: 'center', vertical: 'middle' };
                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                     
-                    if(c >= H+4 && c <= H+9) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
-                    else if(c >= H+10 && c <= H+15) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } };
-                    else if(c >= H+16 && c <= H+17) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+                    if(c >= H+4 && c <= H+5) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+                    else if(c >= H+6 && c <= H+7) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } };
+                    else if(c >= H+8 && c <= H+9) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
                     else cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
                 });
             }
@@ -2395,16 +2373,16 @@
                     let row = ws.getRow(r);
                     let hierValues = hierCols.map(col => s[col.toLowerCase()] || k);
 
-                    row.values = [ idx+1, ...hierValues, paramLabel, s.s, s.i, calculatePctStr(s.i, s.s), s.i_l2, calculatePctStr(s.i_l2, s.s), s.i_g2, calculatePctStr(s.i_g2, s.s),
-                        s.d, calculatePctStr(s.d, s.s), s.d_l2, calculatePctStr(s.d_l2, s.s), s.d_g2, calculatePctStr(s.d_g2, s.s), s.u, calculatePctStr(s.u, s.s) ];
+                    row.values = [ idx+1, ...hierValues, paramLabel, s.s, s.i, calculatePctStr(s.i, s.s),
+                        s.d, calculatePctStr(s.d, s.s), s.u, calculatePctStr(s.u, s.s) ];
                     
                     row.eachCell({ includeEmpty: true }, (cell, c) => {
                         cell.alignment = { horizontal: (c >= 2 && c <= H+2) ? 'left' : 'center' };
                         cell.border = { top: {style:'thin', color:{argb:'FFEEEEEE'}}, bottom: {style:'thin', color:{argb:'FFEEEEEE'}} };
                         if(s.s === 0) cell.font = { color: { argb: 'FF94A3B8'} };
-                        if(c >= H+4 && c <= H+9) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
-                        else if(c >= H+10 && c <= H+15) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
-                        else if(c >= H+16 && c <= H+17) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                        if(c >= H+4 && c <= H+5) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+                        else if(c >= H+6 && c <= H+7) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                        else if(c >= H+8 && c <= H+9) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
                     });
                     r++;
                 });
@@ -2422,7 +2400,7 @@
             ws.mergeCells(r, 1, r, H + 14);
             r++;
 
-            const h1 = ["S.No.", ...hierCols, "Parameter", `${baseLabel} > Permissible`, "", "Improved but > Perm", "", "Improved & <= Perm", "", "Total Deteriorated", "", "Deteriorated & > Perm", "", "Unchanged & > Perm", ""];
+            const h1 = ["S.No.", ...hierCols, "Parameter", `${baseLabel} > Permissible`, "", "Improved but > Perm", "", "Improved & <= Perm", "", "Total Deteriorated", "", "Deteriorated & > Perm", "", "No Sig. Change & > Perm", ""];
             const h2 = ["", ...hierCols.map(()=>""), "", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)", "(N)", "(%)"];
             
             ws.getRow(r).values = h1;
@@ -2606,9 +2584,9 @@
             let cIdx = 7;
             
             activeParametersInFile.forEach(p => {
-                h1.push(getParamLabel(p), "", ""); h2.push(baseLabel, compLabel, "Status");
-                ws.mergeCells(r, cIdx, r, cIdx+2);
-                cIdx += 3;
+                h1.push(getParamLabel(p), "", "", ""); h2.push(baseLabel, compLabel, "% Change", "Impact of Monsoon");
+                ws.mergeCells(r, cIdx, r, cIdx+3);
+                cIdx += 4;
             });
             
             ws.mergeCells(r, 1, r+1, 1); ws.mergeCells(r, 2, r+1, 2); ws.mergeCells(r, 3, r+1, 3);
@@ -2633,7 +2611,13 @@
                 for(let j=0; j<activeParametersInFile.length; j++) {
                     let p = activeParametersInFile[j];
                     let c = rowData.chem[p];
-                    rv.push(c.b, c.c, c.s);
+                    
+                    let pctStr = '--';
+                    if(c.b !== '--' && c.c !== '--') {
+                        pctStr = c.p.toFixed(2) + '%';
+                    }
+
+                    rv.push(c.b, c.c, pctStr, c.s);
                     styles.push(c.s);
                 }
                 
@@ -2642,18 +2626,18 @@
                 let cBase = 7;
                 for(let j=0; j<styles.length; j++) {
                     let stat = styles[j];
-                    let statCell = row.getCell(cBase + 2);
+                    let statCell = row.getCell(cBase + 3); // 4th column in the parameter group is Impact Status
                     if(stat === 'Improved') { statCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }; statCell.font = { color: { argb: 'FF065F46' }, bold: true }; }
                     else if(stat === 'Deteriorated') { statCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }; statCell.font = { color: { argb: 'FF991B1B' }, bold: true }; }
-                    else if(stat === 'Unchanged') { statCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; statCell.font = { color: { argb: 'FF475569' }, bold: true }; }
-                    cBase += 3;
+                    else if(stat === 'No Significant Change') { statCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; statCell.font = { color: { argb: 'FF475569' }, bold: true }; }
+                    cBase += 4;
                 }
                 r++;
             }
         }
 
         async function exportCurrentToExcel() {
-            if (!globalAggregatedDataCache) return alert("Please run an analysis first.");
+            if (!globalAggregatedDataCache) return window.alert("Please run an analysis first.");
             
             const param = globalAggregatedDataCache.param;
             const data = globalAggregatedDataCache.data;
@@ -2673,7 +2657,7 @@
             } 
             else if (document.getElementById('btn-tab-perm').classList.contains('active')) {
                 if (data.permLimit === null) {
-                    alert("No permissible limit defined for this parameter.");
+                    window.alert("No permissible limit defined for this parameter.");
                     return;
                 }
                 sheetName = "Permissible_Limits";
@@ -2696,7 +2680,7 @@
                     buildStatsSheet(ws, statsData, conf, baseLabel, compLabel);
                     exported = true;
                 } else {
-                    alert("Insufficient data for statistical analysis.");
+                    window.alert("Insufficient data for statistical analysis.");
                     return;
                 }
             }
@@ -2732,7 +2716,7 @@
                 exported = true;
             }
             else {
-                alert("The currently active tab cannot be exported. Please select a valid data table tab.");
+                window.alert("The currently active tab cannot be exported. Please select a valid data table tab.");
                 return;
             }
 
@@ -2778,7 +2762,7 @@
         }
 
         async function exportAllSummariesToExcel() {
-            if(activeParametersInFile.length === 0) return alert("No parameters mapped to export.");
+            if(activeParametersInFile.length === 0) return window.alert("No parameters mapped to export.");
             
             const wb = new ExcelJS.Workbook();
             const wsGen = wb.addWorksheet("Unified_General_Summary");
